@@ -21,9 +21,17 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# IDE
+# IDE & AI tools
 .vscode/
 .idea/
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
+HANDOFF.md
 
 # Test coverage
 coverage/
+
+/src/generated/prisma
+
