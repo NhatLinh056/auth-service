@@ -1,6 +1,7 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service.js';
+import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 
 @ApiTags('auth')
@@ -25,5 +26,24 @@ export class AuthController {
   })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
+  }
+
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Đăng nhập người dùng và nhận JWT Access Token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Đăng nhập thành công, trả về access token và thông tin user',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Email hoặc mật khẩu không chính xác',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Dữ liệu gửi lên không hợp lệ (email sai định dạng, thiếu password)',
+  })
+  async login(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto);
   }
 }

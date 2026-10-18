@@ -1,12 +1,17 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcrypt';
 import { User } from '../generated/prisma/client.js';
 import { UsersService } from '../users/users.service.js';
+import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   async register(registerDto: RegisterDto): Promise<Omit<User, 'passwordHash'>> {
     // 1. Kiểm tra xem email đã tồn tại hay chưa
@@ -30,5 +35,38 @@ export class AuthService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _, ...safeUser } = newUser;
     return safeUser;
+  }
+
+  async login(loginDto: LoginDto): Promise<{
+    accessToken: string;
+    user: Omit<User, 'passwordHash'>;
+  }> {
+    // 1. Tìm người dùng theo email
+    const user = await this.usersService.findByEmail(loginDto.email);
+    if (!user) {
+      throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
+    }
+
+    // 2. So khớp mật khẩu với passwordHash trong DB
+    const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
+    }
+
+    // 3. Tạo payload và ký JWT token
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
+    const accessToken = await this.jwtService.signAsync(payload);
+
+    // 4. Loại bỏ passwordHash và trả về token cùng thông tin user
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _, ...safeUser } = user;
+    return {
+      accessToken,
+      user: safeUser,
+    };
   }
 }

@@ -1,4 +1,5 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import bcrypt from 'bcrypt';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,11 +8,14 @@ import { AuthService } from './auth.service.js';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let usersService: UsersService;
 
   const mockUsersService = {
     findByEmail: vi.fn(),
     create: vi.fn(),
+  };
+
+  const mockJwtService = {
+    signAsync: vi.fn().mockResolvedValue('mocked_jwt_token_xyz'),
   };
 
   beforeEach(async () => {
@@ -23,11 +27,14 @@ describe('AuthService', () => {
           provide: UsersService,
           useValue: mockUsersService,
         },
+        {
+          provide: JwtService,
+          useValue: mockJwtService,
+        },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    usersService = module.get<UsersService>(UsersService);
   });
 
   it('should be defined', () => {
@@ -78,6 +85,65 @@ describe('AuthService', () => {
       expect(result).toHaveProperty('id', 'new-uuid-456');
       expect(result).toHaveProperty('email', 'new@example.com');
       expect(result).not.toHaveProperty('passwordHash');
+    });
+  });
+
+  describe('login', () => {
+    it('should throw UnauthorizedException if user not found', async () => {
+      mockUsersService.findByEmail.mockResolvedValue(null);
+
+      await expect(
+        service.login({
+          email: 'notfound@example.com',
+          password: 'password123',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(mockUsersService.findByEmail).toHaveBeenCalledWith('notfound@example.com');
+    });
+
+    it('should throw UnauthorizedException if password does not match', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: 'user-1',
+        email: 'user@example.com',
+        passwordHash: 'real_hash',
+      });
+
+      vi.spyOn(bcrypt, 'compare').mockImplementation(async () => false);
+
+      await expect(
+        service.login({
+          email: 'user@example.com',
+          password: 'wrongpassword',
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should return accessToken and safe user when credentials are valid', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: 'user-1',
+        email: 'user@example.com',
+        name: 'John Doe',
+        role: 'USER',
+        passwordHash: 'real_hash',
+      });
+
+      vi.spyOn(bcrypt, 'compare').mockImplementation(async () => true);
+
+      const result = await service.login({
+        email: 'user@example.com',
+        password: 'correctpassword',
+      });
+
+      expect(result).toHaveProperty('accessToken', 'mocked_jwt_token_xyz');
+      expect(result.user).toHaveProperty('id', 'user-1');
+      expect(result.user).toHaveProperty('email', 'user@example.com');
+      expect(result.user).not.toHaveProperty('passwordHash');
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith({
+        sub: 'user-1',
+        email: 'user@example.com',
+        role: 'USER',
+      });
     });
   });
 });

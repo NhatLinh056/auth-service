@@ -9,6 +9,7 @@ describe('AuthController', () => {
 
   const mockAuthService = {
     register: vi.fn(),
+    login: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -54,6 +55,32 @@ describe('AuthController', () => {
 
       expect(result).toEqual(expectedResult);
       expect(mockAuthService.register).toHaveBeenCalledWith(registerDto);
+    });
+  });
+
+  describe('login', () => {
+    it('should call authService.login and return token and user', async () => {
+      const loginDto = {
+        email: 'test@example.com',
+        password: 'password123',
+      };
+
+      const expectedResult = {
+        accessToken: 'jwt_token_123',
+        user: {
+          id: 'user-id',
+          email: 'test@example.com',
+          name: 'Nguyen Van A',
+          role: 'USER',
+        },
+      };
+
+      mockAuthService.login.mockResolvedValue(expectedResult);
+
+      const result = await controller.login(loginDto);
+
+      expect(result).toEqual(expectedResult);
+      expect(mockAuthService.login).toHaveBeenCalledWith(loginDto);
     });
   });
 });
