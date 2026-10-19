@@ -46,4 +46,15 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Đăng xuất người dùng (stateless JWT — client tự xóa token)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Đăng xuất thành công',
+  })
+  logout() {
+    return this.authService.logout();
+  }
 }

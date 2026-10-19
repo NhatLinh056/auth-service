@@ -146,4 +146,14 @@ describe('AuthService', () => {
       });
     });
   });
+
+  describe('logout', () => {
+    it('should return a success message', () => {
+      const result = service.logout();
+
+      expect(result).toHaveProperty('message');
+      expect(typeof result.message).toBe('string');
+      expect(result.message).toContain('Đăng xuất thành công');
+    });
+  });
 });

@@ -69,4 +69,11 @@ export class AuthService {
       user: safeUser,
     };
   }
+
+  logout(): { message: string } {
+    // JWT là stateless — server không lưu session, không thể thu hồi token trực tiếp.
+    // Cơ chế logout chuẩn cho stateless JWT: server xác nhận thành công,
+    // client có trách nhiệm xóa token khỏi bộ nhớ/localStorage.
+    return { message: 'Đăng xuất thành công. Vui lòng xóa token khỏi client.' };
+  }
 }

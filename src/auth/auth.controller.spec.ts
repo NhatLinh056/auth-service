@@ -10,6 +10,7 @@ describe('AuthController', () => {
   const mockAuthService = {
     register: vi.fn(),
     login: vi.fn(),
+    logout: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -81,6 +82,21 @@ describe('AuthController', () => {
 
       expect(result).toEqual(expectedResult);
       expect(mockAuthService.login).toHaveBeenCalledWith(loginDto);
+    });
+  });
+
+  describe('logout', () => {
+    it('should call authService.logout and return a success message', () => {
+      const expectedResult = {
+        message: 'Đăng xuất thành công. Vui lòng xóa token khỏi client.',
+      };
+
+      mockAuthService.logout.mockReturnValue(expectedResult);
+
+      const result = controller.logout();
+
+      expect(result).toEqual(expectedResult);
+      expect(mockAuthService.logout).toHaveBeenCalledTimes(1);
     });
   });
 });
