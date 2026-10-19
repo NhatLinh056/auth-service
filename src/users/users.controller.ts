@@ -46,6 +46,21 @@ export class UsersController {
     return safeUser;
   }
 
+  // GET /users — Lấy danh sách tất cả người dùng
+  // Lưu ý: phải khai báo TRƯỚC @Get(':id') để NestJS không bị nhầm route
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lấy danh sách tất cả người dùng' })
+  @ApiResponse({ status: 200, description: 'Trả về mảng thông tin tất cả người dùng (không có passwordHash)' })
+  @ApiResponse({ status: 401, description: 'Token không hợp lệ hoặc hết hạn' })
+  async getAll() {
+    const users = await this.usersService.findAll();
+
+    // Loại bỏ passwordHash khỏi từng phần tử trong mảng
+    return users.map(({ passwordHash: _, ...safeUser }) => safeUser);
+  }
+
   // GET /users/:id — Lấy thông tin user theo ID (bảo vệ bằng JWT Guard)
   @Get(':id')
   @UseGuards(JwtAuthGuard)
