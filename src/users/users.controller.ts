@@ -1,8 +1,10 @@
 import {
+  Body,
   Controller,
   Get,
   NotFoundException,
   Param,
+  Patch,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -12,8 +14,10 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import bcrypt from 'bcrypt';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { JwtPayload } from '../common/strategies/jwt.strategy.js';
+import { UpdateUserDto } from './dto/update-user.dto.js';
 import { UsersService } from './users.service.js';
 
 // request.user được Passport inject sau khi JwtStrategy.validate() chạy thành công
@@ -78,6 +82,39 @@ export class UsersController {
     // Loại bỏ passwordHash trước khi trả về
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _, ...safeUser } = user;
+    return safeUser;
+  }
+
+  // PATCH /users/:id — Cập nhật thông tin người dùng (bảo vệ bằng JWT Guard)
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cập nhật thông tin người dùng theo ID' })
+  @ApiResponse({ status: 200, description: 'Cập nhật thông tin người dùng thành công' })
+  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
+  @ApiResponse({ status: 401, description: 'Token không hợp lệ hoặc hết hạn' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng với ID này' })
+  async updateUser(
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    const existingUser = await this.usersService.findById(id);
+    if (!existingUser) {
+      throw new NotFoundException(`Không tìm thấy người dùng với ID: ${id}`);
+    }
+
+    const updateData: { name?: string; passwordHash?: string } = {};
+    if (updateUserDto.name !== undefined) {
+      updateData.name = updateUserDto.name;
+    }
+    if (updateUserDto.password) {
+      const saltRounds = 10;
+      updateData.passwordHash = await bcrypt.hash(updateUserDto.password, saltRounds);
+    }
+
+    const updatedUser = await this.usersService.update(id, updateData);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _, ...safeUser } = updatedUser;
     return safeUser;
   }
 }
