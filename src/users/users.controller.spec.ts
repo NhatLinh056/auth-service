@@ -23,6 +23,7 @@ describe('UsersController', () => {
     findById: vi.fn(),
     findAll: vi.fn(),
     update: vi.fn(),
+    delete: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -166,4 +167,38 @@ describe('UsersController', () => {
       ).rejects.toThrow(NotFoundException);
     });
   });
+
+  describe('deleteUser', () => {
+    it('should delete user and return success message with user without passwordHash', async () => {
+      mockUsersService.findById.mockResolvedValue(mockUser);
+      mockUsersService.delete.mockResolvedValue(mockUser);
+
+      const result = await controller.deleteUser('user-uuid-1234');
+
+      expect(mockUsersService.findById).toHaveBeenCalledWith('user-uuid-1234');
+      expect(mockUsersService.delete).toHaveBeenCalledWith('user-uuid-1234');
+      expect(result).toEqual({
+        message: 'Xóa người dùng thành công',
+        user: {
+          id: 'user-uuid-1234',
+          email: 'test@example.com',
+          name: 'Old Name',
+          role: 'USER',
+          createdAt: mockUser.createdAt,
+          updatedAt: mockUser.updatedAt,
+        },
+      });
+      expect(result.user).not.toHaveProperty('passwordHash');
+    });
+
+    it('should throw NotFoundException if user to delete does not exist', async () => {
+      mockUsersService.findById.mockResolvedValue(null);
+
+      await expect(controller.deleteUser('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(mockUsersService.delete).not.toHaveBeenCalled();
+    });
+  });
 });
+

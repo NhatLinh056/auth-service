@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   NotFoundException,
   Param,
@@ -116,5 +117,28 @@ export class UsersController {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _, ...safeUser } = updatedUser;
     return safeUser;
+  }
+
+  // DELETE /users/:id — Xóa tài khoản người dùng (bảo vệ bằng JWT Guard)
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Xóa tài khoản người dùng theo ID' })
+  @ApiResponse({ status: 200, description: 'Xóa người dùng thành công' })
+  @ApiResponse({ status: 401, description: 'Token không hợp lệ hoặc hết hạn' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng với ID này' })
+  async deleteUser(@Param('id') id: string) {
+    const existingUser = await this.usersService.findById(id);
+    if (!existingUser) {
+      throw new NotFoundException(`Không tìm thấy người dùng với ID: ${id}`);
+    }
+
+    const deletedUser = await this.usersService.delete(id);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _, ...safeUser } = deletedUser;
+    return {
+      message: 'Xóa người dùng thành công',
+      user: safeUser,
+    };
   }
 }
