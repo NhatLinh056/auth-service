@@ -14,6 +14,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import bcrypt from 'bcrypt';
+import { Role } from '../generated/prisma/enums.js';
 import { Auth } from '../common/decorators/auth.decorator.js';
 import { JwtPayload } from '../common/strategies/jwt.strategy.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
@@ -45,11 +46,12 @@ export class UsersController {
     return safeUser;
   }
 
-  // GET /users — Lấy danh sách tất cả người dùng (yêu cầu xác thực)
+  // GET /users — Lấy danh sách tất cả người dùng (dành riêng cho ADMIN)
   @Get()
-  @Auth()
-  @ApiOperation({ summary: 'Lấy danh sách tất cả người dùng' })
+  @Auth(Role.ADMIN)
+  @ApiOperation({ summary: 'Lấy danh sách tất cả người dùng (chỉ dành cho ADMIN)' })
   @ApiResponse({ status: 200, description: 'Trả về mảng thông tin tất cả người dùng (không có passwordHash)' })
+  @ApiResponse({ status: 403, description: 'Không có quyền truy cập (chỉ dành cho ADMIN)' })
   async getAll() {
     const users = await this.usersService.findAll();
     return users.map(({ passwordHash: _, ...safeUser }) => safeUser);

@@ -2,6 +2,8 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import bcrypt from 'bcrypt';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Role } from '../generated/prisma/enums.js';
+import { ROLES_KEY } from '../common/decorators/roles.decorator.js';
 import { UsersController } from './users.controller.js';
 import { UsersService } from './users.service.js';
 
@@ -76,6 +78,11 @@ describe('UsersController', () => {
   });
 
   describe('getAll', () => {
+    it('should be protected with @Auth(Role.ADMIN)', () => {
+      const roles = Reflect.getMetadata(ROLES_KEY, UsersController.prototype.getAll);
+      expect(roles).toEqual([Role.ADMIN]);
+    });
+
     it('should return all users without passwordHash', async () => {
       mockUsersService.findAll.mockResolvedValue([mockUser]);
 

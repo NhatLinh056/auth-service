@@ -4,11 +4,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Role } from '../src/generated/prisma/enums.js';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
 // ──────────────────────────────────────────────────────────
-// E2E Test Suite — User API (TODO 56)
+// E2E Test Suite — User API (TODO 56 & TODO 66)
 // Kiểm thử tích hợp toàn bộ luồng nghiệp vụ User API
 // dùng database thực (auth_service_db), không mock.
 // ──────────────────────────────────────────────────────────
@@ -22,8 +23,13 @@ describe('User API (e2e)', () => {
   const TEST_PASSWORD = 'TestPass123!';
   const TEST_NAME = 'E2E Test User';
 
+  const ADMIN_EMAIL = `e2e_admin_${Date.now()}@test.com`;
+
   let accessToken: string;
   let userId: string;
+
+  let adminAccessToken: string;
+  let adminUserId: string;
 
   // ── Khởi tạo app một lần cho toàn bộ test suite ──
   beforeAll(async () => {
@@ -44,13 +50,31 @@ describe('User API (e2e)', () => {
 
     await app.init();
     prisma = moduleFixture.get<PrismaService>(PrismaService);
+
+    // Tạo và cấp quyền ADMIN cho tài khoản admin test
+    const adminReg = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ email: ADMIN_EMAIL, password: TEST_PASSWORD, name: 'E2E Admin User' });
+    adminUserId = adminReg.body.id;
+
+    await prisma.user.update({
+      where: { id: adminUserId },
+      data: { role: Role.ADMIN },
+    });
+
+    const adminLogin = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: ADMIN_EMAIL, password: TEST_PASSWORD });
+    adminAccessToken = adminLogin.body.accessToken;
   });
 
   // ── Dọn dẹp dữ liệu test và đóng app sau khi toàn bộ test chạy xong ──
   afterAll(async () => {
-    // Xóa user test nếu còn tồn tại (phòng trường hợp test delete bị skip)
+    // Xóa user test nếu còn tồn tại
     try {
-      await prisma.user.deleteMany({ where: { email: TEST_EMAIL } });
+      await prisma.user.deleteMany({
+        where: { email: { in: [TEST_EMAIL, ADMIN_EMAIL] } },
+      });
     } catch {
       // Bỏ qua nếu user đã bị xóa bởi test
     }
@@ -176,13 +200,22 @@ describe('User API (e2e)', () => {
   });
 
   // ════════════════════════════════════════════════════════
-  // 4. GET /users
+  // 4. GET /users (Chỉ dành riêng cho ADMIN)
   // ════════════════════════════════════════════════════════
   describe('GET /users', () => {
-    it('nên trả về danh sách users (mảng) không có passwordHash', async () => {
+    it('nên trả về 403 Forbidden khi người dùng thường (USER) cố truy cập', async () => {
       const res = await request(app.getHttpServer())
         .get('/users')
         .set('Authorization', `Bearer ${accessToken}`)
+        .expect(403);
+
+      expect(res.body.message).toBe('Bạn không có quyền truy cập tài nguyên này');
+    });
+
+    it('nên trả về 200 OK và danh sách users khi quản trị viên (ADMIN) truy cập', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/users')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
@@ -199,6 +232,13 @@ describe('User API (e2e)', () => {
     it('nên trả về 401 khi không có token', async () => {
       await request(app.getHttpServer())
         .get('/users')
+        .expect(401);
+    });
+
+    it('nên trả về 401 khi token không hợp lệ', async () => {
+      await request(app.getHttpServer())
+        .get('/users')
+        .set('Authorization', 'Bearer invalid.token.here')
         .expect(401);
     });
   });
