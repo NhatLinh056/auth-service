@@ -292,8 +292,41 @@ describe('Roles & Admin Access (e2e)', () => {
       expect(res.body).toHaveProperty('userId', adminId);
       expect(res.body).toHaveProperty('email', ADMIN_EMAIL);
       expect(res.body).toHaveProperty('role', Role.ADMIN);
-      expect(res.body).toHaveProperty('roleName', 'Administrator');
+      expect(res.body.roleName).toBe('Administrator');
       expect(res.body).toHaveProperty('description');
+    });
+  });
+
+  describe('Role API Edge Cases & Security Validations', () => {
+    it('nên trả về 401 khi token bị giả mạo / sai chữ ký', async () => {
+      const tamperedToken = adminToken.slice(0, -6) + 'abcdef';
+      await request(app.getHttpServer())
+        .get('/roles/admin')
+        .set('Authorization', `Bearer ${tamperedToken}`)
+        .expect(401);
+    });
+
+    it('nên trả về 401 khi Authorization header không đúng định dạng Bearer', async () => {
+      await request(app.getHttpServer())
+        .get('/roles/user')
+        .set('Authorization', 'Basic dXNlcjpwYXNz')
+        .expect(401);
+    });
+
+    it('nên trả về 400 khi POST /roles/assign gửi kèm thuộc tính lạ không khai báo (whitelist validation)', async () => {
+      await request(app.getHttpServer())
+        .post('/roles/assign')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ userId, role: Role.ADMIN, maliciousField: 'injection' })
+        .expect(400);
+    });
+
+    it('nên trả về 400 khi POST /roles/assign thiếu toàn bộ request body', async () => {
+      await request(app.getHttpServer())
+        .post('/roles/assign')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+        .expect(400);
     });
   });
 });
