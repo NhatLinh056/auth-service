@@ -1,6 +1,20 @@
-import { Controller, Get } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Request, UseGuards } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Role } from '../generated/prisma/enums.js';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../common/guards/roles.guard.js';
+import { Roles } from '../common/decorators/roles.decorator.js';
+import { JwtPayload } from '../common/strategies/jwt.strategy.js';
 import { RolesService } from './roles.service.js';
+
+interface RequestWithUser extends Request {
+  user: JwtPayload;
+}
 
 @ApiTags('roles')
 @Controller('roles')
@@ -15,5 +29,25 @@ export class RolesController {
   })
   getRoles() {
     return this.rolesService.getRoles();
+  }
+
+  @Get('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Endpoint dành riêng cho ADMIN (Kiểm tra quyền quản trị viên)' })
+  @ApiResponse({ status: 200, description: 'Xác thực quyền ADMIN thành công, trả về thống kê hệ thống' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập / Token không hợp lệ' })
+  @ApiResponse({ status: 403, description: 'Không có quyền truy cập (yêu cầu vai trò ADMIN)' })
+  async getAdminDashboard(@Request() req: RequestWithUser) {
+    const dashboard = await this.rolesService.getAdminDashboard();
+    return {
+      ...dashboard,
+      currentUser: {
+        id: req.user.sub,
+        email: req.user.email,
+        role: req.user.role,
+      },
+    };
   }
 }

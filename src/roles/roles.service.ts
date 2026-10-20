@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Role } from '../generated/prisma/enums.js';
+import { PrismaService } from '../prisma/prisma.service.js';
 
 export interface RoleInfo {
   role: Role;
@@ -9,6 +10,8 @@ export interface RoleInfo {
 
 @Injectable()
 export class RolesService {
+  constructor(private readonly prisma: PrismaService) {}
+
   /**
    * Danh sách các vai trò (roles) được hỗ trợ trong hệ thống
    */
@@ -37,5 +40,34 @@ export class RolesService {
    */
   isValidRole(role: string): role is Role {
     return Object.values(Role).includes(role as Role);
+  }
+
+  /**
+   * Kiểm tra xem vai trò có phải là ADMIN hay không
+   */
+  isAdmin(role: string): boolean {
+    return role === Role.ADMIN;
+  }
+
+  /**
+   * Lấy thông tin thống kê người dùng dành riêng cho ADMIN
+   */
+  async getAdminDashboard() {
+    const totalUsers = await this.prisma.user.count();
+    const adminCount = await this.prisma.user.count({
+      where: { role: Role.ADMIN },
+    });
+    const userCount = await this.prisma.user.count({
+      where: { role: Role.USER },
+    });
+
+    return {
+      message: 'Chào mừng Quản trị viên đến bảng điều khiển hệ thống',
+      stats: {
+        totalUsers,
+        adminCount,
+        userCount,
+      },
+    };
   }
 }
