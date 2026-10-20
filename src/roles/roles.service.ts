@@ -50,6 +50,28 @@ export class RolesService {
   }
 
   /**
+   * Kiểm tra xem vai trò có phải là USER hay không
+   */
+  isUser(role: string): boolean {
+    return role === Role.USER;
+  }
+
+  /**
+   * Lấy thông tin không gian người dùng cơ bản (USER)
+   */
+  getUserSpaceInfo(userId: string) {
+    return {
+      message: 'Chào mừng người dùng đến không gian cá nhân',
+      userId,
+      permissions: [
+        'READ_PROFILE',
+        'UPDATE_PROFILE',
+        'VIEW_PUBLIC_DATA',
+      ],
+    };
+  }
+
+  /**
    * Lấy thông tin thống kê người dùng dành riêng cho ADMIN
    */
   async getAdminDashboard() {

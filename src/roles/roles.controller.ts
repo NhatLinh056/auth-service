@@ -50,4 +50,24 @@ export class RolesController {
       },
     };
   }
+
+  @Get('user')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.USER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Endpoint dành cho người dùng có vai trò USER (và ADMIN)' })
+  @ApiResponse({ status: 200, description: 'Xác thực thành công, trả về không gian người dùng' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập / Token không hợp lệ' })
+  @ApiResponse({ status: 403, description: 'Không có quyền truy cập' })
+  getUserSpace(@Request() req: RequestWithUser) {
+    const spaceInfo = this.rolesService.getUserSpaceInfo(req.user.sub);
+    return {
+      ...spaceInfo,
+      currentUser: {
+        id: req.user.sub,
+        email: req.user.email,
+        role: req.user.role,
+      },
+    };
+  }
 }

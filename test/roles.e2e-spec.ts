@@ -128,4 +128,35 @@ describe('Roles & Admin Access (e2e)', () => {
       expect(res.body.currentUser.email).toBe(ADMIN_EMAIL);
     });
   });
+
+  describe('GET /roles/user (Quyền hạn của role USER)', () => {
+    it('nên trả về 401 Unauthorized khi không gửi kèm Bearer token', async () => {
+      await request(app.getHttpServer())
+        .get('/roles/user')
+        .expect(401);
+    });
+
+    it('nên trả về 200 OK khi người dùng có role USER truy cập', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/roles/user')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(res.body).toHaveProperty('message');
+      expect(res.body).toHaveProperty('permissions');
+      expect(res.body.currentUser.role).toBe(Role.USER);
+      expect(res.body.currentUser.email).toBe(USER_EMAIL);
+    });
+
+    it('nên trả về 200 OK khi người dùng có role ADMIN truy cập không gian người dùng', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/roles/user')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(res.body).toHaveProperty('message');
+      expect(res.body.currentUser.role).toBe(Role.ADMIN);
+      expect(res.body.currentUser.email).toBe(ADMIN_EMAIL);
+    });
+  });
 });

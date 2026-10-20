@@ -64,6 +64,28 @@ describe('RolesService', () => {
     });
   });
 
+  describe('isUser', () => {
+    it('nên trả về true nếu role là USER', () => {
+      expect(service.isUser(Role.USER)).toBe(true);
+      expect(service.isUser('USER')).toBe(true);
+    });
+
+    it('nên trả về false nếu role không phải USER', () => {
+      expect(service.isUser(Role.ADMIN)).toBe(false);
+      expect(service.isUser('ADMIN')).toBe(false);
+      expect(service.isUser('GUEST')).toBe(false);
+    });
+  });
+
+  describe('getUserSpaceInfo', () => {
+    it('nên trả về thông tin không gian cá nhân của user', () => {
+      const result = service.getUserSpaceInfo('user-uuid-123');
+      expect(result).toHaveProperty('message');
+      expect(result.userId).toBe('user-uuid-123');
+      expect(result.permissions).toContain('READ_PROFILE');
+    });
+  });
+
   describe('getAdminDashboard', () => {
     it('nên trả về thống kê người dùng cho Admin', async () => {
       mockPrismaService.user.count
