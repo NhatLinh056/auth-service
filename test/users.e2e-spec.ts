@@ -273,10 +273,20 @@ describe('User API (e2e)', () => {
   });
 
   // ════════════════════════════════════════════════════════
-  // 6. PATCH /users/:id
+  // 6. PATCH /users/:id (Giới hạn quyền người dùng & ADMIN)
   // ════════════════════════════════════════════════════════
   describe('PATCH /users/:id', () => {
-    it('nên cập nhật name thành công và trả về dữ liệu mới không có passwordHash', async () => {
+    it('nên trả về 403 Forbidden khi người dùng thường cố sửa tài khoản người khác', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`/users/${adminUserId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Hacked Name' })
+        .expect(403);
+
+      expect(res.body.message).toBe('Bạn không có quyền thao tác trên tài khoản của người khác');
+    });
+
+    it('nên cập nhật name thành công khi chính chủ tự cập nhật thông tin của mình', async () => {
       const newName = 'Updated E2E Name';
       const res = await request(app.getHttpServer())
         .patch(`/users/${userId}`)
@@ -285,6 +295,19 @@ describe('User API (e2e)', () => {
         .expect(200);
 
       expect(res.body.name).toBe(newName);
+      expect(res.body.id).toBe(userId);
+      expect(res.body).not.toHaveProperty('passwordHash');
+    });
+
+    it('nên cho phép ADMIN sửa thông tin tài khoản của người dùng khác', async () => {
+      const adminUpdatedName = 'Name Set By Admin';
+      const res = await request(app.getHttpServer())
+        .patch(`/users/${userId}`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .send({ name: adminUpdatedName })
+        .expect(200);
+
+      expect(res.body.name).toBe(adminUpdatedName);
       expect(res.body.id).toBe(userId);
       expect(res.body).not.toHaveProperty('passwordHash');
     });
@@ -330,10 +353,10 @@ describe('User API (e2e)', () => {
         .expect(400);
     });
 
-    it('nên trả về 404 khi ID không tồn tại', async () => {
+    it('nên trả về 404 khi ID không tồn tại (ADMIN gọi)', async () => {
       await request(app.getHttpServer())
         .patch('/users/00000000-0000-0000-0000-000000000000')
-        .set('Authorization', `Bearer ${accessToken}`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
         .send({ name: 'Ghost' })
         .expect(404);
     });
@@ -347,19 +370,28 @@ describe('User API (e2e)', () => {
   });
 
   // ════════════════════════════════════════════════════════
-  // 7. DELETE /users/:id
+  // 7. DELETE /users/:id (Giới hạn quyền người dùng & ADMIN)
   // ════════════════════════════════════════════════════════
   describe('DELETE /users/:id', () => {
+    it('nên trả về 403 Forbidden khi người dùng thường cố xóa tài khoản người khác', async () => {
+      const res = await request(app.getHttpServer())
+        .delete(`/users/${adminUserId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(403);
+
+      expect(res.body.message).toBe('Bạn không có quyền thao tác trên tài khoản của người khác');
+    });
+
     it('nên trả về 401 khi không có token', async () => {
       await request(app.getHttpServer())
         .delete(`/users/${userId}`)
         .expect(401);
     });
 
-    it('nên trả về 404 khi ID không tồn tại', async () => {
+    it('nên trả về 404 khi ID không tồn tại (ADMIN gọi)', async () => {
       await request(app.getHttpServer())
         .delete('/users/00000000-0000-0000-0000-000000000000')
-        .set('Authorization', `Bearer ${accessToken}`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(404);
     });
 

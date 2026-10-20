@@ -15,7 +15,7 @@ import {
 } from '@nestjs/swagger';
 import bcrypt from 'bcrypt';
 import { Role } from '../generated/prisma/enums.js';
-import { Auth } from '../common/decorators/auth.decorator.js';
+import { Auth, AuthOwnerOrAdmin } from '../common/decorators/auth.decorator.js';
 import { JwtPayload } from '../common/strategies/jwt.strategy.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { UsersService } from './users.service.js';
@@ -74,12 +74,13 @@ export class UsersController {
     return safeUser;
   }
 
-  // PATCH /users/:id — Cập nhật thông tin người dùng
+  // PATCH /users/:id — Cập nhật thông tin người dùng (chỉ chủ tài khoản hoặc ADMIN)
   @Patch(':id')
-  @Auth()
-  @ApiOperation({ summary: 'Cập nhật thông tin người dùng theo ID' })
+  @AuthOwnerOrAdmin()
+  @ApiOperation({ summary: 'Cập nhật thông tin người dùng theo ID (chủ sở hữu hoặc ADMIN)' })
   @ApiResponse({ status: 200, description: 'Cập nhật thông tin người dùng thành công' })
   @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
+  @ApiResponse({ status: 403, description: 'Không có quyền thao tác trên tài khoản của người khác' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng với ID này' })
   async updateUser(
     @Param('id') id: string,
@@ -105,11 +106,12 @@ export class UsersController {
     return safeUser;
   }
 
-  // DELETE /users/:id — Xóa tài khoản người dùng
+  // DELETE /users/:id — Xóa tài khoản người dùng (chỉ chủ tài khoản hoặc ADMIN)
   @Delete(':id')
-  @Auth()
-  @ApiOperation({ summary: 'Xóa tài khoản người dùng theo ID' })
+  @AuthOwnerOrAdmin()
+  @ApiOperation({ summary: 'Xóa tài khoản người dùng theo ID (chủ sở hữu hoặc ADMIN)' })
   @ApiResponse({ status: 200, description: 'Xóa người dùng thành công' })
+  @ApiResponse({ status: 403, description: 'Không có quyền thao tác trên tài khoản của người khác' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng với ID này' })
   async deleteUser(@Param('id') id: string) {
     const existingUser = await this.usersService.findById(id);

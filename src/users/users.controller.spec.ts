@@ -125,6 +125,12 @@ describe('UsersController', () => {
   });
 
   describe('updateUser', () => {
+    it('should be protected with @AuthOwnerOrAdmin()', () => {
+      const guards = Reflect.getMetadata('__guards__', UsersController.prototype.updateUser);
+      expect(guards).toBeDefined();
+      expect(guards.length).toBe(2);
+    });
+
     it('should update name and return updated user without passwordHash', async () => {
       mockUsersService.findById.mockResolvedValue(mockUser);
       mockUsersService.update.mockResolvedValue({
@@ -176,6 +182,12 @@ describe('UsersController', () => {
   });
 
   describe('deleteUser', () => {
+    it('should be protected with @AuthOwnerOrAdmin()', () => {
+      const guards = Reflect.getMetadata('__guards__', UsersController.prototype.deleteUser);
+      expect(guards).toBeDefined();
+      expect(guards.length).toBe(2);
+    });
+
     it('should delete user and return success message with user without passwordHash', async () => {
       mockUsersService.findById.mockResolvedValue(mockUser);
       mockUsersService.delete.mockResolvedValue(mockUser);
