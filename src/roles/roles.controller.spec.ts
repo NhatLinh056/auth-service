@@ -11,6 +11,7 @@ describe('RolesController', () => {
     isAdmin: ReturnType<typeof vi.fn>;
     isUser: ReturnType<typeof vi.fn>;
     getUserSpaceInfo: ReturnType<typeof vi.fn>;
+    getUserRole: ReturnType<typeof vi.fn>;
     getAdminDashboard: ReturnType<typeof vi.fn>;
     assignRole: ReturnType<typeof vi.fn>;
   };
@@ -28,6 +29,14 @@ describe('RolesController', () => {
         message: 'Chào mừng người dùng đến không gian cá nhân',
         userId: 'user-uuid',
         permissions: ['READ_PROFILE', 'UPDATE_PROFILE', 'VIEW_PUBLIC_DATA'],
+      }),
+      getUserRole: vi.fn().mockResolvedValue({
+        userId: 'user-uuid',
+        email: 'user@system.com',
+        name: 'Nguyen Van A',
+        role: Role.USER,
+        roleName: 'User',
+        description: 'Người dùng tiêu chuẩn với quyền hạn thao tác tài nguyên cá nhân',
       }),
       getAdminDashboard: vi.fn().mockResolvedValue({
         message: 'Chào mừng Quản trị viên đến bảng điều khiển hệ thống',
@@ -96,6 +105,16 @@ describe('RolesController', () => {
         email: 'user@system.com',
         role: Role.USER,
       });
+    });
+  });
+
+  describe('getUserRole', () => {
+    it('nên gọi rolesService.getUserRole với ID chính xác', async () => {
+      const result = await controller.getUserRole('user-uuid');
+
+      expect(mockRolesService.getUserRole).toHaveBeenCalledWith('user-uuid');
+      expect(result).toHaveProperty('userId', 'user-uuid');
+      expect(result).toHaveProperty('role', Role.USER);
     });
   });
 

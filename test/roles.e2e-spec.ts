@@ -254,4 +254,46 @@ describe('Roles & Admin Access (e2e)', () => {
         .expect(403);
     });
   });
+
+  describe('GET /roles/users/:id (Tra cứu vai trò người dùng)', () => {
+    it('nên trả về 401 Unauthorized khi không gửi token', async () => {
+      await request(app.getHttpServer())
+        .get(`/roles/users/${userId}`)
+        .expect(401);
+    });
+
+    it('nên trả về 404 Not Found khi ID người dùng không tồn tại', async () => {
+      const nonExistentUuid = '00000000-0000-0000-0000-000000000000';
+      await request(app.getHttpServer())
+        .get(`/roles/users/${nonExistentUuid}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(404);
+    });
+
+    it('nên trả về thông tin vai trò của regular user (USER)', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/roles/users/${userId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(res.body).toHaveProperty('userId', userId);
+      expect(res.body).toHaveProperty('email', USER_EMAIL);
+      expect(res.body).toHaveProperty('role', Role.USER);
+      expect(res.body).toHaveProperty('roleName', 'User');
+      expect(res.body).toHaveProperty('description');
+    });
+
+    it('nên trả về thông tin vai trò của admin user (ADMIN)', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/roles/users/${adminId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(res.body).toHaveProperty('userId', adminId);
+      expect(res.body).toHaveProperty('email', ADMIN_EMAIL);
+      expect(res.body).toHaveProperty('role', Role.ADMIN);
+      expect(res.body).toHaveProperty('roleName', 'Administrator');
+      expect(res.body).toHaveProperty('description');
+    });
+  });
 });

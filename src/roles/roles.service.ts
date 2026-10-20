@@ -73,6 +73,30 @@ export class RolesService {
   }
 
   /**
+   * Tra cứu vai trò và thông tin phân quyền của một người dùng theo ID
+   */
+  async getUserRole(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`Không tìm thấy người dùng với ID: ${userId}`);
+    }
+
+    const roleInfo = this.rolesList.find((r) => r.role === user.role);
+
+    return {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      roleName: roleInfo?.name || user.role,
+      description: roleInfo?.description || '',
+    };
+  }
+
+  /**
    * Gán hoặc thay đổi vai trò của người dùng
    */
   async assignRole(assignRoleDto: AssignRoleDto) {

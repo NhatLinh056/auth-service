@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Request,
   UseGuards,
@@ -11,6 +12,7 @@ import {
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiParam,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -79,6 +81,18 @@ export class RolesController {
         role: req.user.role,
       },
     };
+  }
+
+  @Get('users/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lấy thông tin vai trò của một người dùng theo ID' })
+  @ApiParam({ name: 'id', description: 'UUID của người dùng' })
+  @ApiResponse({ status: 200, description: 'Lấy thông tin vai trò thành công' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập / Token không hợp lệ' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng với ID này' })
+  getUserRole(@Param('id') id: string) {
+    return this.rolesService.getUserRole(id);
   }
 
   @Post('assign')

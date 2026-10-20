@@ -147,4 +147,34 @@ describe('RolesService', () => {
       expect(result.user).not.toHaveProperty('passwordHash');
     });
   });
+
+  describe('getUserRole', () => {
+    it('nên ném NotFoundException nếu người dùng không tồn tại', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.getUserRole('unknown-id')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('nên trả về thông tin role của người dùng thành công', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user-456',
+        email: 'user456@example.com',
+        name: 'Nguyen Van A',
+        role: Role.USER,
+      });
+
+      const result = await service.getUserRole('user-456');
+
+      expect(result).toEqual({
+        userId: 'user-456',
+        email: 'user456@example.com',
+        name: 'Nguyen Van A',
+        role: Role.USER,
+        roleName: 'User',
+        description: 'Người dùng tiêu chuẩn với quyền hạn thao tác tài nguyên cá nhân',
+      });
+    });
+  });
 });
