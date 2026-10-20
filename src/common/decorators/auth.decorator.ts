@@ -2,6 +2,7 @@ import { applyDecorators, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { Role } from '../../generated/prisma/enums.js';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard.js';
+import { OwnerOrAdminGuard } from '../guards/owner-or-admin.guard.js';
 import { RolesGuard } from '../guards/roles.guard.js';
 import { Roles } from './roles.decorator.js';
 
@@ -44,3 +45,26 @@ export function Auth(...roles: Role[]) {
     }),
   );
 }
+
+/**
+ * Decorator @AuthOwnerOrAdmin() kết hợp kiểm tra xác thực JWT và quyền sở hữu tài nguyên:
+ * - Chạy JwtAuthGuard trước để xác minh danh tính và gán request.user.
+ * - Chạy OwnerOrAdminGuard sau để chỉ cho phép ADMIN hoặc chính chủ tài nguyên (user.sub === params.id).
+ * - Nếu chưa đăng nhập -> 401 Unauthorized.
+ * - Nếu không phải chủ sở hữu và không phải ADMIN -> 403 Forbidden.
+ */
+export function AuthOwnerOrAdmin() {
+  return applyDecorators(
+    UseGuards(JwtAuthGuard, OwnerOrAdminGuard),
+    ApiBearerAuth(),
+    ApiResponse({
+      status: 401,
+      description: 'Chưa xác thực danh tính / Token không hợp lệ',
+    }),
+    ApiResponse({
+      status: 403,
+      description: 'Không có quyền thao tác trên tài nguyên của người khác',
+    }),
+  );
+}
+

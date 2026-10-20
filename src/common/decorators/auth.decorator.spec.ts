@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Role } from '../../generated/prisma/enums.js';
 import { ROLES_KEY } from './roles.decorator.js';
-import { Auth } from './auth.decorator.js';
+import { Auth, AuthOwnerOrAdmin } from './auth.decorator.js';
 
 describe('Auth Decorator (Authentication vs Authorization)', () => {
   class TestController {
@@ -13,6 +13,9 @@ describe('Auth Decorator (Authentication vs Authorization)', () => {
 
     @Auth(Role.USER, Role.ADMIN)
     multipleRolesMethod() {}
+
+    @AuthOwnerOrAdmin()
+    ownerOrAdminMethod() {}
   }
 
   it('nên không gán ROLES_KEY metadata khi endpoint chỉ yêu cầu Authentication (@Auth())', () => {
@@ -37,5 +40,14 @@ describe('Auth Decorator (Authentication vs Authorization)', () => {
       TestController.prototype.multipleRolesMethod,
     );
     expect(rolesMetadata).toEqual([Role.USER, Role.ADMIN]);
+  });
+
+  it('nên khởi tạo AuthOwnerOrAdmin decorator thành công và gắn guard phù hợp', () => {
+    const guards = Reflect.getMetadata(
+      '__guards__',
+      TestController.prototype.ownerOrAdminMethod,
+    );
+    expect(guards).toBeDefined();
+    expect(guards.length).toBe(2);
   });
 });
