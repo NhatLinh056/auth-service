@@ -159,4 +159,99 @@ describe('Roles & Admin Access (e2e)', () => {
       expect(res.body.currentUser.email).toBe(ADMIN_EMAIL);
     });
   });
+
+  describe('POST /roles/assign (Gán vai trò bởi ADMIN)', () => {
+    it('nên trả về 401 Unauthorized khi không gửi token', async () => {
+      await request(app.getHttpServer())
+        .post('/roles/assign')
+        .send({ userId, role: Role.ADMIN })
+        .expect(401);
+    });
+
+    it('nên trả về 403 Forbidden khi người dùng có role USER cố gắng gán vai trò', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/roles/assign')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ userId, role: Role.ADMIN })
+        .expect(403);
+
+      expect(res.body.message).toContain('Bạn không có quyền truy cập tài nguyên này');
+    });
+
+    it('nên trả về 400 Bad Request khi role không hợp lệ', async () => {
+      await request(app.getHttpServer())
+        .post('/roles/assign')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ userId, role: 'INVALID_ROLE' })
+        .expect(400);
+    });
+
+    it('nên trả về 400 Bad Request khi userId không phải UUID hợp lệ', async () => {
+      await request(app.getHttpServer())
+        .post('/roles/assign')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ userId: 'not-a-uuid', role: Role.ADMIN })
+        .expect(400);
+    });
+
+    it('nên trả về 404 Not Found khi userId là UUID không tồn tại trong DB', async () => {
+      const nonExistentUuid = '00000000-0000-0000-0000-000000000000';
+      await request(app.getHttpServer())
+        .post('/roles/assign')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ userId: nonExistentUuid, role: Role.ADMIN })
+        .expect(404);
+    });
+
+    it('nên cho phép ADMIN nâng cấp người dùng USER thành ADMIN thành công', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/roles/assign')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ userId, role: Role.ADMIN })
+        .expect(200);
+
+      expect(res.body).toHaveProperty('message');
+      expect(res.body.user.id).toBe(userId);
+      expect(res.body.user.role).toBe(Role.ADMIN);
+      expect(res.body.user).not.toHaveProperty('passwordHash');
+
+      // Đăng nhập lại với tài khoản vừa được nâng cấp -> JWT token mới phải có role ADMIN
+      const reLogin = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: USER_EMAIL, password: PASSWORD })
+        .expect(200);
+
+      const upgradedToken = reLogin.body.accessToken;
+
+      // Dùng token mới để truy cập endpoint ADMIN -> phải thành công 200 OK!
+      await request(app.getHttpServer())
+        .get('/roles/admin')
+        .set('Authorization', `Bearer ${upgradedToken}`)
+        .expect(200);
+    });
+
+    it('nên cho phép ADMIN hạ quyền tài khoản từ ADMIN về USER', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/roles/assign')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ userId, role: Role.USER })
+        .expect(200);
+
+      expect(res.body.user.role).toBe(Role.USER);
+
+      // Đăng nhập lại để nhận token mới với role USER
+      const reLogin = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: USER_EMAIL, password: PASSWORD })
+        .expect(200);
+
+      const downgradedToken = reLogin.body.accessToken;
+
+      // Cố gắng truy cập endpoint ADMIN -> bị chặn với 403 Forbidden!
+      await request(app.getHttpServer())
+        .get('/roles/admin')
+        .set('Authorization', `Bearer ${downgradedToken}`)
+        .expect(403);
+    });
+  });
 });

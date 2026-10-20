@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Role } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -8,6 +9,8 @@ describe('RolesService', () => {
   let mockPrismaService: {
     user: {
       count: ReturnType<typeof vi.fn>;
+      findUnique: ReturnType<typeof vi.fn>;
+      update: ReturnType<typeof vi.fn>;
     };
   };
 
@@ -15,6 +18,8 @@ describe('RolesService', () => {
     mockPrismaService = {
       user: {
         count: vi.fn(),
+        findUnique: vi.fn(),
+        update: vi.fn(),
       },
     };
     service = new RolesService(mockPrismaService as unknown as PrismaService);
@@ -102,6 +107,44 @@ describe('RolesService', () => {
         userCount: 8,
       });
       expect(mockPrismaService.user.count).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('assignRole', () => {
+    it('nên ném NotFoundException nếu người dùng không tồn tại', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.assignRole({ userId: 'not-found-id', role: Role.ADMIN }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('nên cập nhật role thành công và loại bỏ passwordHash', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user-123',
+        email: 'test@example.com',
+        role: Role.USER,
+      });
+
+      mockPrismaService.user.update.mockResolvedValue({
+        id: 'user-123',
+        email: 'test@example.com',
+        passwordHash: 'secret-hashed-password',
+        role: Role.ADMIN,
+      });
+
+      const result = await service.assignRole({
+        userId: 'user-123',
+        role: Role.ADMIN,
+      });
+
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-123' },
+        data: { role: Role.ADMIN },
+      });
+      expect(result).toHaveProperty('message');
+      expect(result.user.role).toBe(Role.ADMIN);
+      expect(result.user).not.toHaveProperty('passwordHash');
     });
   });
 });

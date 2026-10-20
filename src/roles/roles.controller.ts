@@ -1,4 +1,13 @@
-import { Controller, Get, Request, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -10,6 +19,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { JwtPayload } from '../common/strategies/jwt.strategy.js';
+import { AssignRoleDto } from './dto/assign-role.dto.js';
 import { RolesService } from './roles.service.js';
 
 interface RequestWithUser extends Request {
@@ -69,5 +79,20 @@ export class RolesController {
         role: req.user.role,
       },
     };
+  }
+
+  @Post('assign')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Gán hoặc thay đổi vai trò của người dùng (Chỉ ADMIN)' })
+  @ApiResponse({ status: 200, description: 'Gán vai trò thành công' })
+  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ (role sai hoặc userId không phải UUID)' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập / Token không hợp lệ' })
+  @ApiResponse({ status: 403, description: 'Không có quyền truy cập (yêu cầu vai trò ADMIN)' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng với ID này' })
+  assignRole(@Body() assignRoleDto: AssignRoleDto) {
+    return this.rolesService.assignRole(assignRoleDto);
   }
 }

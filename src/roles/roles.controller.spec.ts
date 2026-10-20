@@ -12,6 +12,7 @@ describe('RolesController', () => {
     isUser: ReturnType<typeof vi.fn>;
     getUserSpaceInfo: ReturnType<typeof vi.fn>;
     getAdminDashboard: ReturnType<typeof vi.fn>;
+    assignRole: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -31,6 +32,10 @@ describe('RolesController', () => {
       getAdminDashboard: vi.fn().mockResolvedValue({
         message: 'Chào mừng Quản trị viên đến bảng điều khiển hệ thống',
         stats: { totalUsers: 5, adminCount: 1, userCount: 4 },
+      }),
+      assignRole: vi.fn().mockResolvedValue({
+        message: 'Đã gán vai trò ADMIN cho người dùng thành công',
+        user: { id: 'target-user-id', email: 'target@test.com', role: Role.ADMIN },
       }),
     };
     controller = new RolesController(mockRolesService as unknown as RolesService);
@@ -91,6 +96,21 @@ describe('RolesController', () => {
         email: 'user@system.com',
         role: Role.USER,
       });
+    });
+  });
+
+  describe('assignRole', () => {
+    it('nên gọi rolesService.assignRole với DTO chính xác', async () => {
+      const dto = {
+        userId: 'target-user-id',
+        role: Role.ADMIN,
+      };
+
+      const result = await controller.assignRole(dto);
+
+      expect(mockRolesService.assignRole).toHaveBeenCalledWith(dto);
+      expect(result).toHaveProperty('message');
+      expect(result.user.role).toBe(Role.ADMIN);
     });
   });
 });

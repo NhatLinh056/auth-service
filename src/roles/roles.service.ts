@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Role } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { AssignRoleDto } from './dto/assign-role.dto.js';
 
 export interface RoleInfo {
   role: Role;
@@ -68,6 +69,36 @@ export class RolesService {
         'UPDATE_PROFILE',
         'VIEW_PUBLIC_DATA',
       ],
+    };
+  }
+
+  /**
+   * Gán hoặc thay đổi vai trò của người dùng
+   */
+  async assignRole(assignRoleDto: AssignRoleDto) {
+    const { userId, role } = assignRoleDto;
+
+    // 1. Kiểm tra người dùng có tồn tại trong hệ thống hay không
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`Không tìm thấy người dùng với ID: ${userId}`);
+    }
+
+    // 2. Cập nhật vai trò mới cho người dùng
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { role },
+    });
+
+    // 3. Loại bỏ passwordHash để đảm bảo an toàn thông tin
+    const { passwordHash: _, ...sanitizedUser } = updatedUser;
+
+    return {
+      message: `Đã gán vai trò ${role} cho người dùng thành công`,
+      user: sanitizedUser,
     };
   }
 
