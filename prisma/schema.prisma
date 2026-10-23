@@ -17,14 +17,34 @@ enum Role {
   USER
 }
 
+enum AppStatus {
+  ACTIVE
+  INACTIVE
+}
+
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
+  id           String        @id @default(uuid())
+  email        String        @unique
   passwordHash String
   name         String?
-  role         Role     @default(USER)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  role         Role          @default(USER)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  applications Application[]
 
   @@map("users")
+}
+
+model Application {
+  id        String    @id @default(uuid())
+  name      String
+  appId     String    @unique
+  appToken  String
+  status    AppStatus @default(ACTIVE)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("applications")
 }
