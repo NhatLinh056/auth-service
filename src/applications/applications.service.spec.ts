@@ -118,15 +118,35 @@ describe('ApplicationsService', () => {
   });
 
   describe('generateAppToken', () => {
-    it('should generate an appToken starting with apt_ and 64 hex characters', () => {
+    it('should generate an appToken starting with apt_ and exactly 64 hex characters (68 chars total)', () => {
       const appToken = service.generateAppToken();
       expect(appToken).toMatch(/^apt_[0-9a-f]{64}$/);
+      expect(appToken.startsWith('apt_')).toBe(true);
+      expect(appToken.length).toBe(68);
+      expect(appToken.slice(4)).toHaveLength(64);
     });
 
     it('should generate distinct appTokens on successive calls', () => {
       const token1 = service.generateAppToken();
       const token2 = service.generateAppToken();
       expect(token1).not.toBe(token2);
+    });
+
+    it('should provide high entropy with zero collision across a batch of tokens', () => {
+      const batchSize = 100;
+      const tokens = Array.from({ length: batchSize }, () =>
+        service.generateAppToken(),
+      );
+      const uniqueTokens = new Set(tokens);
+      expect(uniqueTokens.size).toBe(batchSize);
+    });
+
+    it('should generate tokens with varied character distribution in the hex payload', () => {
+      const appToken = service.generateAppToken();
+      const hexPayload = appToken.slice(4);
+      const uniqueChars = new Set(hexPayload.split(''));
+      // A random 64-char hex string will practically always contain at least 8 unique hex chars
+      expect(uniqueChars.size).toBeGreaterThanOrEqual(8);
     });
   });
 

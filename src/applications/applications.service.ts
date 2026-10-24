@@ -47,7 +47,12 @@ export class ApplicationsService {
   }
 
   /**
-   * Sinh mã AppToken bảo mật (chuỗi 64 ký tự hex ngẫu nhiên)
+   * Sinh mã AppToken bảo mật cao cấp dành cho xác thực ứng dụng/microservice:
+   * - Tiền tố: 'apt_' (Application Token)
+   * - Thuật toán: Node.js CSPRNG crypto.randomBytes(32)
+   * - Độ dài entropy: 32 bytes (256 bits) tương đương 64 ký tự hexadecimal
+   * - Định dạng: apt_[0-9a-f]{64} (tổng 68 ký tự)
+   * - Đảm bảo khả năng chống brute-force, không thể đảo ngược hoặc dự đoán trước
    */
   generateAppToken(): string {
     return `apt_${randomBytes(32).toString('hex')}`;
