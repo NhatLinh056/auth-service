@@ -97,6 +97,17 @@ describe('ApplicationsController', () => {
     });
   });
 
+  describe('updatePut', () => {
+    it('nên ủy quyền gọi applicationsService.update với id, DTO và currentUser chính xác', async () => {
+      const dto = { name: 'Updated App PUT' };
+
+      const result = await controller.updatePut('app-uuid-1', dto, mockUser);
+
+      expect(mockApplicationsService.update).toHaveBeenCalledWith('app-uuid-1', dto, mockUser);
+      expect(result.name).toBe('Updated App');
+    });
+  });
+
   describe('delete', () => {
     it('nên ủy quyền gọi applicationsService.delete với id và currentUser chính xác', async () => {
       const result = await controller.delete('app-uuid-1', mockUser);
@@ -141,6 +152,12 @@ describe('ApplicationsController', () => {
 
     it('phương thức update nên có gắn Auth guard metadata', () => {
       const guards = Reflect.getMetadata('__guards__', controller.update);
+      expect(guards).toBeDefined();
+      expect(guards.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('phương thức updatePut nên có gắn Auth guard metadata', () => {
+      const guards = Reflect.getMetadata('__guards__', controller.updatePut);
       expect(guards).toBeDefined();
       expect(guards.length).toBeGreaterThanOrEqual(1);
     });
