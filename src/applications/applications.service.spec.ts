@@ -40,6 +40,7 @@ describe('ApplicationsService', () => {
       create: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      update: vi.fn(),
     },
   };
 
@@ -329,6 +330,96 @@ describe('ApplicationsService', () => {
       await expect(
         service.findById(mockApplication.id, currentUser),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('update', () => {
+    it('should update application if regular USER is owner', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+      mockPrismaService.application.update.mockResolvedValue({
+        ...mockApplication,
+        name: 'Updated Order Service',
+        status: AppStatus.INACTIVE,
+      });
+
+      const result = await service.update(
+        mockApplication.id,
+        { name: 'Updated Order Service', status: AppStatus.INACTIVE },
+        currentUser,
+      );
+
+      expect(result.name).toBe('Updated Order Service');
+      expect(result.status).toBe(AppStatus.INACTIVE);
+      expect(mockPrismaService.application.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: mockApplication.id },
+          data: {
+            name: 'Updated Order Service',
+            status: AppStatus.INACTIVE,
+          },
+        }),
+      );
+    });
+
+    it('should update application if caller is ADMIN even if not owner', async () => {
+      const currentAdmin: JwtPayload = {
+        sub: mockAdmin.id,
+        email: mockAdmin.email,
+        role: Role.ADMIN,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+      mockPrismaService.application.update.mockResolvedValue({
+        ...mockApplication,
+        name: 'Admin Renamed Service',
+      });
+
+      const result = await service.update(
+        mockApplication.id,
+        { name: 'Admin Renamed Service' },
+        currentAdmin,
+      );
+
+      expect(result.name).toBe('Admin Renamed Service');
+      expect(mockPrismaService.application.update).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if application to update does not exist', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.update('non-existent-id', { name: 'New Name' }, currentUser),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockPrismaService.application.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException if regular USER tries to update another user application', async () => {
+      const currentUser: JwtPayload = {
+        sub: 'different-user-id',
+        email: 'other@example.com',
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+
+      await expect(
+        service.update(mockApplication.id, { name: 'Hacked Name' }, currentUser),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(mockPrismaService.application.update).not.toHaveBeenCalled();
     });
   });
 });

@@ -4,6 +4,7 @@ import { AppStatus, Role } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { JwtPayload } from '../common/strategies/jwt.strategy.js';
 import { CreateApplicationDto } from './dto/create-application.dto.js';
+import { UpdateApplicationDto } from './dto/update-application.dto.js';
 
 @Injectable()
 export class ApplicationsService {
@@ -110,5 +111,46 @@ export class ApplicationsService {
     }
 
     return application;
+  }
+
+  /**
+   * Cập nhật thông tin ứng dụng:
+   * - Ném 404 NotFoundException nếu không tìm thấy ứng dụng.
+   * - Nếu là USER thường: chỉ được cập nhật ứng dụng của chính mình, ngược lại ném 403 ForbiddenException.
+   * - Nếu là ADMIN: được cập nhật bất kỳ ứng dụng nào.
+   */
+  async update(
+    id: string,
+    updateAppDto: UpdateApplicationDto,
+    currentUser: JwtPayload,
+  ) {
+    const existingApp = await this.prisma.application.findUnique({
+      where: { id },
+    });
+
+    if (!existingApp) {
+      throw new NotFoundException('Không tìm thấy ứng dụng với ID này');
+    }
+
+    if (currentUser.role !== Role.ADMIN && existingApp.userId !== currentUser.sub) {
+      throw new ForbiddenException('Bạn không có quyền cập nhật ứng dụng của người khác');
+    }
+
+    return this.prisma.application.update({
+      where: { id },
+      data: {
+        ...(updateAppDto.name !== undefined && { name: updateAppDto.name }),
+        ...(updateAppDto.status !== undefined && { status: updateAppDto.status }),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+    });
   }
 }

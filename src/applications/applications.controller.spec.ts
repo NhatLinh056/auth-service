@@ -10,6 +10,7 @@ describe('ApplicationsController', () => {
     create: ReturnType<typeof vi.fn>;
     findAll: ReturnType<typeof vi.fn>;
     findById: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
   };
 
   const mockUser: JwtPayload = {
@@ -34,6 +35,7 @@ describe('ApplicationsController', () => {
       create: vi.fn().mockResolvedValue(mockCreatedApplication),
       findAll: vi.fn().mockResolvedValue([mockCreatedApplication]),
       findById: vi.fn().mockResolvedValue(mockCreatedApplication),
+      update: vi.fn().mockResolvedValue({ ...mockCreatedApplication, name: 'Updated App' }),
     };
 
     controller = new ApplicationsController(
@@ -74,6 +76,17 @@ describe('ApplicationsController', () => {
     });
   });
 
+  describe('update', () => {
+    it('nên ủy quyền gọi applicationsService.update với id, DTO và currentUser chính xác', async () => {
+      const dto = { name: 'Updated App' };
+
+      const result = await controller.update('app-uuid-1', dto, mockUser);
+
+      expect(mockApplicationsService.update).toHaveBeenCalledWith('app-uuid-1', dto, mockUser);
+      expect(result.name).toBe('Updated App');
+    });
+  });
+
   describe('Security Metadata', () => {
     it('phương thức create nên có gắn Auth guard metadata', () => {
       const guards = Reflect.getMetadata('__guards__', controller.create);
@@ -89,6 +102,12 @@ describe('ApplicationsController', () => {
 
     it('phương thức findById nên có gắn Auth guard metadata', () => {
       const guards = Reflect.getMetadata('__guards__', controller.findById);
+      expect(guards).toBeDefined();
+      expect(guards.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('phương thức update nên có gắn Auth guard metadata', () => {
+      const guards = Reflect.getMetadata('__guards__', controller.update);
       expect(guards).toBeDefined();
       expect(guards.length).toBeGreaterThanOrEqual(1);
     });
