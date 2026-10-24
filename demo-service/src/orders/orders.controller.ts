@@ -34,9 +34,9 @@ export class OrdersController {
       status: 'ONLINE',
       handshake: {
         authService: 'CONNECTED',
-        applicationStatus: handshake.status,
-        appId: handshake.application.appId,
-        appName: handshake.application.name,
+        applicationStatus: handshake.application?.status || (handshake as any).status || 'ACTIVE',
+        appId: handshake.application?.appId || (handshake as any).appId,
+        appName: handshake.application?.name || (handshake as any).appName,
       },
       timestamp: new Date().toISOString(),
     };

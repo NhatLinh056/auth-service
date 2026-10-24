@@ -55,6 +55,7 @@ export class AuthClientService {
   async verifyService(): Promise<VerifyServiceResult> {
     try {
       const response = await this.http.get<VerifyServiceResult>('/auth/verify-service', {
+        baseURL: appConfig.authServiceUrl,
         headers: this.getServiceHeaders(),
       });
       return response.data;
@@ -83,7 +84,8 @@ export class AuthClientService {
     }
 
     try {
-      const response = await this.http.get<AuthUserProfile>('/auth/profile', {
+      const response = await this.http.get<AuthUserProfile>('/users/me', {
+        baseURL: appConfig.authServiceUrl,
         headers: {
           Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
           ...this.getServiceHeaders(),
