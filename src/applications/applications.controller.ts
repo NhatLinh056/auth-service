@@ -1,5 +1,5 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Auth } from '../common/decorators/auth.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import type { JwtPayload } from '../common/strategies/jwt.strategy.js';
@@ -26,5 +26,29 @@ export class ApplicationsController {
     @CurrentUser() currentUser: JwtPayload,
   ) {
     return this.applicationsService.create(createApplicationDto, currentUser);
+  }
+
+  @Get()
+  @Auth()
+  @ApiOperation({ summary: 'Lấy danh sách ứng dụng (User xem của mình, ADMIN xem tất cả)' })
+  @ApiResponse({ status: 200, description: 'Trả về danh sách ứng dụng' })
+  @ApiResponse({ status: 401, description: 'Chưa xác thực (Thiếu hoặc sai JWT token)' })
+  findAll(@CurrentUser() currentUser: JwtPayload) {
+    return this.applicationsService.findAll(currentUser);
+  }
+
+  @Get(':id')
+  @Auth()
+  @ApiOperation({ summary: 'Lấy thông tin chi tiết một ứng dụng theo ID' })
+  @ApiParam({ name: 'id', description: 'UUID của ứng dụng' })
+  @ApiResponse({ status: 200, description: 'Lấy thông tin ứng dụng thành công' })
+  @ApiResponse({ status: 401, description: 'Chưa xác thực (Thiếu hoặc sai JWT token)' })
+  @ApiResponse({ status: 403, description: 'Không có quyền truy cập ứng dụng của người khác' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy ứng dụng với ID này' })
+  findById(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: JwtPayload,
+  ) {
+    return this.applicationsService.findById(id, currentUser);
   }
 }

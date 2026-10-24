@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppStatus, Role } from '../generated/prisma/enums.js';
@@ -38,6 +38,8 @@ describe('ApplicationsService', () => {
     },
     application: {
       create: vi.fn(),
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
     },
   };
 
@@ -189,6 +191,144 @@ describe('ApplicationsService', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('findAll', () => {
+    it('should return only user applications for regular USER', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.findMany.mockResolvedValue([mockApplication]);
+
+      const result = await service.findAll(currentUser);
+
+      expect(result).toEqual([mockApplication]);
+      expect(mockPrismaService.application.findMany).toHaveBeenCalledWith({
+        where: { userId: mockUser.id },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
+        },
+      });
+    });
+
+    it('should return all applications for ADMIN', async () => {
+      const currentAdmin: JwtPayload = {
+        sub: mockAdmin.id,
+        email: mockAdmin.email,
+        role: Role.ADMIN,
+      };
+
+      mockPrismaService.application.findMany.mockResolvedValue([mockApplication]);
+
+      const result = await service.findAll(currentAdmin);
+
+      expect(result).toEqual([mockApplication]);
+      expect(mockPrismaService.application.findMany).toHaveBeenCalledWith({
+        where: {},
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
+        },
+      });
+    });
+  });
+
+  describe('findById', () => {
+    it('should return application if regular USER is owner', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+
+      const result = await service.findById(mockApplication.id, currentUser);
+
+      expect(result).toEqual(mockApplication);
+      expect(mockPrismaService.application.findUnique).toHaveBeenCalledWith({
+        where: { id: mockApplication.id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
+        },
+      });
+    });
+
+    it('should return application if caller is ADMIN even if not owner', async () => {
+      const currentAdmin: JwtPayload = {
+        sub: mockAdmin.id,
+        email: mockAdmin.email,
+        role: Role.ADMIN,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+
+      const result = await service.findById(mockApplication.id, currentAdmin);
+
+      expect(result).toEqual(mockApplication);
+      expect(mockPrismaService.application.findUnique).toHaveBeenCalledWith({
+        where: { id: mockApplication.id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
+        },
+      });
+    });
+
+    it('should throw NotFoundException if application does not exist', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.findById('non-existent-id', currentUser),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException if regular USER tries to view another user application', async () => {
+      const currentUser: JwtPayload = {
+        sub: 'different-user-id',
+        email: 'other@example.com',
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+
+      await expect(
+        service.findById(mockApplication.id, currentUser),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

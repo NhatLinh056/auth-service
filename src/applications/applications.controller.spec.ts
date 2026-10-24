@@ -8,6 +8,8 @@ describe('ApplicationsController', () => {
   let controller: ApplicationsController;
   let mockApplicationsService: {
     create: ReturnType<typeof vi.fn>;
+    findAll: ReturnType<typeof vi.fn>;
+    findById: ReturnType<typeof vi.fn>;
   };
 
   const mockUser: JwtPayload = {
@@ -30,6 +32,8 @@ describe('ApplicationsController', () => {
   beforeEach(() => {
     mockApplicationsService = {
       create: vi.fn().mockResolvedValue(mockCreatedApplication),
+      findAll: vi.fn().mockResolvedValue([mockCreatedApplication]),
+      findById: vi.fn().mockResolvedValue(mockCreatedApplication),
     };
 
     controller = new ApplicationsController(
@@ -52,9 +56,39 @@ describe('ApplicationsController', () => {
     });
   });
 
+  describe('findAll', () => {
+    it('nên ủy quyền gọi applicationsService.findAll với currentUser chính xác', async () => {
+      const result = await controller.findAll(mockUser);
+
+      expect(mockApplicationsService.findAll).toHaveBeenCalledWith(mockUser);
+      expect(result).toEqual([mockCreatedApplication]);
+    });
+  });
+
+  describe('findById', () => {
+    it('nên ủy quyền gọi applicationsService.findById với id và currentUser chính xác', async () => {
+      const result = await controller.findById('app-uuid-1', mockUser);
+
+      expect(mockApplicationsService.findById).toHaveBeenCalledWith('app-uuid-1', mockUser);
+      expect(result).toEqual(mockCreatedApplication);
+    });
+  });
+
   describe('Security Metadata', () => {
     it('phương thức create nên có gắn Auth guard metadata', () => {
       const guards = Reflect.getMetadata('__guards__', controller.create);
+      expect(guards).toBeDefined();
+      expect(guards.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('phương thức findAll nên có gắn Auth guard metadata', () => {
+      const guards = Reflect.getMetadata('__guards__', controller.findAll);
+      expect(guards).toBeDefined();
+      expect(guards.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('phương thức findById nên có gắn Auth guard metadata', () => {
+      const guards = Reflect.getMetadata('__guards__', controller.findById);
       expect(guards).toBeDefined();
       expect(guards.length).toBeGreaterThanOrEqual(1);
     });
