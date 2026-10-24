@@ -1,114 +1,141 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Authentication & Microservice Interoperability Platform
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+> **Project 3 — Hệ Thống Xác Thực & Phân Quyền Liên Thông Giữa Các Microservices**  
+> Kiến trúc Monorepo tiêu chuẩn chứa 2 dịch vụ độc lập: **Auth Service (IAM Core)** và **Demo Service (Client Microservice)**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 🏛️ Sơ Đồ Kiến Trúc Hệ Thống (Architecture)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ npm install
+```
+                     ┌─────────────────────────────────────────────────────────┐
+                     │               NGƯỜI DÙNG / TRÌNH DUYỆT                  │
+                     └────────────────────┬────────────────────────────────────┘
+                                          │
+                  1. Login / Register     │ 2. Gọi API kèm Bearer JWT
+                  & Nhận User JWT         │    (ví dụ: GET /orders)
+                                          │
+                                          ▼
+┌───────────────────────────────┐                  ┌───────────────────────────────┐
+│         PROJECT 1             │                  │         PROJECT 2             │
+│        auth-service           │ ◄─────────────── │         demo-service          │
+│       (Cổng: 3000)            │  3. Xác thực &   │         (Cổng: 3001)          │
+│                               │     Ủy quyền     │                               │
+│ • Quản lý User & RBAC         │                  │ • Không có DB User            │
+│ • Cấp JWT (Access Token)      │  Headers gửi kèm:│ • AppAuthMiddleware           │
+│ • Quản lý AppID / AppToken    │  - X-App-Id      │   tự động tiêm App ID & Token │
+│ • AppAuthGuard & RBAC Guards  │  - X-App-Token   │ • Nghiệp vụ Đơn Hàng (Orders) │
+│ • Developer Console (/dashboard/) - Authorization│ • Bắt tay kiểm tra kết nối    │
+└───────────────┬───────────────┘                  └───────────────────────────────┘
+                │
+                ▼
+      ┌───────────────────┐
+      │    PostgreSQL     │
+      │  auth_service_db  │
+      └───────────────────┘
 ```
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ npm run start
+## 📂 Cấu Trúc Thư Mục Repository
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+```text
+.
+├── auth-service/                  # [PROJECT 1] Dịch vụ IAM & Xác thực Trung tâm (Port 3000)
+│   ├── src/                       # Source code NestJS (Auth, Users, Roles, Applications)
+│   ├── prisma/                    # Schema database PostgreSQL (Prisma 7 ORM)
+│   ├── public/                    # Developer & Admin Console WebApp (/dashboard/)
+│   ├── test/                      # 120 E2E tests trên PostgreSQL thật
+│   ├── package.json               # Dependencies độc lập của Project 1
+│   └── .env.example
+│
+├── demo-service/                  # [PROJECT 2] Client Microservice Demo (Port 3001)
+│   ├── src/                       # Source code NestJS (AppAuthMiddleware, Orders Module)
+│   ├── test/                      # Integration tests liên thông sang Project 1
+│   ├── package.json               # Dependencies độc lập của Project 2
+│   └── .env.example
+│
+├── HANDOFF.md                     # Tài liệu nhật ký kỹ thuật & roadmap chi tiết
+├── README.md                      # Hướng dẫn tổng quan toàn bộ hệ thống (file này)
+└── .gitignore                     # Bỏ qua node_modules, .env, dist của cả 2 services
 ```
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ npm run test
+## 🚀 Hướng Dẫn Khởi Chạy Nhanh (Quickstart)
 
-# e2e tests
-$ npm run test:e2e
+### Bước 1: Khởi động PROJECT 1 (Auth Service — Port 3000)
 
-# test coverage
-$ npm run test:cov
-```
+1. Mở terminal, di chuyển vào thư mục `auth-service`:
+   ```bash
+   cd auth-service
+   ```
+2. Cài đặt thư viện và chuẩn bị file môi trường `.env`:
+   ```bash
+   npm install
+   cp .env.example .env
+   ```
+   *Đảm bảo PostgreSQL đang chạy và chuỗi `DATABASE_URL` trong `.env` chính xác.*
+3. Chạy migration và seed dữ liệu khởi tạo (nếu chưa có):
+   ```bash
+   npx prisma migrate dev
+   ```
+4. Khởi chạy server ở chế độ phát triển:
+   ```bash
+   npm run start:dev
+   ```
+   *Auth Service sẽ lắng nghe tại: `http://localhost:3000`*
+   *Developer Console có thể truy cập tại: `http://localhost:3000/dashboard/`*
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Bước 2: Tạo Khóa Kết Nối Trên Developer Console
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+1. Mở trình duyệt truy cập: `http://localhost:3000/dashboard/`.
+2. Đăng nhập bằng tài khoản Quản trị viên (Admin) mặc định:
+   * **Email:** `admin@example.com`
+   * **Mật khẩu:** `Admin123!`
+   *(Hoặc click nút **"Điền Nhanh" / "Quick Fill"** trên màn hình đăng nhập).*
+3. Chuyển sang tab **"Applications"** $\rightarrow$ Click **"+ Create Application"**.
+4. Điền tên ứng dụng (ví dụ: `Demo Order Service`) $\rightarrow$ Click Tạo.
+5. Click **"Chi Tiết" (Details)** trên ứng dụng vừa tạo:
+   * Sao chép **App ID** (ví dụ: `app_xxxxxxxxxxxx`)
+   * Sao chép **App Token** (ví dụ: `apt_xxxxxxxxxxxxxxxxxxxxxxxx`)
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+---
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Bước 3: Cấu Hình & Khởi Động PROJECT 2 (Demo Service — Port 3001)
 
-## Observability
+1. Mở terminal thứ 2, di chuyển vào thư mục `demo-service`:
+   ```bash
+   cd demo-service
+   ```
+2. Cài đặt thư viện và tạo file cấu hình `.env`:
+   ```bash
+   npm install
+   cp .env.example .env
+   ```
+3. Điền các giá trị đã lấy từ Bước 2 vào `.env` của `demo-service`:
+   ```env
+   PORT=3001
+   AUTH_SERVICE_URL=http://localhost:3000
+   APP_ID=app_xxxxxxxxxxxx
+   APP_TOKEN=apt_xxxxxxxxxxxxxxxxxxxxxxxx
+   ```
+4. Khởi chạy Demo Service:
+   ```bash
+   npm run start:dev
+   ```
+   *Demo Service sẽ lắng nghe tại: `http://localhost:3001`*
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+---
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+### Bước 4: Kiểm Chứng Liên Thông (Verification)
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+1. **Kiểm tra bắt tay liên thông (Handshake):**
+   ```bash
+   curl -i http://localhost:3001/status
+   ```
+   *Kết quả mong đợi:* Nhận về `200 OK` xác nhận kết nối thành công với Auth Service.
+2. **Kiểm tra gọi API nghiệp vụ được bảo vệ:**
+   * Gửi request tới `http://localhost:3001/orders` kèm theo Bearer JWT của người dùng để kiểm chứng Project 2 ủy quyền xác thực sang Project 1 thành công.

@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables — KHÔNG COMMIT FILE NÀY
+.env
+.env.*
+!.env.example
+
+# NestJS cache
+.tsbuildinfo
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE & AI tools
+.vscode/
+.idea/
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
+HANDOFF.md
+
+# Test coverage
+coverage/
+
+/src/generated/prisma
+

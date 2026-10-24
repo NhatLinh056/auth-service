@@ -1,20 +1,25 @@
+# Root .gitignore for Microservices Monorepo
+
+# Independent previous demo projects (they have their own repos)
+oauth-service-demo/
+firebase-auth-demo/
+
 # Dependencies
+**/node_modules/
 node_modules/
 
-# Build output
+# Build outputs
+**/dist/
 dist/
 
-# Environment variables — KHÔNG COMMIT FILE NÀY
-.env
-.env.*
+# Environment variables — NEVER COMMIT SECRETS
+**/.env
+**/.env.*
 !.env.example
-
-# NestJS cache
-.tsbuildinfo
-*.tsbuildinfo
+!**/.env.example
 
 # Logs
-*.log
+**/*.log
 npm-debug.log*
 
 # OS files
@@ -28,10 +33,13 @@ Thumbs.db
 .claude/
 .windsurf/
 skills-lock.json
-HANDOFF.md
+
+# NestJS / TypeScript cache
+**/*.tsbuildinfo
+.tsbuildinfo
 
 # Test coverage
-coverage/
+**/coverage/
 
-/src/generated/prisma
-
+# Generated Prisma Client
+**/src/generated/prisma/
