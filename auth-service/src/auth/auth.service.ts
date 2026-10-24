@@ -2,6 +2,7 @@ import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcrypt';
 import { User } from '../generated/prisma/client.js';
+import { OAuthProvidersService } from '../oauth-providers/oauth-providers.service.js';
 import { UsersService } from '../users/users.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
@@ -11,7 +12,15 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly oauthProvidersService: OAuthProvidersService,
   ) {}
+
+  /**
+   * Lấy danh sách các OAuth Provider đang khả dụng (công khai cho client/frontend)
+   */
+  async getPublicProviders() {
+    return this.oauthProvidersService.getPublicProviders();
+  }
 
   async register(registerDto: RegisterDto): Promise<Omit<User, 'passwordHash'>> {
     // 1. Kiểm tra xem email đã tồn tại hay chưa
@@ -48,6 +57,12 @@ export class AuthService {
     }
 
     // 2. So khớp mật khẩu với passwordHash trong DB
+    if (!user.passwordHash) {
+      throw new UnauthorizedException(
+        'Tài khoản này được đăng ký thông qua mạng xã hội (OAuth), vui lòng sử dụng phương thức đăng nhập OAuth tương ứng.',
+      );
+    }
+
     const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');

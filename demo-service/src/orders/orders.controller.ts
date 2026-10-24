@@ -27,6 +27,7 @@ export class OrdersController {
   @Get('status')
   async getStatus() {
     const handshake = await this.authClientService.verifyService();
+    const providers = await this.authClientService.getAvailableProviders();
 
     return {
       service: 'demo-service',
@@ -38,8 +39,18 @@ export class OrdersController {
         appId: handshake.application?.appId || (handshake as any).appId,
         appName: handshake.application?.name || (handshake as any).appName,
       },
+      availableOAuthProviders: providers,
       timestamp: new Date().toISOString(),
     };
+  }
+
+  /**
+   * Public Sign-in Methods Endpoint for Demo Service Clients
+   * Queries Auth Service to discover enabled OAuth providers (Google / Facebook)
+   */
+  @Get('auth/providers')
+  async getAuthProviders() {
+    return this.authClientService.getAvailableProviders();
   }
 
   /**

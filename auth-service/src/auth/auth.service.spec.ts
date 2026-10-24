@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import bcrypt from 'bcrypt';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { OAuthProvidersService } from '../oauth-providers/oauth-providers.service.js';
 import { UsersService } from '../users/users.service.js';
 import { AuthService } from './auth.service.js';
 
@@ -18,6 +19,13 @@ describe('AuthService', () => {
     signAsync: vi.fn().mockResolvedValue('mocked_jwt_token_xyz'),
   };
 
+  const mockOAuthProvidersService = {
+    getPublicProviders: vi.fn().mockResolvedValue([
+      { provider: 'google', name: 'Google', enabled: true },
+      { provider: 'facebook', name: 'Facebook', enabled: false },
+    ]),
+  };
+
   beforeEach(async () => {
     vi.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
@@ -31,6 +39,10 @@ describe('AuthService', () => {
           provide: JwtService,
           useValue: mockJwtService,
         },
+        {
+          provide: OAuthProvidersService,
+          useValue: mockOAuthProvidersService,
+        },
       ],
     }).compile();
 
@@ -39,6 +51,14 @@ describe('AuthService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('getPublicProviders', () => {
+    it('should delegate to oauthProvidersService.getPublicProviders', async () => {
+      const res = await service.getPublicProviders();
+      expect(res).toHaveLength(2);
+      expect(mockOAuthProvidersService.getPublicProviders).toHaveBeenCalledOnce();
+    });
   });
 
   describe('register', () => {

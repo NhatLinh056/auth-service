@@ -101,4 +101,25 @@ describe('AuthClientService', () => {
       await expect(service.verifyUserToken('expired.jwt.token')).rejects.toThrow(UnauthorizedException);
     });
   });
+
+  describe('getAvailableProviders', () => {
+    it('should return providers list on success', async () => {
+      const mockProviders = [
+        { provider: 'google', name: 'Google', enabled: true },
+        { provider: 'facebook', name: 'Facebook', enabled: false },
+      ];
+      vi.spyOn((service as any).http, 'get').mockResolvedValueOnce({
+        data: mockProviders,
+      });
+
+      const res = await service.getAvailableProviders();
+      expect(res).toEqual(mockProviders);
+    });
+
+    it('should return empty array gracefully on error', async () => {
+      vi.spyOn((service as any).http, 'get').mockRejectedValueOnce(new Error('Network error'));
+      const res = await service.getAvailableProviders();
+      expect(res).toEqual([]);
+    });
+  });
 });

@@ -12,6 +12,7 @@ describe('AuthController', () => {
     register: vi.fn(),
     login: vi.fn(),
     logout: vi.fn(),
+    getPublicProviders: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -102,6 +103,20 @@ describe('AuthController', () => {
 
       expect(result).toEqual(expectedResult);
       expect(mockAuthService.logout).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getProviders', () => {
+    it('nên gọi authService.getPublicProviders và trả về danh sách public providers', async () => {
+      const mockProviders = [
+        { provider: 'google', name: 'Google', enabled: true },
+        { provider: 'facebook', name: 'Facebook', enabled: false },
+      ];
+      mockAuthService.getPublicProviders.mockResolvedValue(mockProviders);
+
+      const result = await controller.getProviders();
+      expect(result).toEqual(mockProviders);
+      expect(mockAuthService.getPublicProviders).toHaveBeenCalledOnce();
     });
   });
 

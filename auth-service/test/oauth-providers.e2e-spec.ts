@@ -96,6 +96,26 @@ describe('OAuth Providers Management (e2e)', () => {
     });
   });
 
+  describe('Public Sign-in Methods Discovery (GET /auth/providers)', () => {
+    it('Endpoint công khai không cần token -> 200 OK và trả về đúng schema an toàn', async () => {
+      const res = await request(app.getHttpServer()).get('/auth/providers');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBeGreaterThanOrEqual(2);
+
+      for (const item of res.body) {
+        expect(item.provider).toBeDefined();
+        expect(typeof item.provider).toBe('string');
+        expect(item.name).toBeDefined();
+        expect(typeof item.enabled).toBe('boolean');
+        // Tuyệt đối không lộ secret, clientId hay id nội bộ trong discovery công khai
+        expect(item.clientSecret).toBeUndefined();
+        expect(item.clientId).toBeUndefined();
+        expect(item.id).toBeUndefined();
+      }
+    });
+  });
+
   describe('Bảo mật dữ liệu (Data Privacy)', () => {
     it('Tuyệt đối không trả về clientSecret trong response danh sách hoặc chi tiết', async () => {
       const listRes = await request(app.getHttpServer())

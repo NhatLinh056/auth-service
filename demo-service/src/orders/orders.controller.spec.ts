@@ -13,6 +13,9 @@ describe('OrdersController', () => {
     authClientService = {
       verifyService: vi.fn(),
       verifyUserToken: vi.fn(),
+      getAvailableProviders: vi.fn().mockResolvedValue([
+        { provider: 'google', name: 'Google', enabled: true },
+      ]),
     } as any;
 
     controller = new OrdersController(ordersService, authClientService);
@@ -39,6 +42,15 @@ describe('OrdersController', () => {
       expect(res.handshake.authService).toBe('CONNECTED');
       expect(res.handshake.applicationStatus).toBe('ACTIVE');
       expect(res.handshake.appId).toBe('app_123');
+      expect(res.availableOAuthProviders).toBeDefined();
+    });
+  });
+
+  describe('getAuthProviders', () => {
+    it('should return available OAuth providers from Auth Service', async () => {
+      const res = await controller.getAuthProviders();
+      expect(Array.isArray(res)).toBe(true);
+      expect(res[0].provider).toBe('google');
     });
   });
 

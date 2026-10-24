@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/commo
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AppAuth } from '../common/decorators/app-auth.decorator.js';
 import { CurrentApp } from '../common/decorators/current-app.decorator.js';
+import { Public } from '../common/decorators/public.decorator.js';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
@@ -58,6 +59,19 @@ export class AuthController {
   })
   logout() {
     return this.authService.logout();
+  }
+
+  @Get('providers')
+  @Public()
+  @ApiOperation({
+    summary: 'Lấy danh sách các phương thức đăng nhập OAuth khả dụng (Công khai cho Client/Frontend)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Danh sách các provider cùng trạng thái enabled/disabled',
+  })
+  getProviders() {
+    return this.authService.getPublicProviders();
   }
 
   @Get('verify-service')

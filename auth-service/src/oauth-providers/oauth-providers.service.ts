@@ -21,6 +21,12 @@ export interface SanitizedOAuthProvider {
   updatedAt: Date;
 }
 
+export interface PublicOAuthProvider {
+  provider: string;
+  name: string;
+  enabled: boolean;
+}
+
 @Injectable()
 export class OAuthProvidersService implements OnModuleInit {
   private readonly logger = new Logger(OAuthProvidersService.name);
@@ -126,6 +132,21 @@ export class OAuthProvidersService implements OnModuleInit {
       orderBy: { provider: 'asc' },
     });
     return list.map((p) => this.sanitize(p));
+  }
+
+  /**
+   * Lấy danh sách provider công khai cho Client/Frontend (chỉ chứa provider, name, enabled).
+   * Tuyệt đối không trả clientId, clientSecret, hay ID nội bộ.
+   */
+  async getPublicProviders(): Promise<PublicOAuthProvider[]> {
+    const list = await this.prisma.oAuthProvider.findMany({
+      orderBy: { provider: 'asc' },
+    });
+    return list.map((p) => ({
+      provider: p.provider.toLowerCase(),
+      name: p.name,
+      enabled: p.isEnabled,
+    }));
   }
 
   /**

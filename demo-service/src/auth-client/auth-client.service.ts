@@ -27,6 +27,12 @@ export interface AuthUserProfile {
   role: string;
 }
 
+export interface OAuthProviderInfo {
+  provider: string;
+  name: string;
+  enabled: boolean;
+}
+
 @Injectable()
 export class AuthClientService {
   private readonly logger = new Logger(AuthClientService.name);
@@ -72,6 +78,22 @@ export class AuthClientService {
         throw new ForbiddenException(`Client application is inactive on Auth Service: ${message}`);
       }
       throw new BadGatewayException(`Cannot reach Auth Service at ${appConfig.authServiceUrl}: ${message}`);
+    }
+  }
+
+  /**
+   * Lấy danh sách các phương thức đăng nhập OAuth khả dụng từ Auth Service
+   */
+  async getAvailableProviders(): Promise<OAuthProviderInfo[]> {
+    try {
+      const response = await this.http.get<OAuthProviderInfo[]>('/auth/providers', {
+        baseURL: appConfig.authServiceUrl,
+        headers: this.getServiceHeaders(),
+      });
+      return response.data;
+    } catch (err: any) {
+      this.logger.warn(`Failed to fetch OAuth providers from Auth Service: ${err.message}`);
+      return [];
     }
   }
 
