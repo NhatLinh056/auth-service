@@ -743,7 +743,11 @@ function generateSdkSnippet(tab, app) {
     return `# .env (Client Microservice Configuration)
 AUTH_SERVICE_URL=${origin}
 AUTH_SERVICE_APP_ID=${app.appId}
-AUTH_SERVICE_APP_TOKEN=${app.appToken}`;
+AUTH_SERVICE_APP_TOKEN=${app.appToken}
+
+# Shorthand aliases:
+APP_ID=${app.appId}
+APP_TOKEN=${app.appToken}`;
   }
 
   if (tab === 'node') {
