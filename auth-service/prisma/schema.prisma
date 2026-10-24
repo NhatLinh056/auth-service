@@ -22,17 +22,51 @@ enum AppStatus {
   INACTIVE
 }
 
+enum OAuthProviderType {
+  GOOGLE
+  FACEBOOK
+}
+
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  passwordHash String
+  id           String          @id @default(uuid())
+  email        String          @unique
+  passwordHash String?
   name         String?
-  role         Role          @default(USER)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  role         Role            @default(USER)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
   applications Application[]
+  identities   OAuthIdentity[]
 
   @@map("users")
+}
+
+model OAuthIdentity {
+  id             String            @id @default(uuid())
+  userId         String
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider       OAuthProviderType
+  providerUserId String
+  email          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([provider, providerUserId])
+  @@map("oauth_identities")
+}
+
+model OAuthProvider {
+  id           String            @id @default(uuid())
+  provider     OAuthProviderType @unique
+  name         String
+  isEnabled    Boolean           @default(false)
+  clientId     String?
+  clientSecret String?
+  callbackUrl  String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@map("oauth_providers")
 }
 
 model Application {

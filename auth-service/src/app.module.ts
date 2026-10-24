@@ -4,6 +4,7 @@ import { AppService } from './app.service.js';
 import { ApplicationsModule } from './applications/applications.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { HealthModule } from './health/health.module.js';
+import { OAuthProvidersModule } from './oauth-providers/oauth-providers.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { RolesModule } from './roles/roles.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -16,6 +17,7 @@ import { UsersModule } from './users/users.module.js';
     AuthModule,
     RolesModule,
     ApplicationsModule,
+    OAuthProvidersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
