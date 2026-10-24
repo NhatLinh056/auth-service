@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Auth } from '../common/decorators/auth.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
@@ -84,5 +95,21 @@ export class ApplicationsController {
     @CurrentUser() currentUser: JwtPayload,
   ) {
     return this.applicationsService.delete(id, currentUser);
+  }
+
+  @Post(':id/regenerate-token')
+  @HttpCode(HttpStatus.OK)
+  @Auth()
+  @ApiOperation({ summary: 'Cấp lại AppToken cho ứng dụng (chủ sở hữu hoặc ADMIN)' })
+  @ApiParam({ name: 'id', description: 'UUID của ứng dụng' })
+  @ApiResponse({ status: 200, description: 'Cấp lại AppToken thành công' })
+  @ApiResponse({ status: 401, description: 'Chưa xác thực (Thiếu hoặc sai JWT token)' })
+  @ApiResponse({ status: 403, description: 'Không có quyền cấp lại token cho ứng dụng của người khác' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy ứng dụng với ID này' })
+  regenerateToken(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: JwtPayload,
+  ) {
+    return this.applicationsService.regenerateAppToken(id, currentUser);
   }
 }

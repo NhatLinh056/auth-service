@@ -554,4 +554,88 @@ describe('ApplicationsService', () => {
       expect(mockPrismaService.application.delete).not.toHaveBeenCalled();
     });
   });
+
+  describe('regenerateAppToken', () => {
+    it('should successfully regenerate appToken if caller is the owner', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+      mockPrismaService.application.update.mockImplementation(({ where, data }) =>
+        Promise.resolve({
+          ...mockApplication,
+          appToken: data.appToken,
+        }),
+      );
+
+      const result = await service.regenerateAppToken(mockApplication.id, currentUser);
+
+      expect(result.appToken).toMatch(/^apt_[0-9a-f]{64}$/);
+      expect(result.appToken).not.toBe(mockApplication.appToken);
+      expect(mockPrismaService.application.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: mockApplication.id },
+          data: {
+            appToken: expect.stringMatching(/^apt_[0-9a-f]{64}$/),
+          },
+        }),
+      );
+    });
+
+    it('should successfully regenerate appToken if caller is ADMIN even if not owner', async () => {
+      const currentAdmin: JwtPayload = {
+        sub: mockAdmin.id,
+        email: mockAdmin.email,
+        role: Role.ADMIN,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+      mockPrismaService.application.update.mockImplementation(({ where, data }) =>
+        Promise.resolve({
+          ...mockApplication,
+          appToken: data.appToken,
+        }),
+      );
+
+      const result = await service.regenerateAppToken(mockApplication.id, currentAdmin);
+
+      expect(result.appToken).toMatch(/^apt_[0-9a-f]{64}$/);
+      expect(mockPrismaService.application.update).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if application does not exist', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.regenerateAppToken('non-existent-id', currentUser),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockPrismaService.application.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException if regular USER tries to regenerate token of another user application', async () => {
+      const currentUser: JwtPayload = {
+        sub: 'different-user-id',
+        email: 'other@example.com',
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+
+      await expect(
+        service.regenerateAppToken(mockApplication.id, currentUser),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(mockPrismaService.application.update).not.toHaveBeenCalled();
+    });
+  });
 });

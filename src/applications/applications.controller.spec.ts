@@ -12,6 +12,7 @@ describe('ApplicationsController', () => {
     findById: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
+    regenerateAppToken: ReturnType<typeof vi.fn>;
   };
 
   const mockUser: JwtPayload = {
@@ -40,6 +41,10 @@ describe('ApplicationsController', () => {
       delete: vi.fn().mockResolvedValue({
         message: 'Xóa ứng dụng thành công',
         application: mockCreatedApplication,
+      }),
+      regenerateAppToken: vi.fn().mockResolvedValue({
+        ...mockCreatedApplication,
+        appToken: 'apt_newtoken1234567890abcdef1234567890abcdef1234567890abcdef123456',
       }),
     };
 
@@ -101,6 +106,20 @@ describe('ApplicationsController', () => {
     });
   });
 
+  describe('regenerateToken', () => {
+    it('nên ủy quyền gọi applicationsService.regenerateAppToken với id và currentUser chính xác', async () => {
+      const result = await controller.regenerateToken('app-uuid-1', mockUser);
+
+      expect(mockApplicationsService.regenerateAppToken).toHaveBeenCalledWith(
+        'app-uuid-1',
+        mockUser,
+      );
+      expect(result.appToken).toBe(
+        'apt_newtoken1234567890abcdef1234567890abcdef1234567890abcdef123456',
+      );
+    });
+  });
+
   describe('Security Metadata', () => {
     it('phương thức create nên có gắn Auth guard metadata', () => {
       const guards = Reflect.getMetadata('__guards__', controller.create);
@@ -128,6 +147,12 @@ describe('ApplicationsController', () => {
 
     it('phương thức delete nên có gắn Auth guard metadata', () => {
       const guards = Reflect.getMetadata('__guards__', controller.delete);
+      expect(guards).toBeDefined();
+      expect(guards.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('phương thức regenerateToken nên có gắn Auth guard metadata', () => {
+      const guards = Reflect.getMetadata('__guards__', controller.regenerateToken);
       expect(guards).toBeDefined();
       expect(guards.length).toBeGreaterThanOrEqual(1);
     });

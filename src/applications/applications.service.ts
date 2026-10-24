@@ -216,4 +216,43 @@ export class ApplicationsService {
       application: deletedApp,
     };
   }
+
+  /**
+   * Cấp lại mã AppToken cho ứng dụng:
+   * - Ném 404 NotFoundException nếu không tìm thấy ứng dụng.
+   * - Nếu là USER thường: chỉ được cấp lại token cho ứng dụng của chính mình, ngược lại ném 403 ForbiddenException.
+   * - Nếu là ADMIN: được phép cấp lại token cho bất kỳ ứng dụng nào.
+   * - Sinh mã appToken mới an toàn 256 bits CSPRNG và cập nhật vào database.
+   */
+  async regenerateAppToken(id: string, currentUser: JwtPayload) {
+    const existingApp = await this.prisma.application.findUnique({
+      where: { id },
+    });
+
+    if (!existingApp) {
+      throw new NotFoundException('Không tìm thấy ứng dụng với ID này');
+    }
+
+    if (currentUser.role !== Role.ADMIN && existingApp.userId !== currentUser.sub) {
+      throw new ForbiddenException(
+        'Bạn không có quyền cấp lại token cho ứng dụng của người khác',
+      );
+    }
+
+    const appToken = this.generateAppToken();
+
+    return this.prisma.application.update({
+      where: { id },
+      data: { appToken },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
 }
