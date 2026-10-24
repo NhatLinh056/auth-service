@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Auth } from '../common/decorators/auth.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
@@ -69,5 +69,20 @@ export class ApplicationsController {
     @CurrentUser() currentUser: JwtPayload,
   ) {
     return this.applicationsService.update(id, updateApplicationDto, currentUser);
+  }
+
+  @Delete(':id')
+  @Auth()
+  @ApiOperation({ summary: 'Xóa ứng dụng theo ID (chủ sở hữu hoặc ADMIN)' })
+  @ApiParam({ name: 'id', description: 'UUID của ứng dụng' })
+  @ApiResponse({ status: 200, description: 'Xóa ứng dụng thành công' })
+  @ApiResponse({ status: 401, description: 'Chưa xác thực (Thiếu hoặc sai JWT token)' })
+  @ApiResponse({ status: 403, description: 'Không có quyền xóa ứng dụng của người khác' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy ứng dụng với ID này' })
+  delete(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: JwtPayload,
+  ) {
+    return this.applicationsService.delete(id, currentUser);
   }
 }

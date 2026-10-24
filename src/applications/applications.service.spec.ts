@@ -41,6 +41,7 @@ describe('ApplicationsService', () => {
       findMany: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
   };
 
@@ -420,6 +421,78 @@ describe('ApplicationsService', () => {
       ).rejects.toThrow(ForbiddenException);
 
       expect(mockPrismaService.application.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('delete', () => {
+    it('should delete application if regular USER is owner', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+      mockPrismaService.application.delete.mockResolvedValue(mockApplication);
+
+      const result = await service.delete(mockApplication.id, currentUser);
+
+      expect(result).toHaveProperty('message', 'Xóa ứng dụng thành công');
+      expect(result.application).toEqual(mockApplication);
+      expect(mockPrismaService.application.delete).toHaveBeenCalledWith({
+        where: { id: mockApplication.id },
+      });
+    });
+
+    it('should delete application if caller is ADMIN even if not owner', async () => {
+      const currentAdmin: JwtPayload = {
+        sub: mockAdmin.id,
+        email: mockAdmin.email,
+        role: Role.ADMIN,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+      mockPrismaService.application.delete.mockResolvedValue(mockApplication);
+
+      const result = await service.delete(mockApplication.id, currentAdmin);
+
+      expect(result).toHaveProperty('message', 'Xóa ứng dụng thành công');
+      expect(result.application).toEqual(mockApplication);
+      expect(mockPrismaService.application.delete).toHaveBeenCalledWith({
+        where: { id: mockApplication.id },
+      });
+    });
+
+    it('should throw NotFoundException if application to delete does not exist', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.delete('non-existent-id', currentUser),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockPrismaService.application.delete).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException if regular USER tries to delete another user application', async () => {
+      const currentUser: JwtPayload = {
+        sub: 'different-user-id',
+        email: 'other@example.com',
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+
+      await expect(
+        service.delete(mockApplication.id, currentUser),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(mockPrismaService.application.delete).not.toHaveBeenCalled();
     });
   });
 });

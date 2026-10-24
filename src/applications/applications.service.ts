@@ -153,4 +153,33 @@ export class ApplicationsService {
       },
     });
   }
+
+  /**
+   * Xóa ứng dụng:
+   * - Ném 404 NotFoundException nếu không tìm thấy ứng dụng.
+   * - Nếu là USER thường: chỉ được xóa ứng dụng của chính mình, ngược lại ném 403 ForbiddenException.
+   * - Nếu là ADMIN: được phép xóa bất kỳ ứng dụng nào.
+   */
+  async delete(id: string, currentUser: JwtPayload) {
+    const existingApp = await this.prisma.application.findUnique({
+      where: { id },
+    });
+
+    if (!existingApp) {
+      throw new NotFoundException('Không tìm thấy ứng dụng với ID này');
+    }
+
+    if (currentUser.role !== Role.ADMIN && existingApp.userId !== currentUser.sub) {
+      throw new ForbiddenException('Bạn không có quyền xóa ứng dụng của người khác');
+    }
+
+    const deletedApp = await this.prisma.application.delete({
+      where: { id },
+    });
+
+    return {
+      message: 'Xóa ứng dụng thành công',
+      application: deletedApp,
+    };
+  }
 }
