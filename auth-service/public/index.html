@@ -379,7 +379,7 @@ HTTP/1.1 200 OK
 
   <!-- 4. APPLICATION DETAIL MODAL -->
   <div class="modal-backdrop" id="app-detail-modal">
-    <div class="modal-content" style="max-width: 560px;">
+    <div class="modal-content" style="max-width: 600px;">
       <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px;">
         <div>
           <h3 class="modal-title" id="detail-app-name">Application Name</h3>
@@ -410,7 +410,7 @@ HTTP/1.1 200 OK
         <div class="form-hint" data-i18n="detail.token_hint">Used by client microservices via <code>X-App-Token</code> header. Keep this secret.</div>
       </div>
 
-      <div class="detail-field" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div class="detail-field" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
         <div>
           <div class="detail-field-label" data-i18n="table.owner">Owner</div>
           <div id="detail-app-owner" class="detail-field-value">—</div>
@@ -418,6 +418,37 @@ HTTP/1.1 200 OK
         <div>
           <div class="detail-field-label" data-i18n="table.created">Created At</div>
           <div id="detail-app-created" class="detail-field-value">—</div>
+        </div>
+      </div>
+
+      <!-- Firebase-style SDK Setup & Configuration -->
+      <div class="sdk-setup-card">
+        <div class="sdk-setup-header">
+          <span class="sdk-setup-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+            <span data-i18n="detail.sdk_setup">SDK Setup &amp; Configuration</span>
+          </span>
+          <div class="sdk-tabs">
+            <button type="button" class="sdk-tab active" id="sdk-tab-env" onclick="switchSdkSnippet('env')">.env</button>
+            <button type="button" class="sdk-tab" id="sdk-tab-node" onclick="switchSdkSnippet('node')">Node.js / Axios</button>
+            <button type="button" class="sdk-tab" id="sdk-tab-curl" onclick="switchSdkSnippet('curl')">cURL</button>
+          </div>
+        </div>
+
+        <p class="sdk-setup-desc" data-i18n="detail.sdk_desc">Copy pre-configured credentials directly into your client microservice:</p>
+
+        <div class="code-block-wrapper">
+          <pre class="code-snippet-box"><code id="sdk-snippet-code">...</code></pre>
+          <button type="button" class="btn-copy-code" onclick="copySdkSnippet()" title="Copy snippet">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span data-i18n="detail.copy_snippet">Copy Snippet</span>
+          </button>
         </div>
       </div>
 

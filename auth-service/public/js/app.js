@@ -87,6 +87,9 @@ const translations = {
       hide: 'Hide',
       regenerate: 'Regenerate Token',
       toggle_status: 'Toggle Status',
+      sdk_setup: 'SDK Setup & Configuration',
+      sdk_desc: 'Copy pre-configured credentials directly into your client microservice:',
+      copy_snippet: 'Copy Snippet',
     },
     login: {
       title: 'Sign In',
@@ -217,6 +220,9 @@ const translations = {
       hide: 'Ẩn',
       regenerate: 'Cấp Lại Token',
       toggle_status: 'Đổi Trạng Thái',
+      sdk_setup: 'Cấu Hình & Tích Hợp Microservice (SDK)',
+      sdk_desc: 'Sao chép đoạn mã cấu hình đã điền sẵn vào microservice client của bạn:',
+      copy_snippet: 'Sao Chép Mã',
     },
     login: {
       title: 'Đăng Nhập',
@@ -280,6 +286,7 @@ const state = {
   applications: [],
   users: [],
   activeDetailApp: null,
+  activeSdkTab: 'env',
 };
 
 // Helper to get nested translation value
@@ -335,6 +342,7 @@ function setLanguage(lang) {
     if (revealBtn) {
       revealBtn.textContent = isMasked ? t('detail.reveal') : t('detail.hide');
     }
+    updateSdkSnippetView();
   }
 }
 
@@ -691,6 +699,8 @@ function openDetailModal(appId) {
   document.getElementById('detail-app-owner').textContent = app.user?.email || state.user?.email || '—';
   document.getElementById('detail-app-created').textContent = new Date(app.createdAt).toLocaleString(state.lang === 'vi' ? 'vi-VN' : 'en-US');
 
+  updateSdkSnippetView();
+
   openModal('app-detail-modal');
 }
 
@@ -722,6 +732,99 @@ function copyDetailAppToken() {
   copyToClipboard(state.activeDetailApp.appToken, 'App Token');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// FIREBASE-STYLE SDK SETUP & CODE SNIPPETS
+// ─────────────────────────────────────────────────────────────────────────────
+function generateSdkSnippet(tab, app) {
+  if (!app) return '';
+  const origin = window.location.origin || 'http://localhost:3000';
+
+  if (tab === 'env') {
+    return `# .env (Client Microservice Configuration)
+AUTH_SERVICE_URL=${origin}
+AUTH_SERVICE_APP_ID=${app.appId}
+AUTH_SERVICE_APP_TOKEN=${app.appToken}`;
+  }
+
+  if (tab === 'node') {
+    return `// Node.js (Axios) Client Microservice Example
+// 1. Install Axios: npm install axios
+import axios from 'axios';
+
+const authClient = axios.create({
+  baseURL: '${origin}',
+  headers: {
+    'X-App-Id': '${app.appId}',
+    'X-App-Token': '${app.appToken}',
+  },
+});
+
+// A. Service Handshake (Check if App credentials are valid & ACTIVE)
+async function verifyServiceCredentials() {
+  const { data } = await authClient.get('/applications/status');
+  console.log('Auth Service Handshake:', data.status); // 'ACTIVE'
+  return data;
+}
+
+// B. Validate User Bearer JWT Token (User Identity Delegation)
+async function validateUserToken(userBearerJwt) {
+  const { data: userProfile } = await authClient.get('/users/me', {
+    headers: {
+      Authorization: \`Bearer \${userBearerJwt}\`,
+    },
+  });
+  console.log('Authenticated User:', userProfile.email, userProfile.role);
+  return userProfile;
+}`;
+  }
+
+  if (tab === 'curl') {
+    return `# 1. Verify Service Credentials (Handshake)
+curl -X GET "${origin}/applications/status" \\
+  -H "X-App-Id: ${app.appId}" \\
+  -H "X-App-Token: ${app.appToken}"
+
+# 2. Validate Delegated User Bearer JWT
+curl -X GET "${origin}/users/me" \\
+  -H "X-App-Id: ${app.appId}" \\
+  -H "X-App-Token: ${app.appToken}" \\
+  -H "Authorization: Bearer <USER_JWT_TOKEN>"`;
+  }
+
+  return '';
+}
+
+function updateSdkSnippetView() {
+  if (!state.activeDetailApp) return;
+  const codeElem = document.getElementById('sdk-snippet-code');
+  if (!codeElem) return;
+
+  const currentTab = state.activeSdkTab || 'env';
+  codeElem.textContent = generateSdkSnippet(currentTab, state.activeDetailApp);
+}
+
+function switchSdkSnippet(tab) {
+  state.activeSdkTab = tab;
+  ['env', 'node', 'curl'].forEach(tKey => {
+    const tabBtn = document.getElementById(`sdk-tab-${tKey}`);
+    if (tabBtn) {
+      if (tKey === tab) {
+        tabBtn.classList.add('active');
+      } else {
+        tabBtn.classList.remove('active');
+      }
+    }
+  });
+  updateSdkSnippetView();
+}
+
+function copySdkSnippet() {
+  if (!state.activeDetailApp) return;
+  const currentTab = state.activeSdkTab || 'env';
+  const code = generateSdkSnippet(currentTab, state.activeDetailApp);
+  copyToClipboard(code, `Snippet (${currentTab.toUpperCase()})`);
+}
+
 async function regenerateDetailToken() {
   if (!state.activeDetailApp) return;
 
@@ -742,6 +845,8 @@ async function regenerateDetailToken() {
     tokenElem.textContent = updated.appToken;
     tokenElem.setAttribute('data-masked', 'false');
     document.getElementById('detail-token-reveal-btn').textContent = t('detail.hide');
+
+    updateSdkSnippetView();
 
     showToast(t('toasts.token_regenerated'));
     await loadApplications();
