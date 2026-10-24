@@ -26,13 +26,19 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# IDE & AI tools
+# IDE, AI tools & Private documentation
 .vscode/
 .idea/
 .agents/
 .claude/
 .windsurf/
 skills-lock.json
+HANDOFF.md
+**/HANDOFF.md
+ROADMAP.md
+**/ROADMAP.md
+*.local
+*.secret
 
 # NestJS / TypeScript cache
 **/*.tsbuildinfo
