@@ -1,5 +1,7 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { AppAuth } from '../common/decorators/app-auth.decorator.js';
+import { CurrentApp } from '../common/decorators/current-app.decorator.js';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
@@ -56,5 +58,29 @@ export class AuthController {
   })
   logout() {
     return this.authService.logout();
+  }
+
+  @Get('verify-service')
+  @AppAuth()
+  @ApiOperation({
+    summary: 'Xác thực định danh Microservice liên thông qua X-App-Id và X-App-Token',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Xác thực Microservice thành công, trả về thông tin ứng dụng',
+  })
+  verifyService(@CurrentApp() app: any) {
+    return {
+      valid: true,
+      message: 'Xác thực dịch vụ thành công',
+      application: {
+        id: app.id,
+        name: app.name,
+        appId: app.appId,
+        status: app.status,
+        userId: app.userId,
+        user: app.user,
+      },
+    };
   }
 }

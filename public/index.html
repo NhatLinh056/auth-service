@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auth Service — Developer Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ─────────────────────────────────────────────────────────────────────────────
+       AUTHENTICATION VIEW (STANDALONE LOGIN & REGISTRATION SCREEN)
+       ───────────────────────────────────────────────────────────────────────────── -->
+  <div id="auth-view" class="auth-screen">
+    <!-- Top-Right Bar: Status & Language Switcher -->
+    <div class="auth-topbar">
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span data-i18n="nav.api_online">API Online</span>
+      </div>
+      <div class="lang-switcher" title="Switch Language / Chuyển Đổi Ngôn Ngữ">
+        <button class="lang-btn active" id="auth-lang-btn-en" onclick="setLanguage('en')">EN</button>
+        <button class="lang-btn" id="auth-lang-btn-vi" onclick="setLanguage('vi')">VI</button>
+      </div>
+    </div>
+
+    <!-- Centered Auth Card -->
+    <div class="auth-card">
+      <!-- Brand Header -->
+      <div class="auth-header">
+        <div class="auth-brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <h1 class="auth-title">Auth Service</h1>
+        <p class="auth-subtitle" data-i18n="auth_screen.subtitle">Developer &amp; Admin Console</p>
+      </div>
+
+      <!-- Segmented Tab: Sign In vs Create Account -->
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" id="auth-tab-signin" onclick="switchAuthMode('signin')" data-i18n="auth_screen.tab_signin">
+          Sign In
+        </button>
+        <button type="button" class="auth-tab" id="auth-tab-register" onclick="switchAuthMode('register')" data-i18n="auth_screen.tab_register">
+          Create Account
+        </button>
+      </div>
+
+      <!-- Sign In Form -->
+      <form id="auth-signin-form" onsubmit="event.preventDefault(); handleAuthLogin();">
+        <div class="form-group">
+          <label class="form-label" data-i18n="login.email">Email Address</label>
+          <input type="email" class="form-control" id="auth-login-email" required placeholder="name@example.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="login.password">Password</label>
+          <input type="password" class="form-control" id="auth-login-password" required placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button type="submit" id="auth-login-submit" class="btn btn-primary btn-block" style="margin-top: 18px;">
+          <span data-i18n="auth_screen.signin_btn">Sign In to Console</span>
+        </button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="auth-register-form" style="display: none;" onsubmit="event.preventDefault(); handleAuthRegister();">
+        <div class="form-group">
+          <label class="form-label" data-i18n="register.name">Full Name</label>
+          <input type="text" class="form-control" id="auth-reg-name" placeholder="John Doe" autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="login.email">Email Address</label>
+          <input type="email" class="form-control" id="auth-reg-email" required placeholder="name@example.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="register.password">Password (min 6 characters)</label>
+          <input type="password" class="form-control" id="auth-reg-password" required minlength="6" placeholder="••••••••" autocomplete="new-password">
+        </div>
+        <button type="submit" id="auth-reg-submit" class="btn btn-primary btn-block" style="margin-top: 18px;">
+          <span data-i18n="auth_screen.register_btn">Create Account &amp; Sign In</span>
+        </button>
+      </form>
+
+      <!-- Demo Credentials Quick Fill -->
+      <div class="auth-hint-box">
+        <div class="auth-hint-header">
+          <span data-i18n="auth_screen.demo_title">Demo Admin Account</span>
+          <button type="button" class="btn-link-action" onclick="fillAdminCreds()" data-i18n="auth_screen.quick_fill">Quick Fill</button>
+        </div>
+        <div class="auth-hint-creds">
+          <span><code>admin@example.com</code> / <code>Admin123!</code></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────────────────
+       MAIN CONSOLE APPLICATION SHELL (ACCESSIBLE UPON AUTHENTICATION)
+       ───────────────────────────────────────────────────────────────────────────── -->
+  <div id="app-shell" style="display: none;">
+
+    <!-- Navigation Bar -->
+    <header class="navbar">
+      <div class="nav-container">
+        <a href="#" class="brand" onclick="switchTab('overview')">
+          <div class="brand-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <span>Auth Service</span>
+          <span class="brand-badge" data-i18n="nav.console">Console</span>
+        </a>
+
+        <!-- Navigation Tabs (Only Core Management) -->
+        <nav class="nav-center">
+          <button class="nav-tab active" id="tab-btn-overview" onclick="switchTab('overview')" data-i18n="nav.overview">
+            Overview
+          </button>
+          <button class="nav-tab" id="tab-btn-apps" onclick="switchTab('apps')" data-i18n="nav.apps">
+            Applications
+          </button>
+          <button class="nav-tab" id="tab-btn-users" onclick="switchTab('users')" style="display: none;" data-i18n="nav.users">
+            Users
+          </button>
+        </nav>
+
+        <!-- Right Header Actions -->
+        <div class="nav-right">
+          <!-- Language Switcher (EN | VI) -->
+          <div class="lang-switcher" title="Switch Language / Chuyển Đổi Ngôn Ngữ">
+            <button class="lang-btn active" id="lang-btn-en" onclick="setLanguage('en')">EN</button>
+            <button class="lang-btn" id="lang-btn-vi" onclick="setLanguage('vi')">VI</button>
+          </div>
+
+          <!-- Service Status -->
+          <div class="status-pill">
+            <span class="status-dot"></span>
+            <span data-i18n="nav.api_online">API Online</span>
+          </div>
+
+          <!-- Authenticated User Section -->
+          <div id="user-badge" class="nav-user">
+            <div>
+              <div id="user-email-display" class="nav-user-email"></div>
+              <span id="user-role-display" class="nav-user-role">USER</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="logout()" data-i18n="nav.logout">
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+  <!-- ─────────────────────────────────────────────────────────────────────────────
+       MAIN CONTENT
+       ───────────────────────────────────────────────────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         TAB 1: OVERVIEW
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <div class="tab-content active" id="tab-overview">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" data-i18n="overview.title">Overview</h1>
+          <p class="page-subtitle" data-i18n="overview.subtitle">Central authentication and application management service.</p>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="overview.apps_label">Applications</div>
+          <div class="stat-value" id="overview-apps-count">0</div>
+          <div class="stat-hint" data-i18n="overview.apps_hint">Registered client applications</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="overview.identity_label">Current Identity</div>
+          <div class="stat-value" id="overview-user-identity" style="font-size: 16px; word-break: break-all;" data-i18n="overview.not_auth">Not Authenticated</div>
+          <div class="stat-hint" id="overview-user-role" data-i18n="overview.signin_hint">Sign in to manage credentials</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="overview.status_label">Service Status</div>
+          <div class="stat-value" style="font-size: 16px; color: var(--success); display: flex; align-items: center; gap: 8px;">
+            <span class="status-dot"></span> <span data-i18n="overview.online">Online</span>
+          </div>
+          <div class="stat-hint" data-i18n="overview.status_hint">AppAuthGuard &amp; JWT Active</div>
+        </div>
+      </div>
+
+      <!-- Service Integration Guide (Professional Quickstart) -->
+      <div class="integration-card">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <h2 class="section-title" data-i18n="guide.title">Service Integration Guide</h2>
+            <p class="section-subtitle" data-i18n="guide.subtitle">How client microservices connect and authenticate with Auth Service.</p>
+          </div>
+          <div class="status-pill">
+            <span class="status-dot"></span>
+            <span data-i18n="guide.ready_pill">AppAuth: Ready</span>
+          </div>
+        </div>
+
+        <div class="guide-container">
+          <!-- Step 1 -->
+          <div class="guide-step">
+            <div class="guide-step-header">
+              <span class="guide-step-num">1</span>
+              <span class="guide-step-title" data-i18n="guide.step1_title">Configure Environment (.env)</span>
+            </div>
+            <p class="guide-step-desc" data-i18n="guide.step1_desc">Store your AppID and AppToken in your client microservice configuration file.</p>
+            <div class="code-snippet">AUTH_SERVICE_URL=http://localhost:3000
+APP_ID=app_xxxxxxxxxxxxxxxxxxxxxxxx
+APP_TOKEN=apt_xxxxxxxxxxxxxxxxxxxxxxxx...</div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="guide-step">
+            <div class="guide-step-header">
+              <span class="guide-step-num">2</span>
+              <span class="guide-step-title" data-i18n="guide.step2_title">Attach Request Headers</span>
+            </div>
+            <p class="guide-step-desc" data-i18n="guide.step2_desc">Inject service credentials into HTTP request headers when calling Auth Service.</p>
+            <div class="code-snippet">X-App-Id: app_xxxxxxxxxxxxxxxxxxxxxxxx
+X-App-Token: apt_xxxxxxxxxxxxxxxxxxxx...
+Content-Type: application/json</div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="guide-step">
+            <div class="guide-step-header">
+              <span class="guide-step-num">3</span>
+              <span class="guide-step-title" data-i18n="guide.step3_title">Service Handshake Verification</span>
+            </div>
+            <p class="guide-step-desc" data-i18n="guide.step3_desc">AppAuthGuard verifies credentials against PostgreSQL and returns 200 OK.</p>
+            <div class="code-snippet">GET /auth/verify-service
+HTTP/1.1 200 OK
+{ "valid": true, "status": "ACTIVE" }</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Applications Section -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title" data-i18n="overview.recent_title">Recent Applications</h2>
+          <button class="btn btn-ghost btn-sm" onclick="switchTab('apps')">
+            <span data-i18n="overview.view_all">View All Applications &rarr;</span>
+          </button>
+        </div>
+
+        <div class="table-container" style="border: none; box-shadow: none;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th data-i18n="table.name">Name</th>
+                <th data-i18n="table.appid">App ID</th>
+                <th data-i18n="table.status">Status</th>
+                <th data-i18n="table.created">Created</th>
+              </tr>
+            </thead>
+            <tbody id="overview-recent-apps">
+              <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-dim); padding: 24px;" data-i18n="overview.empty_recent">
+                  No applications found. Please sign in or create an application.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         TAB 2: APPLICATIONS
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <div class="tab-content" id="tab-apps">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" data-i18n="apps.title">Applications</h1>
+          <p class="page-subtitle" data-i18n="apps.subtitle">Manage client application credentials for microservice inter-service authentication.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('create-app-modal')" data-i18n="apps.create_btn">
+          + Create Application
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th data-i18n="table.name">Name</th>
+              <th data-i18n="table.appid">App ID</th>
+              <th data-i18n="table.status">Status</th>
+              <th data-i18n="table.owner">Owner</th>
+              <th data-i18n="table.created">Created</th>
+              <th style="text-align: right;" data-i18n="table.actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="apps-table-body">
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 32px;" data-i18n="apps.loading">
+                Loading applications...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         TAB 3: USERS (ADMIN ONLY)
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <div class="tab-content" id="tab-users">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" data-i18n="users.title">User Management</h1>
+          <p class="page-subtitle" data-i18n="users.subtitle">Role-based access control (RBAC) and user directory.</p>
+        </div>
+        <button class="btn btn-secondary" onclick="loadUsers()" data-i18n="users.refresh">Refresh</button>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>User ID</th>
+              <th>Email</th>
+              <th data-i18n="table.name">Name</th>
+              <th data-i18n="table.role">Role</th>
+              <th style="text-align: right;" data-i18n="table.actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="users-table-body">
+            <tr>
+              <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 32px;" data-i18n="users.loading">
+                Loading users...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  </div> <!-- /#app-shell -->
+
+  <!-- ─────────────────────────────────────────────────────────────────────────────
+       MODALS (APPLICATION MANAGEMENT & ROLES)
+       ───────────────────────────────────────────────────────────────────────────── -->
+
+  <!-- 3. CREATE APPLICATION MODAL -->
+  <div class="modal-backdrop" id="create-app-modal">
+    <div class="modal-content">
+      <h3 class="modal-title" data-i18n="create_app.title">Create Application</h3>
+      <p class="modal-desc" data-i18n="create_app.desc">Register a new client application to generate AppID and AppToken credentials.</p>
+
+      <form onsubmit="event.preventDefault(); createApp(document.getElementById('new-app-name').value, document.getElementById('new-app-target-user')?.value);">
+        <div class="form-group">
+          <label class="form-label" data-i18n="create_app.name_label">Application Name</label>
+          <input type="text" class="form-control" id="new-app-name" required placeholder="e.g. Order Service, Payment Gateway">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('create-app-modal')" data-i18n="modal.cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" data-i18n="apps.create_btn">+ Create Application</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. APPLICATION DETAIL MODAL -->
+  <div class="modal-backdrop" id="app-detail-modal">
+    <div class="modal-content" style="max-width: 560px;">
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px;">
+        <div>
+          <h3 class="modal-title" id="detail-app-name">Application Name</h3>
+          <p class="modal-desc" style="margin-bottom: 0;" data-i18n="detail.desc">Application details and security credentials.</p>
+        </div>
+        <span id="detail-app-status" class="status-indicator active">ACTIVE</span>
+      </div>
+
+      <div class="detail-field">
+        <div class="detail-field-label" data-i18n="detail.appid_label">App ID (Public Identifier)</div>
+        <div class="credential-row">
+          <span id="detail-app-id" class="credential-value">app_...</span>
+          <div class="credential-actions">
+            <button class="btn btn-secondary btn-sm" onclick="copyDetailAppId()" data-i18n="detail.copy">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-field">
+        <div class="detail-field-label" data-i18n="detail.token_label">App Token (Service Secret)</div>
+        <div class="credential-row">
+          <span id="detail-app-token" class="credential-value" data-masked="true">••••••••••••••••••••••••••••</span>
+          <div class="credential-actions">
+            <button class="btn btn-secondary btn-sm" id="detail-token-reveal-btn" onclick="toggleDetailTokenMask()" data-i18n="detail.reveal">Reveal</button>
+            <button class="btn btn-secondary btn-sm" onclick="copyDetailAppToken()" data-i18n="detail.copy">Copy</button>
+          </div>
+        </div>
+        <div class="form-hint" data-i18n="detail.token_hint">Used by client microservices via <code>X-App-Token</code> header. Keep this secret.</div>
+      </div>
+
+      <div class="detail-field" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div>
+          <div class="detail-field-label" data-i18n="table.owner">Owner</div>
+          <div id="detail-app-owner" class="detail-field-value">—</div>
+        </div>
+        <div>
+          <div class="detail-field-label" data-i18n="table.created">Created At</div>
+          <div id="detail-app-created" class="detail-field-value">—</div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="justify-content: space-between; align-items: center;">
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="regenerateDetailToken()" data-i18n="detail.regenerate">
+            Regenerate Token
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="toggleDetailStatus()" data-i18n="detail.toggle_status">
+            Toggle Status
+          </button>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('app-detail-modal')" data-i18n="modal.close">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. ASSIGN ROLE MODAL (ADMIN) -->
+  <div class="modal-backdrop" id="assign-role-modal">
+    <div class="modal-content">
+      <h3 class="modal-title" data-i18n="role_modal.title">Assign User Role</h3>
+      <p class="modal-desc">
+        <span data-i18n="role_modal.desc_prefix">Update role for:</span> <strong id="role-modal-user-email"></strong>
+      </p>
+
+      <input type="hidden" id="role-modal-user-id">
+
+      <div class="form-group">
+        <label class="form-label" data-i18n="role_modal.select_label">Select Role</label>
+        <select class="form-control" id="role-modal-select">
+          <option value="USER">USER</option>
+          <option value="ADMIN">ADMIN</option>
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('assign-role-modal')" data-i18n="modal.cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="assignRole(document.getElementById('role-modal-user-id').value, document.getElementById('role-modal-select').value)" data-i18n="modal.save">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

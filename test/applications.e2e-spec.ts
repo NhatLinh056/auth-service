@@ -592,4 +592,101 @@ describe('Application Management Lifecycle & Security Matrix (TODO 77 E2E)', () 
       expect(appCheck).toBeNull();
     });
   });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 9. SERVICE-TO-SERVICE AUTHENTICATION & APPAUTHGUARD
+  // ═══════════════════════════════════════════════════════════════════════════
+  describe('9. Service-to-Service Authentication & AppAuthGuard (GET /auth/verify-service)', () => {
+    let serviceAppId: string;
+    let serviceAppToken: string;
+    let createdAppRecordId: string;
+
+    beforeAll(async () => {
+      // Tạo một ứng dụng microservice hợp lệ
+      const appRes = await request(app.getHttpServer())
+        .post('/applications')
+        .set('Authorization', `Bearer ${user1Token}`)
+        .send({ name: 'Microservice Client' })
+        .expect(201);
+
+      createdAppRecordId = appRes.body.id;
+      serviceAppId = appRes.body.appId;
+      serviceAppToken = appRes.body.appToken;
+    });
+
+    afterAll(async () => {
+      if (createdAppRecordId) {
+        await prisma.application.deleteMany({
+          where: { id: createdAppRecordId },
+        });
+      }
+    });
+
+    it('nên trả về 401 khi thiếu header X-App-Id', async () => {
+      await request(app.getHttpServer())
+        .get('/auth/verify-service')
+        .set('X-App-Token', serviceAppToken)
+        .expect(401);
+    });
+
+    it('nên trả về 401 khi thiếu header X-App-Token', async () => {
+      await request(app.getHttpServer())
+        .get('/auth/verify-service')
+        .set('X-App-Id', serviceAppId)
+        .expect(401);
+    });
+
+    it('nên trả về 401 khi AppID không tồn tại', async () => {
+      await request(app.getHttpServer())
+        .get('/auth/verify-service')
+        .set('X-App-Id', 'app_nonexistent1234567890')
+        .set('X-App-Token', serviceAppToken)
+        .expect(401);
+    });
+
+    it('nên trả về 401 khi AppToken không đúng', async () => {
+      await request(app.getHttpServer())
+        .get('/auth/verify-service')
+        .set('X-App-Id', serviceAppId)
+        .set('X-App-Token', 'apt_invalidtoken1234567890abcdef1234567890abcdef1234567890abcdef12')
+        .expect(401);
+    });
+
+    it('nên trả về 200 OK và thông tin ứng dụng khi cung cấp đúng AppID và AppToken', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/auth/verify-service')
+        .set('X-App-Id', serviceAppId)
+        .set('X-App-Token', serviceAppToken)
+        .expect(200);
+
+      expect(res.body.valid).toBe(true);
+      expect(res.body.message).toBe('Xác thực dịch vụ thành công');
+      expect(res.body.application).toBeDefined();
+      expect(res.body.application.appId).toBe(serviceAppId);
+      expect(res.body.application.name).toBe('Microservice Client');
+      expect(res.body.application.user.email).toBe(USER1_EMAIL);
+    });
+
+    it('nên trả về 403 Forbidden khi ứng dụng đã bị chuyển sang INACTIVE', async () => {
+      // Vô hiệu hóa ứng dụng
+      await prisma.application.update({
+        where: { id: createdAppRecordId },
+        data: { status: AppStatus.INACTIVE },
+      });
+
+      const res = await request(app.getHttpServer())
+        .get('/auth/verify-service')
+        .set('X-App-Id', serviceAppId)
+        .set('X-App-Token', serviceAppToken)
+        .expect(403);
+
+      expect(res.body.message).toContain('INACTIVE');
+
+      // Khôi phục lại trạng thái ACTIVE
+      await prisma.application.update({
+        where: { id: createdAppRecordId },
+        data: { status: AppStatus.ACTIVE },
+      });
+    });
+  });
 });

@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Redirect } from '@nestjs/common';
 import { AppService } from './app.service.js';
 
 @Controller()
@@ -9,4 +9,8 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
+
+  @Get('dashboard')
+  @Redirect('/dashboard/', 302)
+  getDashboard() {}
 }

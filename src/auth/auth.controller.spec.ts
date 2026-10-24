@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PrismaService } from '../prisma/prisma.service.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 
@@ -21,6 +22,10 @@ describe('AuthController', () => {
         {
           provide: AuthService,
           useValue: mockAuthService,
+        },
+        {
+          provide: PrismaService,
+          useValue: {},
         },
       ],
     }).compile();
@@ -97,6 +102,31 @@ describe('AuthController', () => {
 
       expect(result).toEqual(expectedResult);
       expect(mockAuthService.logout).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('verifyService', () => {
+    it('nên trả về valid: true và thông tin ứng dụng khi được gọi với app', () => {
+      const mockApp = {
+        id: 'app-uuid-1',
+        name: 'Order Service',
+        appId: 'app_1234567890abcdef12345678',
+        status: 'ACTIVE',
+        userId: 'user-uuid-1',
+        user: {
+          id: 'user-uuid-1',
+          email: 'user@example.com',
+          name: 'User Name',
+        },
+      };
+
+      const result = controller.verifyService(mockApp);
+
+      expect(result).toEqual({
+        valid: true,
+        message: 'Xác thực dịch vụ thành công',
+        application: mockApp,
+      });
     });
   });
 });
