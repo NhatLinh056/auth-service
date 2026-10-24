@@ -765,8 +765,8 @@ const authClient = axios.create({
 
 // A. Service Handshake (Check if App credentials are valid & ACTIVE)
 async function verifyServiceCredentials() {
-  const { data } = await authClient.get('/applications/status');
-  console.log('Auth Service Handshake:', data.status); // 'ACTIVE'
+  const { data } = await authClient.get('/auth/verify-service');
+  console.log('Auth Service Handshake:', data.valid, data.application.status); // true, 'ACTIVE'
   return data;
 }
 
@@ -784,7 +784,7 @@ async function validateUserToken(userBearerJwt) {
 
   if (tab === 'curl') {
     return `# 1. Verify Service Credentials (Handshake)
-curl -X GET "${origin}/applications/status" \\
+curl -X GET "${origin}/auth/verify-service" \\
   -H "X-App-Id: ${app.appId}" \\
   -H "X-App-Token: ${app.appToken}"
 
