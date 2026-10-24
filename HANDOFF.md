@@ -604,26 +604,27 @@ model Application {
   - **Kết luận:** **PROJECT 1 ĐÃ HOÀN THÀNH 100% TOÀN DIỆN.** Sẵn sàng bước sang Phase 5 (Triển khai Project 2).
 
 ### PHASE 5 — Triển Khai PROJECT 2 (Client Microservice) & Báo Cáo Nghiệm Thu Liên Thông
-- [ ] **TODO 85 — Initialize Project 2 (`demo-service`)**  
-  *Status:* `NOT STARTED`  
-  *Mục tiêu:* Khởi tạo project NestJS thứ 2 tại `d:/STUDY/2026.1/prj3/demo-service` cấu hình chạy độc lập trên **Port 3001** (tránh xung đột với Port 3000 của Project 1).
-- [ ] **TODO 86 — Client Configuration & `.env`**  
-  *Status:* `NOT STARTED`  
-  *Mục tiêu:* Cấu hình module Config và file `.env` cho Project 2 chứa: `AUTH_SERVICE_URL=http://localhost:3000`, `APP_ID=app_...`, `APP_TOKEN=apt_...`. Tuyệt đối **KHÔNG** tạo bảng User hay hệ thống đăng nhập riêng trên Project 2.
-- [ ] **TODO 87 — Implement `AppAuthMiddleware` / HTTP Client Proxy**  
-  *Status:* `NOT STARTED`  
-  *Mục tiêu:* Xây dựng middleware/service trong Project 2 tự động đọc credentials từ `.env` và tiêm `X-App-Id` và `X-App-Token` vào headers mỗi khi gửi request sang Project 1.
-- [ ] **TODO 88 — Implement Demo Business Endpoints**  
-  *Status:* `NOT STARTED`  
-  *Mục tiêu:* Xây dựng 2 luồng nghiệp vụ trên Project 2:
-  1. *Service-to-Service Handshake (`GET /status` hoặc `GET /demo/handshake`):* Xác minh Project 2 được Project 1 cấp phép hoạt động.
-  2. *User-delegated Business API (`GET /orders` hoặc `GET /profile`):* Nhận `Authorization: Bearer <jwt_token>` từ người dùng, chuyển tiếp sang Project 1 để xác thực quyền hạn trước khi trả về dữ liệu nghiệp vụ.
+- [x] **TODO 85 — Initialize Project 2 (`demo-service`)**  
+  *Status:* `COMPLETED`  
+  *Evidence:* Khởi tạo thành công project NestJS độc lập tại `d:/STUDY/2026.1/prj3/demo-service` cấu hình cổng chạy **Port 3001** (tránh xung đột với Port 3000 của Auth Service). TypeScript build biên dịch thành công 0 lỗi.
+- [x] **TODO 86 — Client Configuration & `.env`**  
+  *Status:* `COMPLETED`  
+  *Evidence:* Cấu hình `app.config.ts` và file `.env.example` chứa: `PORT=3001`, `AUTH_SERVICE_URL=http://localhost:3000`, `APP_ID`, `APP_TOKEN`. Đảm bảo triết lý microservice: Project 2 hoàn toàn **KHÔNG** chứa database User hay bảng xác thực riêng.
+- [x] **TODO 87 — Implement `AuthClientService` & `UserAuthGuard`**  
+  *Status:* `COMPLETED`  
+  *Evidence:* 
+  - `AuthClientService` (`src/auth-client/auth-client.service.ts`): Tự động đọc credentials từ config và tiêm cặp header `X-App-Id` & `X-App-Token` vào các HTTP call gọi sang Auth Service (`/auth/verify-service` và `/auth/profile`). Xử lý mã lỗi 401, 403, 502 Bad Gateway.
+  - `UserAuthGuard` (`src/auth-client/guards/user-auth.guard.ts`): Bắt token Bearer từ client, chuyển tiếp sang Auth Service để ủy quyền xác thực và gán `request.user` đã được thẩm định.
+  - `@CurrentUser()` (`src/auth-client/decorators/current-user.decorator.ts`): Trích xuất thông tin người dùng được ủy quyền.
+- [x] **TODO 88 — Implement Demo Business Endpoints**  
+  *Status:* `COMPLETED`  
+  *Evidence:* 
+  - *Handshake Endpoint (`GET /status`):* Bắt tay với Auth Service qua `GET /auth/verify-service`, trả về trạng thái liên thông `CONNECTED`, trạng thái ứng dụng `ACTIVE` và metadata ứng dụng.
+  - *Orders Module (`src/orders/`):* Nghiệp vụ đơn hàng mô phỏng (`GET /orders`, `POST /orders`, `GET /orders/:id`) được bảo vệ bằng `UserAuthGuard` ủy quyền xác thực sang Auth Service.
+  - Bổ sung 17 unit tests trong `demo-service` (`auth-client.service.spec.ts`, `user-auth.guard.spec.ts`, `orders.service.spec.ts`, `orders.controller.spec.ts`) đạt **17/17 tests PASS (100%)**.
 - [ ] **TODO 89 — End-to-End Interoperability Test Suite**  
-  *Status:* `NOT STARTED`  
-  *Mục tiêu:* Viết bộ test kiểm chứng liên thông 2 project:
-  - Khi `APP_ID` & `APP_TOKEN` đúng $\rightarrow$ Project 1 phản hồi 200 OK.
-  - Khi sửa sai `APP_TOKEN` $\rightarrow$ Project 1 chặn với 401 Unauthorized.
-  - Khi khóa ứng dụng (`INACTIVE`) trên WebApp Project 1 $\rightarrow$ Project 1 chặn với 403 Forbidden.
+  *Status:* `IN PROGRESS`  
+  *Mục tiêu:* Kiểm chứng bắt tay trực tiếp giữa 2 service đang chạy và viết kịch bản test liên thông thực tế.
 - [ ] **TODO 90 — Thesis Defense Demonstration Script & Final Package**  
   *Status:* `NOT STARTED`  
   *Mục tiêu:* Hoàn thiện tài liệu thuyết minh, script chạy demo trực tiếp cho giảng viên và hướng dẫn đóng gói toàn bộ đồ án Project 3.
