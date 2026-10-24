@@ -1,0 +1,194 @@
+import { NotFoundException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AppStatus, Role } from '../generated/prisma/enums.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { JwtPayload } from '../common/strategies/jwt.strategy.js';
+import { ApplicationsService } from './applications.service.js';
+
+describe('ApplicationsService', () => {
+  let service: ApplicationsService;
+
+  const mockUser = {
+    id: 'user-uuid-1',
+    email: 'user@example.com',
+    role: Role.USER,
+  };
+
+  const mockAdmin = {
+    id: 'admin-uuid-1',
+    email: 'admin@example.com',
+    role: Role.ADMIN,
+  };
+
+  const mockApplication = {
+    id: 'app-uuid-1',
+    name: 'Order Service',
+    appId: 'app_1234567890abcdef',
+    appToken: 'apt_1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+    status: AppStatus.ACTIVE,
+    userId: 'user-uuid-1',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const mockPrismaService = {
+    user: {
+      findUnique: vi.fn(),
+    },
+    application: {
+      create: vi.fn(),
+    },
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ApplicationsService,
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+      ],
+    }).compile();
+
+    service = module.get<ApplicationsService>(ApplicationsService);
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  describe('generateAppId', () => {
+    it('should generate an appId starting with app_', () => {
+      const appId = service.generateAppId();
+      expect(appId).toMatch(/^app_[0-9a-f]{16}$/);
+    });
+
+    it('should generate distinct appIds on successive calls', () => {
+      const id1 = service.generateAppId();
+      const id2 = service.generateAppId();
+      expect(id1).not.toBe(id2);
+    });
+  });
+
+  describe('generateAppToken', () => {
+    it('should generate an appToken starting with apt_ and 64 hex characters', () => {
+      const appToken = service.generateAppToken();
+      expect(appToken).toMatch(/^apt_[0-9a-f]{64}$/);
+    });
+
+    it('should generate distinct appTokens on successive calls', () => {
+      const token1 = service.generateAppToken();
+      const token2 = service.generateAppToken();
+      expect(token1).not.toBe(token2);
+    });
+  });
+
+  describe('create', () => {
+    it('should create an application for the current user', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.create.mockResolvedValue(mockApplication);
+
+      const result = await service.create(
+        { name: 'Order Service' },
+        currentUser,
+      );
+
+      expect(result).toEqual(mockApplication);
+      expect(mockPrismaService.application.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            name: 'Order Service',
+            userId: mockUser.id,
+            status: AppStatus.ACTIVE,
+          }),
+        }),
+      );
+    });
+
+    it('should allow ADMIN to specify target userId for the application', async () => {
+      const currentAdmin: JwtPayload = {
+        sub: mockAdmin.id,
+        email: mockAdmin.email,
+        role: Role.ADMIN,
+      };
+
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+      mockPrismaService.application.create.mockResolvedValue({
+        ...mockApplication,
+        userId: mockUser.id,
+      });
+
+      const result = await service.create(
+        { name: 'Order Service', userId: mockUser.id },
+        currentAdmin,
+      );
+
+      expect(result.userId).toBe(mockUser.id);
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { id: mockUser.id },
+      });
+      expect(mockPrismaService.application.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            name: 'Order Service',
+            userId: mockUser.id,
+          }),
+        }),
+      );
+    });
+
+    it('should throw NotFoundException if ADMIN specifies non-existent user', async () => {
+      const currentAdmin: JwtPayload = {
+        sub: mockAdmin.id,
+        email: mockAdmin.email,
+        role: Role.ADMIN,
+      };
+
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.create(
+          { name: 'Order Service', userId: 'non-existent-user' },
+          currentAdmin,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockPrismaService.application.create).not.toHaveBeenCalled();
+    });
+
+    it('should ignore userId in body if caller is not ADMIN and use caller sub', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+      };
+
+      mockPrismaService.application.create.mockResolvedValue(mockApplication);
+
+      const result = await service.create(
+        { name: 'Order Service', userId: 'some-other-uuid' },
+        currentUser,
+      );
+
+      expect(result).toEqual(mockApplication);
+      expect(mockPrismaService.user.findUnique).not.toHaveBeenCalled();
+      expect(mockPrismaService.application.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            name: 'Order Service',
+            userId: mockUser.id,
+          }),
+        }),
+      );
+    });
+  });
+});
