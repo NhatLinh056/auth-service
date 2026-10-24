@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppStatus, Role } from '../generated/prisma/enums.js';
@@ -24,7 +28,7 @@ describe('ApplicationsService', () => {
   const mockApplication = {
     id: 'app-uuid-1',
     name: 'Order Service',
-    appId: 'app_1234567890abcdef',
+    appId: 'app_1234567890abcdef12345678',
     appToken: 'apt_1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
     status: AppStatus.ACTIVE,
     userId: 'user-uuid-1',
@@ -47,6 +51,8 @@ describe('ApplicationsService', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    mockPrismaService.application.findUnique.mockResolvedValue(null);
+    mockPrismaService.user.findUnique.mockResolvedValue(null);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -66,15 +72,48 @@ describe('ApplicationsService', () => {
   });
 
   describe('generateAppId', () => {
-    it('should generate an appId starting with app_', () => {
+    it('should generate an appId starting with app_ and 24 hex characters (28 chars total)', () => {
       const appId = service.generateAppId();
-      expect(appId).toMatch(/^app_[0-9a-f]{16}$/);
+      expect(appId).toMatch(/^app_[0-9a-f]{24}$/);
+      expect(appId.length).toBe(28);
     });
 
     it('should generate distinct appIds on successive calls', () => {
       const id1 = service.generateAppId();
       const id2 = service.generateAppId();
       expect(id1).not.toBe(id2);
+    });
+  });
+
+  describe('generateUniqueAppId', () => {
+    it('should return appId immediately if no collision exists in database', async () => {
+      mockPrismaService.application.findUnique.mockResolvedValue(null);
+
+      const appId = await service.generateUniqueAppId();
+
+      expect(appId).toMatch(/^app_[0-9a-f]{24}$/);
+      expect(mockPrismaService.application.findUnique).toHaveBeenCalledTimes(1);
+    });
+
+    it('should retry when collision occurs and return unique appId on next attempt', async () => {
+      // Lần 1: va chạm (trả về mockApplication), Lần 2: không va chạm (trả về null)
+      mockPrismaService.application.findUnique
+        .mockResolvedValueOnce(mockApplication)
+        .mockResolvedValueOnce(null);
+
+      const appId = await service.generateUniqueAppId();
+
+      expect(appId).toMatch(/^app_[0-9a-f]{24}$/);
+      expect(mockPrismaService.application.findUnique).toHaveBeenCalledTimes(2);
+    });
+
+    it('should throw InternalServerErrorException if all retry attempts collide', async () => {
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+
+      await expect(service.generateUniqueAppId(3)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+      expect(mockPrismaService.application.findUnique).toHaveBeenCalledTimes(3);
     });
   });
 

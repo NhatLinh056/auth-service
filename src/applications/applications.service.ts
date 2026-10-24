@@ -1,4 +1,9 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { AppStatus, Role } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -11,10 +16,34 @@ export class ApplicationsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Sinh mã AppID ngẫu nhiên (ví dụ: app_a1b2c3d4e5f6g7h8)
+   * Sinh mã AppID ngẫu nhiên theo chuẩn định danh bảo mật:
+   * - Tiền tố: 'app_'
+   * - Entropy: 12 bytes ngẫu nhiên từ CSPRNG (24 ký tự hex)
+   * - Định dạng: app_[0-9a-f]{24} (ví dụ: app_a1b2c3d4e5f6789012345678)
    */
   generateAppId(): string {
-    return `app_${randomBytes(8).toString('hex')}`;
+    return `app_${randomBytes(12).toString('hex')}`;
+  }
+
+  /**
+   * Sinh mã AppID duy nhất, tự động kiểm tra chống trùng lặp trong cơ sở dữ liệu.
+   * Thử lại tối đa maxRetries lần để đảm bảo không bị xung đột khóa duy nhất.
+   */
+  async generateUniqueAppId(maxRetries = 5): Promise<string> {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const appId = this.generateAppId();
+      const existing = await this.prisma.application.findUnique({
+        where: { appId },
+      });
+
+      if (!existing) {
+        return appId;
+      }
+    }
+
+    throw new InternalServerErrorException(
+      'Không thể sinh mã AppID độc nhất sau nhiều lần thử',
+    );
   }
 
   /**
@@ -28,7 +57,7 @@ export class ApplicationsService {
    * Tạo ứng dụng mới:
    * - Nếu là ADMIN và có chỉ định userId, kiểm tra tính tồn tại của user đó và gán sở hữu.
    * - Ngược lại, ứng dụng luôn thuộc về tài khoản người dùng hiện tại (currentUser.sub).
-   * - Tự động sinh appId và appToken.
+   * - Tự động sinh appId độc nhất và appToken bảo mật.
    */
   async create(createAppDto: CreateApplicationDto, currentUser: JwtPayload) {
     let targetUserId = currentUser.sub;
@@ -45,7 +74,7 @@ export class ApplicationsService {
       targetUserId = createAppDto.userId;
     }
 
-    const appId = this.generateAppId();
+    const appId = await this.generateUniqueAppId();
     const appToken = this.generateAppToken();
 
     return this.prisma.application.create({
