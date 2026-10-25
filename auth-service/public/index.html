@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20261025_03">
 </head>
 <body>
 
@@ -69,7 +69,7 @@
       <form id="auth-register-form" style="display: none;" onsubmit="event.preventDefault(); handleAuthRegister();">
         <div class="form-group">
           <label class="form-label" data-i18n="register.name">Full Name</label>
-          <input type="text" class="form-control" id="auth-reg-name" placeholder="John Doe" autocomplete="name">
+          <input type="text" class="form-control" id="auth-reg-name" placeholder="John Doe" autocomplete="name" data-i18n-placeholder="register.name_placeholder">
         </div>
         <div class="form-group">
           <label class="form-label" data-i18n="login.email">Email Address</label>
@@ -287,7 +287,7 @@ HTTP/1.1 200 OK
           <table class="data-table">
             <thead>
               <tr>
-                <th data-i18n="table.name">Name</th>
+                <th data-i18n="table.app_name">Name</th>
                 <th data-i18n="table.appid">App ID</th>
                 <th data-i18n="table.status">Status</th>
                 <th data-i18n="table.created">Created</th>
@@ -319,11 +319,38 @@ HTTP/1.1 200 OK
         </button>
       </div>
 
+      <!-- Applications Search & Filter Toolbar -->
+      <div class="table-toolbar">
+        <div class="table-toolbar-left">
+          <div class="search-box">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="apps-search-input" class="search-input" placeholder="Search by name, App ID, owner..." oninput="onAppsFilterChange()" data-i18n-placeholder="filter.search_apps">
+          </div>
+          <select id="apps-status-filter" class="filter-select" onchange="onAppsFilterChange()">
+            <option value="ALL" data-i18n="filter.all_statuses">All Statuses</option>
+            <option value="ACTIVE" data-i18n="filter.status_active">ACTIVE</option>
+            <option value="INACTIVE" data-i18n="filter.status_inactive">INACTIVE</option>
+          </select>
+          <select id="apps-sort-by" class="filter-select" onchange="onAppsFilterChange()">
+            <option value="newest" data-i18n="filter.sort_newest">Newest First</option>
+            <option value="oldest" data-i18n="filter.sort_oldest">Oldest First</option>
+            <option value="name_asc" data-i18n="filter.sort_name_asc">Name: A &rarr; Z</option>
+            <option value="name_desc" data-i18n="filter.sort_name_desc">Name: Z &rarr; A</option>
+          </select>
+        </div>
+        <div class="table-toolbar-right">
+          <span id="apps-count-badge" class="results-count-badge">Showing 0 applications</span>
+        </div>
+      </div>
+
       <div class="table-container">
         <table class="data-table">
           <thead>
             <tr>
-              <th data-i18n="table.name">Name</th>
+              <th data-i18n="table.app_name">Name</th>
               <th data-i18n="table.appid">App ID</th>
               <th data-i18n="table.status">Status</th>
               <th data-i18n="table.owner">Owner</th>
@@ -354,13 +381,40 @@ HTTP/1.1 200 OK
         <button class="btn btn-secondary" onclick="loadUsers()" data-i18n="users.refresh">Refresh</button>
       </div>
 
+      <!-- Users Search & Filter Toolbar -->
+      <div class="table-toolbar">
+        <div class="table-toolbar-left">
+          <div class="search-box">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="users-search-input" class="search-input" placeholder="Search by email, name..." oninput="onUsersFilterChange()" data-i18n-placeholder="filter.search_users">
+          </div>
+          <select id="users-role-filter" class="filter-select" onchange="onUsersFilterChange()">
+            <option value="ALL" data-i18n="filter.all_roles">All Roles</option>
+            <option value="ADMIN" data-i18n="filter.role_admin">ADMIN</option>
+            <option value="USER" data-i18n="filter.role_user">USER</option>
+          </select>
+          <select id="users-sort-by" class="filter-select" onchange="onUsersFilterChange()">
+            <option value="email_asc" data-i18n="filter.sort_email_asc">Email: A &rarr; Z</option>
+            <option value="email_desc" data-i18n="filter.sort_email_desc">Email: Z &rarr; A</option>
+            <option value="name_asc" data-i18n="filter.sort_name_asc">Name: A &rarr; Z</option>
+            <option value="role_admin" data-i18n="filter.sort_role_admin_first">Role: Admin First</option>
+          </select>
+        </div>
+        <div class="table-toolbar-right">
+          <span id="users-count-badge" class="results-count-badge">Showing 0 users</span>
+        </div>
+      </div>
+
       <div class="table-container">
         <table class="data-table">
           <thead>
             <tr>
-              <th>User ID</th>
-              <th>Email</th>
-              <th data-i18n="table.name">Name</th>
+              <th data-i18n="table.user_id">User ID</th>
+              <th data-i18n="table.email">Email</th>
+              <th data-i18n="table.user_name">Name</th>
               <th data-i18n="table.role">Role</th>
               <th style="text-align: right;" data-i18n="table.actions">Actions</th>
             </tr>
@@ -377,55 +431,59 @@ HTTP/1.1 200 OK
     </div>
 
     <!-- ═════════════════════════════════════════════════════════════════════════
-         TAB 4: SIGN-IN METHODS (FIREBASE CONSOLE STYLE - APPLICATION SCOPED)
+         TAB 4: SIGN-IN METHODS (APPLICATION-SCOPED OAUTH)
          ═════════════════════════════════════════════════════════════════════════ -->
     <div class="tab-content" id="tab-providers">
       <div class="page-header">
         <div>
           <h1 class="page-title" data-i18n="providers.title">Sign-in Methods</h1>
-          <p class="page-subtitle" data-i18n="providers.subtitle">Configure identity providers (Google, Facebook) per application mimicking Firebase Authentication console.</p>
+          <p class="page-subtitle" data-i18n="providers.subtitle">Configure OAuth 2.0 identity providers per application.</p>
         </div>
-        <button class="btn btn-secondary" onclick="loadOAuthProviders()" data-i18n="users.refresh">Refresh</button>
-      </div>
-
-      <!-- Project/Application Context Selector (Firebase Style) -->
-      <div class="integration-card" style="margin-bottom: 20px; padding: 16px 20px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(59, 130, 246, 0.15); color: var(--primary); display: flex; align-items: center; justify-content: center;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-            </div>
-            <div>
-              <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-dim);" data-i18n="providers.target_app_label">
-                Target Project / Application:
-              </div>
-              <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
-                <select id="providers-app-select" class="form-control" style="padding: 6px 12px; font-weight: 600; min-width: 280px;" onchange="onSelectAppForProviders(this.value)">
-                  <option value="">Loading applications...</option>
-                </select>
-                <span class="badge badge-success" id="providers-app-status-badge">ACTIVE</span>
-              </div>
-            </div>
-          </div>
-          <div id="providers-app-meta" style="font-size: 13px; color: var(--text-dim); display: flex; align-items: center; gap: 12px;">
-            <!-- Populated dynamically: AppID and Token -->
-          </div>
-        </div>
-      </div>
-
-      <!-- Firebase Guidance Box -->
-      <div class="integration-card" style="margin-bottom: 24px; padding: 18px 22px;">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <div>
-            <h2 class="section-title" data-i18n="providers.info_title">Firebase Authentication Sign-in Methods</h2>
-            <p class="section-subtitle" data-i18n="providers.info_desc">Client microservices and frontends discover available providers via public API <code>GET /auth/providers?app_id=...</code>.</p>
-          </div>
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
           <div class="status-pill">
             <span class="status-dot"></span>
             <span data-i18n="providers.oauth_ready">OAuth 2.0 Engine: Ready</span>
           </div>
+          <button class="btn btn-secondary" onclick="loadOAuthProviders()" data-i18n="users.refresh">Refresh</button>
+        </div>
+      </div>
+
+      <!-- Application Context Selector Panel -->
+      <div class="app-context-panel">
+        <div class="app-context-header">
+          <div class="app-context-title-group">
+            <div class="app-context-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="app-context-label" data-i18n="providers.target_app_label">Target Application</div>
+              <div class="app-context-sublabel" data-i18n="providers.target_app_sublabel">Select client application to manage its independent OAuth 2.0 sign-in methods</div>
+            </div>
+          </div>
+          <span id="providers-app-count-hint" class="app-context-count"></span>
+        </div>
+
+        <!-- Application Context Controls (Grid Layout: Search Filter + Select Dropdown) -->
+        <div class="app-context-controls-grid">
+          <div class="search-box app-search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="providers-app-search" class="search-input" placeholder="Search by name or App ID..." oninput="onFilterProvidersAppSelect(this.value)" data-i18n-placeholder="filter.filter_apps_select">
+          </div>
+          <div class="app-select-wrapper">
+            <select id="providers-app-select" class="form-control app-select-input" onchange="onSelectAppForProviders(this.value)">
+              <option value="" data-i18n="apps.loading">Loading applications...</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Dedicated Application Context Meta Bar -->
+        <div id="providers-app-meta" class="app-context-meta-bar">
+          <!-- Populated dynamically: status indicator, mono AppID with copy button, and details button -->
         </div>
       </div>
 
@@ -469,7 +527,7 @@ HTTP/1.1 200 OK
       <form onsubmit="event.preventDefault(); createApp(document.getElementById('new-app-name').value, document.getElementById('new-app-target-user')?.value);">
         <div class="form-group">
           <label class="form-label" data-i18n="create_app.name_label">Application Name</label>
-          <input type="text" class="form-control" id="new-app-name" required placeholder="e.g. Order Service, Payment Gateway">
+          <input type="text" class="form-control" id="new-app-name" required placeholder="e.g. Order Service, Payment Gateway" data-i18n-placeholder="create_app.placeholder">
         </div>
 
         <div class="modal-actions">
@@ -524,7 +582,7 @@ HTTP/1.1 200 OK
         </div>
       </div>
 
-      <!-- Firebase-style SDK Setup & Configuration -->
+      <!-- Microservice SDK Setup & Configuration -->
       <div class="sdk-setup-card">
         <div class="sdk-setup-header">
           <span class="sdk-setup-title">
@@ -545,7 +603,7 @@ HTTP/1.1 200 OK
 
         <div class="code-block-wrapper">
           <pre class="code-snippet-box"><code id="sdk-snippet-code">...</code></pre>
-          <button type="button" class="btn-copy-code" onclick="copySdkSnippet()" title="Copy snippet">
+          <button type="button" class="btn-copy-code" onclick="copySdkSnippet()" title="Copy snippet" data-i18n-title="detail.copy_snippet">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -584,8 +642,8 @@ HTTP/1.1 200 OK
       <div class="form-group">
         <label class="form-label" data-i18n="role_modal.select_label">Select Role</label>
         <select class="form-control" id="role-modal-select">
-          <option value="USER">USER</option>
-          <option value="ADMIN">ADMIN</option>
+          <option value="USER" data-i18n="table.role_user">USER</option>
+          <option value="ADMIN" data-i18n="table.role_admin">ADMIN</option>
         </select>
       </div>
 
@@ -609,10 +667,10 @@ HTTP/1.1 200 OK
       <div id="modal-provider-guide-box" style="margin-bottom: 18px; padding: 14px 16px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: var(--radius-md);">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
           <span style="font-weight: 600; font-size: 13px; color: var(--text-main);" id="modal-guide-title">
-            📋 Hướng dẫn lấy Client ID &amp; Secret:
+            📋 Instructions:
           </span>
           <a href="#" target="_blank" id="modal-provider-portal-link" class="btn btn-secondary btn-xs" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: #818cf8;">
-            <span id="modal-portal-btn-text">Mở Developer Console</span> &nearr;
+            <span id="modal-portal-btn-text" data-i18n="provider_modal.portal_btn">Open Developer Console</span> &nearr;
           </a>
         </div>
         <div id="modal-guide-steps" style="font-size: 12px; line-height: 1.6; color: var(--text-muted);">
@@ -625,7 +683,7 @@ HTTP/1.1 200 OK
       <form onsubmit="event.preventDefault(); saveProviderConfig();">
         <div class="form-group">
           <label class="form-label" data-i18n="provider_modal.client_id">Client ID</label>
-          <input type="text" class="form-control" id="modal-provider-client-id" required placeholder="e.g. 123456789-abcdef.apps.googleusercontent.com">
+          <input type="text" class="form-control" id="modal-provider-client-id" required placeholder="e.g. 123456789-abcdef.apps.googleusercontent.com" data-i18n-placeholder="provider_modal.client_id_placeholder">
         </div>
 
         <div class="form-group">
@@ -634,10 +692,10 @@ HTTP/1.1 200 OK
             <span id="modal-provider-secret-status" style="font-size: 11px; font-weight: 500;"></span>
           </div>
           <div style="position: relative;">
-            <input type="password" class="form-control" id="modal-provider-client-secret" placeholder="Enter new secret (leave blank to keep current)">
-            <button type="button" class="btn-link-action" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px;" onclick="toggleModalSecretVisibility()">Reveal</button>
+            <input type="password" class="form-control" id="modal-provider-client-secret" placeholder="Enter new secret (leave blank to keep current)" data-i18n-placeholder="provider_modal.client_secret_placeholder">
+            <button type="button" id="modal-secret-toggle-btn" class="btn-link-action" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px;" onclick="toggleModalSecretVisibility()" data-i18n="detail.reveal">Reveal</button>
           </div>
-          <div class="form-hint" data-i18n="provider_modal.secret_hint">Secret được lưu trữ bảo mật trên server. Để trống ô này nếu muốn giữ nguyên secret đã lưu trước đó.</div>
+          <div class="form-hint" data-i18n="provider_modal.secret_hint">Secret is securely stored on server. Leave blank to keep existing configured secret.</div>
         </div>
 
         <div class="form-group">
@@ -666,6 +724,6 @@ HTTP/1.1 200 OK
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=20261025_03"></script>
 </body>
 </html>

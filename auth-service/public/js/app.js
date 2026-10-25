@@ -42,11 +42,11 @@ const translations = {
       title: 'How Other Microservices Connect To Auth Service',
       subtitle: '3 simple steps for any client microservice to authenticate with Auth Service using AppID & AppToken.',
       ready_pill: 'Status: Ready to Connect',
-      step1_title: '1. Get AppID & AppToken',
+      step1_title: 'Get AppID & AppToken',
       step1_desc: 'Create an app in the "Applications" tab above. Copy AppID and AppToken into your client microservice configuration file (.env).',
-      step2_title: '2. Send 2 HTTP Headers',
+      step2_title: 'Send 2 HTTP Headers',
       step2_desc: 'Whenever calling Auth Service, automatically attach X-App-Id and X-App-Token headers to your requests.',
-      step3_title: '3. Auth Service Authorizes Request',
+      step3_title: 'Auth Service Authorizes Request',
       step3_desc: 'AppAuthGuard verifies credentials against PostgreSQL. If valid and ACTIVE, request is approved with 200 OK.',
     },
     apps: {
@@ -56,11 +56,13 @@ const translations = {
       loading: 'Loading applications...',
       empty: 'No applications found. Create your first application to generate credentials.',
       empty_unauth: 'Please sign in to view and manage registered applications.',
+      goto_providers_title: 'Configure Sign-in Methods for this application',
+      btn_providers: 'Sign-in Methods',
     },
     providers: {
       title: 'Sign-in Methods',
-      subtitle: 'Configure identity providers (Google, Facebook) mimicking Firebase Authentication console.',
-      info_title: 'Firebase Authentication Sign-in Methods',
+      subtitle: 'Configure OAuth 2.0 identity providers (Google, Facebook) independently per application.',
+      info_title: 'OAuth 2.0 & Identity Providers',
       info_desc: 'Client microservices and frontends discover available providers via public API GET /auth/providers.',
       oauth_ready: 'OAuth 2.0 Engine: Ready',
       table_provider: 'Provider',
@@ -76,21 +78,30 @@ const translations = {
       disable: 'Disable',
       toggle_success: 'Provider status updated.',
       config_saved: 'Provider configuration saved successfully.',
-      target_app_label: 'Target Project / Application:',
+      target_app_label: 'Target Application',
+      target_app_sublabel: 'Select client application to manage its independent OAuth 2.0 sign-in methods',
       no_apps: 'No applications found. Please create an application in Applications tab first.',
+      status_enabled: 'ENABLED',
+      status_disabled: 'DISABLED',
     },
     provider_modal: {
       title: 'Configure Provider',
       desc: 'Set Client ID and Client Secret from Developer Console (Google Cloud or Meta for Developers).',
       client_id: 'Client ID',
+      client_id_placeholder: 'e.g. 123456789-abcdef.apps.googleusercontent.com',
       client_secret: 'Client Secret',
+      client_secret_placeholder: 'Enter new secret (leave blank to keep current)',
       secret_hint: 'Secret is securely stored on server. Leave blank to keep existing configured secret.',
       callback_label: 'Authorized Redirect URI (Copy this to Developer Console)',
       enable_label: 'Enable this sign-in method',
       portal_btn: 'Open Developer Console',
     },
     table: {
+      user_id: 'User ID',
+      email: 'Email',
       name: 'Name',
+      app_name: 'Application Name',
+      user_name: 'Full Name',
       appid: 'App ID',
       status: 'Status',
       owner: 'Owner',
@@ -102,12 +113,41 @@ const translations = {
       activate: 'Activate',
       delete: 'Delete',
       assign_role: 'Assign Role',
+      status_active: 'ACTIVE',
+      status_inactive: 'INACTIVE',
+      role_admin: 'ADMIN',
+      role_user: 'USER',
+      copy_appid: 'Copy AppID',
     },
     users: {
       title: 'User Management',
       subtitle: 'Role-based access control (RBAC) and user directory.',
       refresh: 'Refresh',
       loading: 'Loading users...',
+      search_placeholder: 'Search by email, name...',
+    },
+    filter: {
+      search_apps: 'Search by name, App ID, owner...',
+      search_users: 'Search by email, name...',
+      all_statuses: 'All Statuses',
+      status_active: 'ACTIVE',
+      status_inactive: 'INACTIVE',
+      all_roles: 'All Roles',
+      role_admin: 'ADMIN',
+      role_user: 'USER',
+      sort_newest: 'Newest First',
+      sort_oldest: 'Oldest First',
+      sort_name_asc: 'Name: A → Z',
+      sort_name_desc: 'Name: Z → A',
+      sort_email_asc: 'Email: A → Z',
+      sort_email_desc: 'Email: Z → A',
+      sort_role_admin_first: 'Role: Admin First',
+      showing_apps: 'Showing {count} of {total} applications',
+      showing_users: 'Showing {count} of {total} users',
+      no_matches: 'No matching records found.',
+      clear_filter: 'Clear Filters',
+      filter_apps_select: 'Filter project...',
+      apps_unit: 'apps',
     },
     detail: {
       title: 'Application Details',
@@ -134,6 +174,7 @@ const translations = {
       title: 'Create Account',
       desc: 'Register a new user account on the Auth Service.',
       name: 'Full Name',
+      name_placeholder: 'John Doe',
       password: 'Password (min 6 characters)',
     },
     auth_screen: {
@@ -211,11 +252,11 @@ const translations = {
       title: 'Cách Microservice Khác Kết Nối Tới Auth Service',
       subtitle: '3 bước đơn giản để bất kỳ microservice nào sử dụng AppID & AppToken để xác thực qua Auth Service.',
       ready_pill: 'Trạng Thái: Sẵn Sàng Kết Nối',
-      step1_title: '1. Lấy AppID & AppToken',
+      step1_title: 'Lấy AppID & AppToken',
       step1_desc: 'Vào tab "Quản Lý Ứng Dụng" tạo một App. Copy mã AppID và AppToken dán vào file cấu hình (.env) của microservice.',
-      step2_title: '2. Gửi Kèm 2 Header HTTP',
+      step2_title: 'Gửi Kèm 2 Header HTTP',
       step2_desc: 'Mỗi khi microservice gọi API sang Auth Service, tự động gắn 2 header X-App-Id và X-App-Token vào request.',
-      step3_title: '3. Auth Service Tự Động Xác Thực',
+      step3_title: 'Auth Service Tự Động Xác Thực',
       step3_desc: 'AppAuthGuard tự đối soát database PostgreSQL. Nếu hợp lệ và đang mở (ACTIVE) sẽ trả về 200 OK cho phép xử lý.',
     },
     apps: {
@@ -225,17 +266,19 @@ const translations = {
       loading: 'Đang tải danh sách ứng dụng...',
       empty: 'Chưa có ứng dụng nào. Hãy tạo ứng dụng đầu tiên để sinh cặp khóa AppID và AppToken.',
       empty_unauth: 'Vui lòng đăng nhập để xem và quản lý danh sách ứng dụng của bạn.',
+      goto_providers_title: 'Cấu hình phương thức đăng nhập cho ứng dụng này',
+      btn_providers: 'Phương thức Auth',
     },
     providers: {
       title: 'Phương Thức Đăng Nhập',
-      subtitle: 'Cấu hình các nhà cung cấp định danh (Google, Facebook) theo mô hình Firebase Authentication.',
-      info_title: 'Cấu Hình Phương Thức Đăng Nhập (Firebase Style)',
+      subtitle: 'Cấu hình các nhà cung cấp định danh OAuth 2.0 (Google, Facebook) độc lập cho từng ứng dụng.',
+      info_title: 'Cấu Hình Định Danh SSO & OAuth 2.0',
       info_desc: 'Client microservices và frontends phát hiện các nhà cung cấp khả dụng qua API công khai GET /auth/providers.',
       oauth_ready: 'Bộ máy OAuth 2.0: Sẵn Sàng',
       table_provider: 'Nhà Cung Cấp',
       table_client_id: 'Client ID',
       table_secret: 'Client Secret',
-      table_callback: 'Authorized Callback URI',
+      table_callback: 'URI Phản Hồi Ủy Quyền (Callback)',
       loading: 'Đang tải danh sách nhà cung cấp...',
       not_configured: '(Chưa cấu hình)',
       secret_set: 'Đã lưu secret',
@@ -245,24 +288,33 @@ const translations = {
       disable: 'Tắt',
       toggle_success: 'Đã cập nhật trạng thái nhà cung cấp.',
       config_saved: 'Đã lưu cấu hình nhà cung cấp thành công.',
-      target_app_label: 'Dự Án / Ứng Dụng Đang Chọn:',
+      target_app_label: 'Dự Án / Ứng Dụng Đang Chọn',
+      target_app_sublabel: 'Chọn ứng dụng để cấu hình các phương thức đăng nhập OAuth 2.0 độc lập',
       no_apps: 'Chưa có ứng dụng nào. Vui lòng tạo ứng dụng trong tab Quản Lý Ứng Dụng trước.',
+      status_enabled: 'ĐÃ BẬT',
+      status_disabled: 'ĐÃ TẮT',
     },
     provider_modal: {
       title: 'Cấu Hình Nhà Cung Cấp',
       desc: 'Điền Client ID và Client Secret từ Developer Console (Google Cloud hoặc Meta for Developers).',
       client_id: 'Client ID',
+      client_id_placeholder: 'Ví dụ: 123456789-abcdef.apps.googleusercontent.com',
       client_secret: 'Client Secret',
+      client_secret_placeholder: 'Nhập secret mới (để trống nếu muốn giữ nguyên)',
       secret_hint: 'Secret được lưu trữ bảo mật trên server. Để trống ô này nếu muốn giữ nguyên secret đã lưu trước đó.',
       callback_label: 'Authorized Redirect URI (Sao chép URL này vào Developer Console)',
-      enable_label: 'Kích hoạt phương thức đăng nhập này',
+      enable_label: 'Kích hoạt phương thức đăng nhập này cho ứng dụng',
       portal_btn: 'Mở Developer Console',
     },
     table: {
-      name: 'Tên Ứng Dụng',
-      appid: 'App ID',
+      user_id: 'Mã Người Dùng',
+      email: 'Địa Chỉ Email',
+      name: 'Tên',
+      app_name: 'Tên Ứng Dụng',
+      user_name: 'Họ Và Tên',
+      appid: 'Mã App ID',
       status: 'Trạng Thái',
-      owner: 'Người Sở Hữu',
+      owner: 'Chủ Sở Hữu',
       created: 'Ngày Tạo',
       actions: 'Thao Tác',
       role: 'Vai Trò',
@@ -271,12 +323,41 @@ const translations = {
       activate: 'Mở Khóa',
       delete: 'Xóa',
       assign_role: 'Phân Quyền',
+      status_active: 'HOẠT ĐỘNG',
+      status_inactive: 'VÔ HIỆU HÓA',
+      role_admin: 'QUẢN TRỊ VIÊN',
+      role_user: 'NGƯỜI DÙNG',
+      copy_appid: 'Sao chép AppID',
     },
     users: {
       title: 'Quản Trị Người Dùng',
       subtitle: 'Quản lý phân quyền theo vai trò (RBAC) và danh sách tài khoản trong hệ thống.',
       refresh: 'Làm Mới',
       loading: 'Đang tải danh sách người dùng...',
+      search_placeholder: 'Tìm kiếm theo email, họ tên...',
+    },
+    filter: {
+      search_apps: 'Tìm kiếm theo tên, App ID, chủ sở hữu...',
+      search_users: 'Tìm kiếm theo email, họ tên...',
+      all_statuses: 'Tất Cả Trạng Thái',
+      status_active: 'HOẠT ĐỘNG',
+      status_inactive: 'VÔ HIỆU HÓA',
+      all_roles: 'Tất Cả Vai Trò',
+      role_admin: 'QUẢN TRỊ VIÊN',
+      role_user: 'NGƯỜI DÙNG',
+      sort_newest: 'Mới nhất trước',
+      sort_oldest: 'Cũ nhất trước',
+      sort_name_asc: 'Tên: A → Z',
+      sort_name_desc: 'Tên: Z → A',
+      sort_email_asc: 'Email: A → Z',
+      sort_email_desc: 'Email: Z → A',
+      sort_role_admin_first: 'Vai trò: Admin trước',
+      showing_apps: 'Hiển thị {count} / {total} ứng dụng',
+      showing_users: 'Hiển thị {count} / {total} người dùng',
+      no_matches: 'Không tìm thấy kết quả phù hợp.',
+      clear_filter: 'Xóa bộ lọc',
+      filter_apps_select: 'Lọc nhanh dự án...',
+      apps_unit: 'ứng dụng',
     },
     detail: {
       title: 'Chi Tiết Ứng Dụng',
@@ -303,6 +384,7 @@ const translations = {
       title: 'Tạo Tài Khoản',
       desc: 'Đăng ký tài khoản người dùng mới trên hệ thống Auth Service.',
       name: 'Họ Và Tên',
+      name_placeholder: 'Ví dụ: Nguyễn Văn A',
       password: 'Mật Khẩu (tối thiểu 6 ký tự)',
     },
     auth_screen: {
@@ -362,6 +444,17 @@ const state = {
   activeEditProvider: null,
   activeDetailApp: null,
   activeSdkTab: 'env',
+  appFilter: {
+    search: '',
+    status: 'ALL',
+    sortBy: 'newest',
+  },
+  userFilter: {
+    search: '',
+    role: 'ALL',
+    sortBy: 'email_asc',
+  },
+  providersAppSearch: '',
 };
 
 // Helper to get nested translation value
@@ -388,6 +481,7 @@ function setLanguage(lang) {
   document.querySelectorAll('#lang-btn-vi, #auth-lang-btn-vi').forEach(el => el.classList.toggle('active', lang === 'vi'));
 
   document.documentElement.lang = lang;
+  document.title = lang === 'vi' ? 'Auth Service — Bảng Điều Khiển Quản Trị & Nhà Phát Triển' : 'Auth Service — Developer Console';
 
   // Translate all static data-i18n elements
   document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -395,18 +489,34 @@ function setLanguage(lang) {
     el.textContent = t(key);
   });
 
+  // Translate placeholder attributes
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    el.setAttribute('placeholder', t(key));
+  });
+
+  // Translate title attributes
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    el.setAttribute('title', t(key));
+  });
+
   // Re-render dynamic elements with current language
   updateAuthUI();
   if (state.applications && state.applications.length > 0) {
-    renderApplications(state.applications);
+    renderApplications();
     renderOverviewRecentApps(state.applications);
+    populateProvidersAppDropdown();
   } else {
     renderEmptyAppsTable(state.token ? t('apps.empty') : t('apps.empty_unauth'));
     renderOverviewRecentApps([]);
+    updateAppsCountBadge(0, 0);
   }
 
   if (state.users && state.users.length > 0) {
-    renderUsersTable(state.users);
+    renderUsersTable();
+  } else if (state.user?.role === 'ADMIN') {
+    updateUsersCountBadge(0, 0);
   }
 
   if (state.providers && state.providers.length > 0) {
@@ -421,7 +531,27 @@ function setLanguage(lang) {
     if (revealBtn) {
       revealBtn.textContent = isMasked ? t('detail.reveal') : t('detail.hide');
     }
+    const statusElem = document.getElementById('detail-app-status');
+    if (statusElem) {
+      statusElem.textContent = state.activeDetailApp.status === 'ACTIVE' ? t('table.status_active') : t('table.status_inactive');
+    }
+    const createdElem = document.getElementById('detail-app-created');
+    if (createdElem && state.activeDetailApp.createdAt) {
+      createdElem.textContent = new Date(state.activeDetailApp.createdAt).toLocaleString(state.lang === 'vi' ? 'vi-VN' : 'en-US');
+    }
     updateSdkSnippetView();
+  }
+
+  // Update provider modal if open
+  if (state.activeEditProvider) {
+    openEditProviderModal(state.activeEditProvider.provider);
+  }
+
+  const modalSecretBtn = document.getElementById('modal-secret-toggle-btn');
+  if (modalSecretBtn) {
+    const secretInput = document.getElementById('modal-provider-client-secret');
+    const isPw = !secretInput || secretInput.type === 'password';
+    modalSecretBtn.textContent = isPw ? t('detail.reveal') : t('detail.hide');
   }
 }
 
@@ -497,12 +627,12 @@ function updateAuthUI() {
     if (userBadge) userBadge.style.display = 'flex';
     if (userEmailDisplay) userEmailDisplay.textContent = state.user.email;
     if (userRoleDisplay) {
-      userRoleDisplay.textContent = state.user.role;
+      userRoleDisplay.textContent = state.user.role === 'ADMIN' ? t('table.role_admin') : t('table.role_user');
       userRoleDisplay.className = `nav-user-role ${state.user.role === 'ADMIN' ? 'role-admin' : ''}`;
     }
 
     if (overviewIdentity) overviewIdentity.textContent = state.user.email;
-    if (overviewRole) overviewRole.textContent = `${t('overview.role_prefix')}${state.user.role}`;
+    if (overviewRole) overviewRole.textContent = `${t('overview.role_prefix')}${state.user.role === 'ADMIN' ? t('table.role_admin') : t('table.role_user')}`;
 
     const isAdmin = state.user.role === 'ADMIN';
     if (adminTab) {
@@ -514,6 +644,8 @@ function updateAuthUI() {
   } else {
     if (authView) authView.style.display = 'flex';
     if (appShell) appShell.style.display = 'none';
+    if (overviewIdentity) overviewIdentity.textContent = t('overview.not_auth');
+    if (overviewRole) overviewRole.textContent = t('overview.signin_hint');
   }
 }
 
@@ -664,25 +796,98 @@ function renderEmptyAppsTable(message) {
       <td colspan="6" style="text-align: center; padding: 36px; color: var(--text-muted);">
         <p style="margin-bottom: 12px;">${message}</p>
         ${!state.token 
-          ? `<button class="btn btn-secondary btn-sm" onclick="openModal('login-modal')">${t('nav.signin')}</button>` 
+          ? `<button class="btn btn-secondary btn-sm" onclick="switchAuthMode('signin'); logout();">${t('nav.signin')}</button>` 
           : `<button class="btn btn-primary btn-sm" onclick="openModal('create-app-modal')">${t('apps.create_btn')}</button>`}
       </td>
     </tr>
   `;
 }
 
+function updateAppsCountBadge(showingCount, totalCount) {
+  const badge = document.getElementById('apps-count-badge');
+  if (!badge) return;
+  const tpl = t('filter.showing_apps');
+  badge.textContent = tpl.replace('{count}', showingCount).replace('{total}', totalCount);
+}
+
+function onAppsFilterChange() {
+  const searchInput = document.getElementById('apps-search-input');
+  const statusFilter = document.getElementById('apps-status-filter');
+  const sortBy = document.getElementById('apps-sort-by');
+
+  if (searchInput) state.appFilter.search = searchInput.value;
+  if (statusFilter) state.appFilter.status = statusFilter.value;
+  if (sortBy) state.appFilter.sortBy = sortBy.value;
+
+  renderApplications();
+}
+
+function clearAppsFilter() {
+  state.appFilter = { search: '', status: 'ALL', sortBy: 'newest' };
+  const searchInput = document.getElementById('apps-search-input');
+  const statusFilter = document.getElementById('apps-status-filter');
+  const sortBy = document.getElementById('apps-sort-by');
+  if (searchInput) searchInput.value = '';
+  if (statusFilter) statusFilter.value = 'ALL';
+  if (sortBy) sortBy.value = 'newest';
+
+  renderApplications();
+}
+
 function renderApplications(apps) {
   const tableBody = document.getElementById('apps-table-body');
   const countDisplay = document.getElementById('overview-apps-count');
-  if (countDisplay) countDisplay.textContent = apps ? apps.length : 0;
+  const total = state.applications ? state.applications.length : 0;
+  if (countDisplay) countDisplay.textContent = total;
 
   if (!tableBody) return;
-  if (!apps || apps.length === 0) {
+  if (!state.applications || state.applications.length === 0) {
     renderEmptyAppsTable(t('apps.empty'));
+    updateAppsCountBadge(0, 0);
     return;
   }
 
-  tableBody.innerHTML = apps.map(app => {
+  // Filter applications
+  let filtered = [...state.applications];
+  const q = (state.appFilter.search || '').trim().toLowerCase();
+  if (q) {
+    filtered = filtered.filter(app => {
+      const name = (app.name || '').toLowerCase();
+      const appId = (app.appId || '').toLowerCase();
+      const owner = (app.user?.email || '').toLowerCase();
+      return name.includes(q) || appId.includes(q) || owner.includes(q);
+    });
+  }
+
+  if (state.appFilter.status && state.appFilter.status !== 'ALL') {
+    filtered = filtered.filter(app => app.status === state.appFilter.status);
+  }
+
+  // Sort applications
+  const sortBy = state.appFilter.sortBy || 'newest';
+  filtered.sort((a, b) => {
+    if (sortBy === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
+    if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+    if (sortBy === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+    if (sortBy === 'name_desc') return (b.name || '').localeCompare(a.name || '');
+    return 0;
+  });
+
+  updateAppsCountBadge(filtered.length, total);
+
+  if (filtered.length === 0) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center; padding: 36px; color: var(--text-muted);">
+          <p style="margin-bottom: 12px;">${t('filter.no_matches')}</p>
+          <button class="btn btn-secondary btn-sm" onclick="clearAppsFilter()">${t('filter.clear_filter')}</button>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tableBody.innerHTML = filtered.map(app => {
     const isActive = app.status === 'ACTIVE';
     const createdDate = new Date(app.createdAt).toISOString().split('T')[0];
     const ownerEmail = app.user?.email || state.user?.email || '—';
@@ -693,7 +898,7 @@ function renderApplications(apps) {
         <td>
           <span class="mono-tag">
             <span>${app.appId}</span>
-            <button class="btn-icon" style="width: 20px; height: 20px;" title="Copy AppID" onclick="copyToClipboard('${app.appId}', 'AppID')">
+            <button class="btn-icon" style="width: 20px; height: 20px;" title="${t('table.copy_appid')}" onclick="copyToClipboard('${app.appId}', 'AppID')">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -703,14 +908,14 @@ function renderApplications(apps) {
         </td>
         <td>
           <span class="status-indicator ${isActive ? 'active' : 'inactive'}">
-            ${isActive ? 'ACTIVE' : 'INACTIVE'}
+            ${isActive ? t('table.status_active') : t('table.status_inactive')}
           </span>
         </td>
         <td style="color: var(--text-muted);">${escapeHtml(ownerEmail)}</td>
         <td style="color: var(--text-dim); font-size: 12px;">${createdDate}</td>
         <td style="text-align: right; white-space: nowrap;">
-          <button class="btn btn-secondary btn-sm" onclick="goToAppSettings('${app.id}')" title="Configure Sign-in Methods">
-            ${t('providers.title')}
+          <button class="btn btn-secondary btn-sm" onclick="goToAppSettings('${app.id}')" title="${t('apps.goto_providers_title')}">
+            ${t('apps.btn_providers')}
           </button>
           <button class="btn btn-secondary btn-sm" onclick="openDetailModal('${app.id}')">
             ${t('table.details')}
@@ -752,7 +957,7 @@ function renderOverviewRecentApps(apps) {
         <td><span class="mono-tag">${app.appId}</span></td>
         <td>
           <span class="status-indicator ${isActive ? 'active' : 'inactive'}">
-            ${isActive ? 'ACTIVE' : 'INACTIVE'}
+            ${isActive ? t('table.status_active') : t('table.status_inactive')}
           </span>
         </td>
         <td style="color: var(--text-dim); font-size: 12px;">${createdDate}</td>
@@ -774,7 +979,7 @@ function openDetailModal(appId) {
   
   const statusElem = document.getElementById('detail-app-status');
   statusElem.className = `status-indicator ${app.status === 'ACTIVE' ? 'active' : 'inactive'}`;
-  statusElem.textContent = app.status;
+  statusElem.textContent = app.status === 'ACTIVE' ? t('table.status_active') : t('table.status_inactive');
 
   document.getElementById('detail-app-id').textContent = app.appId;
   
@@ -820,7 +1025,7 @@ function copyDetailAppToken() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FIREBASE-STYLE SDK SETUP & CODE SNIPPETS
+// MICROSERVICE SDK SETUP & CODE SNIPPETS
 // ─────────────────────────────────────────────────────────────────────────────
 function generateSdkSnippet(tab, app) {
   if (!app) return '';
@@ -959,9 +1164,9 @@ async function toggleDetailStatus() {
     state.activeDetailApp.status = newStatus;
     const statusElem = document.getElementById('detail-app-status');
     statusElem.className = `status-indicator ${newStatus === 'ACTIVE' ? 'active' : 'inactive'}`;
-    statusElem.textContent = newStatus;
+    statusElem.textContent = newStatus === 'ACTIVE' ? t('table.status_active') : t('table.status_inactive');
 
-    showToast(`${t('toasts.status_updated')} ${newStatus}.`);
+    showToast(`${t('toasts.status_updated')} ${newStatus === 'ACTIVE' ? t('table.status_active') : t('table.status_inactive')}.`);
     await loadApplications();
   } catch (err) {
     showToast(err.message, 'error');
@@ -1002,7 +1207,7 @@ async function toggleAppStatus(appId, currentStatus) {
       body: JSON.stringify({ status: newStatus }),
     });
 
-    showToast(`${t('toasts.status_updated')} ${newStatus}.`);
+    showToast(`${t('toasts.status_updated')} ${newStatus === 'ACTIVE' ? t('table.status_active') : t('table.status_inactive')}.`);
     await loadApplications();
   } catch (err) {
     showToast(err.message, 'error');
@@ -1046,17 +1251,98 @@ async function loadUsers() {
   }
 }
 
+function updateUsersCountBadge(showingCount, totalCount) {
+  const badge = document.getElementById('users-count-badge');
+  if (!badge) return;
+  const tpl = t('filter.showing_users');
+  badge.textContent = tpl.replace('{count}', showingCount).replace('{total}', totalCount);
+}
+
+function onUsersFilterChange() {
+  const searchInput = document.getElementById('users-search-input');
+  const roleFilter = document.getElementById('users-role-filter');
+  const sortBy = document.getElementById('users-sort-by');
+
+  if (searchInput) state.userFilter.search = searchInput.value;
+  if (roleFilter) state.userFilter.role = roleFilter.value;
+  if (sortBy) state.userFilter.sortBy = sortBy.value;
+
+  renderUsersTable();
+}
+
+function clearUsersFilter() {
+  state.userFilter = { search: '', role: 'ALL', sortBy: 'email_asc' };
+  const searchInput = document.getElementById('users-search-input');
+  const roleFilter = document.getElementById('users-role-filter');
+  const sortBy = document.getElementById('users-sort-by');
+  if (searchInput) searchInput.value = '';
+  if (roleFilter) roleFilter.value = 'ALL';
+  if (sortBy) sortBy.value = 'email_asc';
+
+  renderUsersTable();
+}
+
 function renderUsersTable(users) {
   const tableBody = document.getElementById('users-table-body');
   if (!tableBody) return;
 
-  tableBody.innerHTML = users.map(u => `
+  const total = state.users ? state.users.length : 0;
+  if (!state.users || state.users.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-dim); padding: 32px;">${t('users.loading')}</td></tr>`;
+    updateUsersCountBadge(0, 0);
+    return;
+  }
+
+  // Filter users
+  let filtered = [...state.users];
+  const q = (state.userFilter.search || '').trim().toLowerCase();
+  if (q) {
+    filtered = filtered.filter(u => {
+      const email = (u.email || '').toLowerCase();
+      const name = (u.name || '').toLowerCase();
+      const id = (u.id || '').toLowerCase();
+      return email.includes(q) || name.includes(q) || id.includes(q);
+    });
+  }
+
+  if (state.userFilter.role && state.userFilter.role !== 'ALL') {
+    filtered = filtered.filter(u => u.role === state.userFilter.role);
+  }
+
+  // Sort users
+  const sortBy = state.userFilter.sortBy || 'email_asc';
+  filtered.sort((a, b) => {
+    if (sortBy === 'email_asc') return (a.email || '').localeCompare(b.email || '');
+    if (sortBy === 'email_desc') return (b.email || '').localeCompare(a.email || '');
+    if (sortBy === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+    if (sortBy === 'role_admin') {
+      if (a.role === b.role) return (a.email || '').localeCompare(b.email || '');
+      return a.role === 'ADMIN' ? -1 : 1;
+    }
+    return 0;
+  });
+
+  updateUsersCountBadge(filtered.length, total);
+
+  if (filtered.length === 0) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align: center; padding: 36px; color: var(--text-muted);">
+          <p style="margin-bottom: 12px;">${t('filter.no_matches')}</p>
+          <button class="btn btn-secondary btn-sm" onclick="clearUsersFilter()">${t('filter.clear_filter')}</button>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tableBody.innerHTML = filtered.map(u => `
     <tr>
       <td style="font-family: var(--font-mono); font-size: 12px; color: var(--text-dim);">${u.id.slice(0, 8)}...</td>
       <td style="font-weight: 500; color: #fff;">${escapeHtml(u.email)}</td>
       <td style="color: var(--text-muted);">${escapeHtml(u.name || '—')}</td>
       <td>
-        <span class="nav-user-role ${u.role === 'ADMIN' ? 'role-admin' : ''}">${u.role}</span>
+        <span class="nav-user-role ${u.role === 'ADMIN' ? 'role-admin' : ''}">${u.role === 'ADMIN' ? t('table.role_admin') : t('table.role_user')}</span>
       </td>
       <td style="text-align: right;">
         <button class="btn btn-secondary btn-sm" onclick="openRoleModal('${u.id}', '${escapeHtml(u.email)}', '${u.role}')">
@@ -1074,7 +1360,7 @@ async function assignRole(userId, newRole) {
       body: JSON.stringify({ userId, role: newRole }),
     });
 
-    showToast(`${t('toasts.status_updated')} ${newRole}.`);
+    showToast(`${t('toasts.status_updated')} ${newRole === 'ADMIN' ? t('table.role_admin') : t('table.role_user')}.`);
     closeModal('assign-role-modal');
     await loadUsers();
   } catch (err) {
@@ -1090,7 +1376,7 @@ function openRoleModal(userId, email, currentRole) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// OAUTH & PROVIDER MANAGEMENT (FIREBASE CONSOLE STYLE)
+// OAUTH & PROVIDER MANAGEMENT (APPLICATION-SCOPED)
 // ─────────────────────────────────────────────────────────────────────────────
 function initiateOAuth(provider) {
   const redirectUri = window.location.origin + window.location.pathname;
@@ -1131,16 +1417,96 @@ function goToAppSettings(appId) {
   switchTab('providers');
 }
 
-async function onSelectAppForProviders(appId) {
-  state.selectedAppId = appId;
-  await loadOAuthProviders();
+function onFilterProvidersAppSelect(query) {
+  state.providersAppSearch = (query || '').trim().toLowerCase();
+  populateProvidersAppDropdown();
 }
 
-async function loadOAuthProviders() {
+function populateProvidersAppDropdown() {
+  const selectEl = document.getElementById('providers-app-select');
+  const hintEl = document.getElementById('providers-app-count-hint');
+  const badgeEl = document.getElementById('providers-app-status-badge');
+  const metaEl = document.getElementById('providers-app-meta');
+
+  if (!selectEl) return;
+
+  if (!state.applications || state.applications.length === 0) {
+    selectEl.innerHTML = `<option value="">-- ${t('providers.no_apps')} --</option>`;
+    if (hintEl) hintEl.textContent = '';
+    if (badgeEl) badgeEl.style.display = 'none';
+    if (metaEl) metaEl.innerHTML = '';
+    return;
+  }
+
+  // Filter
+  const q = state.providersAppSearch;
+  let list = [...state.applications];
+  if (q) {
+    list = list.filter(a =>
+      (a.name || '').toLowerCase().includes(q) ||
+      (a.appId || '').toLowerCase().includes(q)
+    );
+  }
+
+  // Sort alphabetically by name
+  list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  if (hintEl) {
+    hintEl.textContent = `(${list.length}/${state.applications.length} ${t('filter.apps_unit')})`;
+  }
+
+  if (list.length === 0) {
+    selectEl.innerHTML = `<option value="">-- ${t('filter.no_matches')} --</option>`;
+    if (badgeEl) badgeEl.style.display = 'none';
+    return;
+  }
+
+  // If current selection is not in filtered list, pick the first
+  if (!list.some(a => a.id === state.selectedAppId)) {
+    state.selectedAppId = list[0].id;
+  }
+
+  selectEl.innerHTML = list.map(a => {
+    return `<option value="${a.id}" ${a.id === state.selectedAppId ? 'selected' : ''}>${escapeHtml(a.name)}</option>`;
+  }).join('');
+
+  // Update status badge & meta
+  const currentApp = state.applications.find(a => a.id === state.selectedAppId);
+  if (currentApp && metaEl) {
+    const isActive = currentApp.status === 'ACTIVE';
+    metaEl.innerHTML = `
+      <div class="app-meta-pill-group">
+        <span class="status-indicator ${isActive ? 'active' : 'inactive'}">
+          ${isActive ? t('table.status_active') : t('table.status_inactive')}
+        </span>
+        <div class="app-id-pill" title="AppID: ${currentApp.appId}">
+          <span class="app-id-label">AppID:</span>
+          <span class="app-id-code">${currentApp.appId.slice(0, 10)}...${currentApp.appId.slice(-6)}</span>
+          <button type="button" class="btn-icon-xs" onclick="copyToClipboard('${currentApp.appId}', 'AppID')" title="${t('table.copy_appid')}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-secondary btn-xs" onclick="openDetailModal('${currentApp.id}')">
+        ${t('table.details')}
+      </button>
+    `;
+  }
+}
+
+async function onSelectAppForProviders(appId) {
+  state.selectedAppId = appId;
+  populateProvidersAppDropdown();
+  await loadOAuthProviders(true);
+}
+
+async function loadOAuthProviders(keepDropdown = false) {
   const tableBody = document.getElementById('providers-table-body');
   const selectEl = document.getElementById('providers-app-select');
   const metaEl = document.getElementById('providers-app-meta');
-  const badgeEl = document.getElementById('providers-app-status-badge');
 
   if (!tableBody) return;
 
@@ -1162,22 +1528,8 @@ async function loadOAuthProviders() {
       state.selectedAppId = state.applications[0].id;
     }
 
-    const currentApp = state.applications.find(a => a.id === state.selectedAppId) || state.applications[0];
-
-    if (selectEl) {
-      selectEl.innerHTML = state.applications.map(a =>
-        `<option value="${a.id}" ${a.id === state.selectedAppId ? 'selected' : ''}>${escapeHtml(a.name)} (${a.appId})</option>`
-      ).join('');
-    }
-
-    if (badgeEl) {
-      const isActive = currentApp.status === 'ACTIVE';
-      badgeEl.className = `badge ${isActive ? 'badge-success' : 'badge-disabled'}`;
-      badgeEl.textContent = currentApp.status;
-    }
-
-    if (metaEl) {
-      metaEl.innerHTML = `<span>AppID: <code>${currentApp.appId}</code></span>`;
+    if (!keepDropdown) {
+      populateProvidersAppDropdown();
     }
 
     tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 32px;">${t('providers.loading')}</td></tr>`;
@@ -1201,8 +1553,8 @@ function renderProvidersTable(providers) {
       : `<svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`;
 
     const statusBadge = p.isEnabled
-      ? `<span class="provider-badge badge-enabled">ENABLED</span>`
-      : `<span class="provider-badge badge-disabled">DISABLED</span>`;
+      ? `<span class="provider-badge badge-enabled">${t('providers.status_enabled')}</span>`
+      : `<span class="provider-badge badge-disabled">${t('providers.status_disabled')}</span>`;
 
     const clientIdDisplay = p.clientId
       ? `<code style="font-size: 12px; color: var(--text-main);">${escapeHtml(p.clientId)}</code>`
@@ -1277,6 +1629,8 @@ function openEditProviderModal(providerType) {
   if (clientSecretInput) {
     clientSecretInput.value = '';
     clientSecretInput.type = 'password';
+    const secretToggleBtn = document.getElementById('modal-secret-toggle-btn');
+    if (secretToggleBtn) secretToggleBtn.textContent = t('detail.reveal');
     clientSecretInput.placeholder = provider.hasSecret
       ? (state.lang === 'vi' ? '•••••••••••••••• (Để trống nếu giữ nguyên secret cũ)' : '•••••••••••••••• (Leave blank to keep current secret)')
       : (state.lang === 'vi' ? 'Nhập Client Secret của nhà cung cấp...' : 'Enter client secret from provider...');
@@ -1342,8 +1696,13 @@ function openEditProviderModal(providerType) {
 
 function toggleModalSecretVisibility() {
   const secretInput = document.getElementById('modal-provider-client-secret');
+  const secretToggleBtn = document.getElementById('modal-secret-toggle-btn');
   if (!secretInput) return;
-  secretInput.type = secretInput.type === 'password' ? 'text' : 'password';
+  const isPassword = secretInput.type === 'password';
+  secretInput.type = isPassword ? 'text' : 'password';
+  if (secretToggleBtn) {
+    secretToggleBtn.textContent = isPassword ? t('detail.hide') : t('detail.reveal');
+  }
 }
 
 function copyProviderCallback() {
@@ -1393,7 +1752,7 @@ async function toggleProvider(providerType) {
     const updated = await api(`/applications/${state.selectedAppId}/auth-methods/${providerType}/toggle`, {
       method: 'POST',
     });
-    showToast(`${t('providers.toggle_success')} (${updated.provider}: ${updated.isEnabled ? 'ENABLED' : 'DISABLED'})`);
+    showToast(`${t('providers.toggle_success')} (${updated.provider}: ${updated.isEnabled ? t('providers.status_enabled') : t('providers.status_disabled')})`);
     await loadOAuthProviders();
   } catch (err) {
     showToast(err.message, 'error');

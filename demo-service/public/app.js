@@ -11,7 +11,7 @@ const translations = {
   en: {
     banner: {
       title: 'Federated OAuth 2.0 Client Application',
-      desc: 'This client application delegates user authentication to Auth Service (Project 1, Port 3000) via OAuth 2.0 (Google & Facebook) following the Firebase Authentication model.',
+      desc: 'This client application delegates user authentication to Auth Service (Project 1, Port 3000) via OAuth 2.0 (Google & Facebook).',
       target_auth: 'Central Auth Service:',
     },
     auth: {
@@ -23,8 +23,8 @@ const translations = {
       btn_facebook: 'Sign in with Facebook',
       provider_enabled: 'ENABLED',
       provider_disabled: 'DISABLED (Not configured)',
-      firebase_hint_title: '💡 Real OAuth Configuration:',
-      firebase_hint_desc: 'To enable real Google/Facebook sign-in, open Developer Console (Port 3000) -> "Sign-in Methods", enter your OAuth credentials from Google Cloud Console or Meta for Developers, and toggle Enable.',
+      oauth_hint_title: '💡 Real OAuth Configuration:',
+      oauth_hint_desc: 'To enable real Google/Facebook sign-in, open Developer Console (Port 3000) -> "Sign-in Methods", enter your OAuth credentials from Google Cloud Console or Meta for Developers, and toggle Enable.',
     },
     session: {
       title: 'Authenticated User Profile',
@@ -60,7 +60,7 @@ const translations = {
   vi: {
     banner: {
       title: 'Client Microservice Xác Thực Qua OAuth 2.0',
-      desc: 'Ứng dụng này đóng vai trò là một microservice client ủy thác toàn bộ xác thực người dùng cho Auth Service (Project 1, Port 3000) qua OAuth 2.0 (Google & Facebook) theo mô hình Firebase Authentication.',
+      desc: 'Ứng dụng này đóng vai trò là một microservice client ủy thác toàn bộ xác thực người dùng cho Auth Service (Project 1, Port 3000) qua OAuth 2.0 (Google & Facebook).',
       target_auth: 'Hệ thống Auth Service:',
     },
     auth: {
@@ -72,8 +72,8 @@ const translations = {
       btn_facebook: 'Đăng nhập bằng Facebook',
       provider_enabled: 'ĐANG BẬT',
       provider_disabled: 'ĐÃ TẮT (Chưa cấu hình)',
-      firebase_hint_title: '💡 Cấu hình OAuth thực tế:',
-      firebase_hint_desc: 'Để bật đăng nhập Google/Facebook thật, mở Developer Console (Port 3000) -> "Sign-in Methods", nhập Client ID và Secret từ Google Cloud Console hoặc Meta for Developers, rồi bấm Bật.',
+      oauth_hint_title: '💡 Cấu hình OAuth thực tế:',
+      oauth_hint_desc: 'Để bật đăng nhập Google/Facebook thật, mở Developer Console (Port 3000) -> "Sign-in Methods", nhập Client ID và Secret từ Google Cloud Console hoặc Meta for Developers, rồi bấm Bật.',
     },
     session: {
       title: 'Thông Tin Người Dùng Đã Đăng Nhập',
