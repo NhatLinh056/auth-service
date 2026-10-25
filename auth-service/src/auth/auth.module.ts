@@ -6,6 +6,7 @@ import { OAuthProvidersModule } from '../oauth-providers/oauth-providers.module.
 import { UsersModule } from '../users/users.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
+import { OAuthService } from './oauth.service.js';
 
 @Module({
   imports: [
@@ -20,8 +21,8 @@ import { AuthService } from './auth.service.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtModule, PassportModule, JwtStrategy],
+  providers: [AuthService, OAuthService, JwtStrategy],
+  exports: [AuthService, OAuthService, JwtModule, PassportModule, JwtStrategy],
 })
 export class AuthModule {}
 

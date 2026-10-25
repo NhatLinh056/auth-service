@@ -1209,6 +1209,119 @@ h1, h2, h3, h4 {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   OAUTH SOCIAL BUTTONS & FIREBASE-STYLE PROVIDERS UI
+   ───────────────────────────────────────────────────────────────────────────── */
+.oauth-section {
+  margin-top: 20px;
+}
+
+.auth-divider {
+  position: relative;
+  text-align: center;
+  margin: 16px 0 14px;
+}
+
+.auth-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-subtle);
+  z-index: 1;
+}
+
+.auth-divider span {
+  position: relative;
+  z-index: 2;
+  background: var(--bg-surface);
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.oauth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn-oauth {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+}
+
+.btn-oauth-google {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  color: var(--text-main);
+}
+
+.btn-oauth-google:hover {
+  background: rgba(66, 133, 244, 0.08);
+  border-color: #4285F4;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.btn-oauth-facebook {
+  background: rgba(24, 119, 242, 0.08);
+  border: 1px solid rgba(24, 119, 242, 0.3);
+  color: #60a5fa;
+}
+
+.btn-oauth-facebook:hover {
+  background: rgba(24, 119, 242, 0.16);
+  border-color: #1877F2;
+  color: #93c5fd;
+  transform: translateY(-1px);
+}
+
+.provider-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.provider-badge.badge-enabled {
+  background: var(--success-subtle);
+  color: var(--success);
+  border: 1px solid var(--success-border);
+}
+
+.provider-badge.badge-disabled {
+  background: rgba(100, 116, 139, 0.12);
+  color: var(--text-dim);
+  border: 1px solid var(--border-subtle);
+}
+
+.provider-row-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    RESPONSIVE DESIGN
    ───────────────────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {

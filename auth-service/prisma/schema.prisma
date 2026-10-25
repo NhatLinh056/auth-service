@@ -56,29 +56,33 @@ model OAuthIdentity {
 }
 
 model OAuthProvider {
-  id           String            @id @default(uuid())
-  provider     OAuthProviderType @unique
-  name         String
-  isEnabled    Boolean           @default(false)
-  clientId     String?
-  clientSecret String?
-  callbackUrl  String?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  id            String            @id @default(uuid())
+  applicationId String
+  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  provider      OAuthProviderType
+  name          String
+  isEnabled     Boolean           @default(false)
+  clientId      String?
+  clientSecret  String?
+  callbackUrl   String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
+  @@unique([applicationId, provider])
   @@map("oauth_providers")
 }
 
 model Application {
-  id        String    @id @default(uuid())
-  name      String
-  appId     String    @unique
-  appToken  String
-  status    AppStatus @default(ACTIVE)
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id             String          @id @default(uuid())
+  name           String
+  appId          String          @unique
+  appToken       String
+  status         AppStatus       @default(ACTIVE)
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oauthProviders OAuthProvider[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@map("applications")
 }

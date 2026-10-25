@@ -10,8 +10,14 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { JwtPayload } from '../common/strategies/jwt.strategy.js';
 import { ApplicationsService } from './applications.service.js';
 
+import { OAuthProvidersService } from '../oauth-providers/oauth-providers.service.js';
+
 describe('ApplicationsService', () => {
   let service: ApplicationsService;
+
+  const mockOAuthProvidersService = {
+    createDefaultProviders: vi.fn().mockResolvedValue(undefined),
+  };
 
   const mockUser = {
     id: 'user-uuid-1',
@@ -60,6 +66,10 @@ describe('ApplicationsService', () => {
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        {
+          provide: OAuthProvidersService,
+          useValue: mockOAuthProvidersService,
         },
       ],
     }).compile();

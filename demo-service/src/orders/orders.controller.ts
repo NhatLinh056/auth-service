@@ -33,6 +33,8 @@ export class OrdersController {
       service: 'demo-service',
       port: 3001,
       status: 'ONLINE',
+      handshakeStatus: 'SUCCESS',
+      appId: handshake.application?.appId || (handshake as any).appId,
       handshake: {
         authService: 'CONNECTED',
         applicationStatus: handshake.application?.status || (handshake as any).status || 'ACTIVE',

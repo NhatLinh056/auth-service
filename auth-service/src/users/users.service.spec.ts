@@ -101,4 +101,25 @@ describe('UsersService', () => {
       });
     });
   });
+
+  describe('ensureDefaultAdmin', () => {
+    it('should create admin user if not exists', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
+      await service.ensureDefaultAdmin();
+      expect(mockPrismaService.user.create).toHaveBeenCalled();
+    });
+
+    it('should update admin user if already exists', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValueOnce(mockUser);
+      await service.ensureDefaultAdmin();
+      expect(mockPrismaService.user.update).toHaveBeenCalled();
+    });
+
+    it('should execute onModuleInit gracefully', async () => {
+      const spy = vi.spyOn(service, 'ensureDefaultAdmin').mockResolvedValueOnce();
+      await service.onModuleInit();
+      expect(spy).toHaveBeenCalled();
+    });
+  });
 });
+

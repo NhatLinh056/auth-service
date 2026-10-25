@@ -25,6 +25,7 @@ async function bootstrap() {
   app.useStaticAssets(join(process.cwd(), 'public'), {
     prefix: '/dashboard/',
   });
+  app.useStaticAssets(join(process.cwd(), 'public'));
 
   // --- Cấu hình Swagger ---
   const config = new DocumentBuilder()

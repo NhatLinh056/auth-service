@@ -16,6 +16,7 @@ const translations = {
       overview: 'Overview',
       apps: 'Applications',
       users: 'Users',
+      providers: 'Sign-in Methods',
       api_online: 'API Online',
       logout: 'Logout',
       signin: 'Sign In',
@@ -55,6 +56,38 @@ const translations = {
       loading: 'Loading applications...',
       empty: 'No applications found. Create your first application to generate credentials.',
       empty_unauth: 'Please sign in to view and manage registered applications.',
+    },
+    providers: {
+      title: 'Sign-in Methods',
+      subtitle: 'Configure identity providers (Google, Facebook) mimicking Firebase Authentication console.',
+      info_title: 'Firebase Authentication Sign-in Methods',
+      info_desc: 'Client microservices and frontends discover available providers via public API GET /auth/providers.',
+      oauth_ready: 'OAuth 2.0 Engine: Ready',
+      table_provider: 'Provider',
+      table_client_id: 'Client ID',
+      table_secret: 'Client Secret',
+      table_callback: 'Authorized Callback URI',
+      loading: 'Loading providers...',
+      not_configured: '(Not configured)',
+      secret_set: 'Configured',
+      secret_none: 'Not set',
+      configure: 'Configure',
+      enable: 'Enable',
+      disable: 'Disable',
+      toggle_success: 'Provider status updated.',
+      config_saved: 'Provider configuration saved successfully.',
+      target_app_label: 'Target Project / Application:',
+      no_apps: 'No applications found. Please create an application in Applications tab first.',
+    },
+    provider_modal: {
+      title: 'Configure Provider',
+      desc: 'Set Client ID and Client Secret from Developer Console (Google Cloud or Meta for Developers).',
+      client_id: 'Client ID',
+      client_secret: 'Client Secret',
+      secret_hint: 'Secret is securely stored on server. Leave blank to keep existing configured secret.',
+      callback_label: 'Authorized Redirect URI (Copy this to Developer Console)',
+      enable_label: 'Enable this sign-in method',
+      portal_btn: 'Open Developer Console',
     },
     table: {
       name: 'Name',
@@ -111,6 +144,9 @@ const translations = {
       register_btn: 'Create Account & Sign In',
       demo_title: 'Demo Admin Account',
       quick_fill: 'Quick Fill',
+      or_divider: 'OR CONTINUE WITH',
+      oauth_google: 'Sign in with Google',
+      oauth_facebook: 'Sign in with Facebook',
     },
     create_app: {
       title: 'Create Application',
@@ -149,6 +185,7 @@ const translations = {
       overview: 'Tổng Quan',
       apps: 'Quản Lý Ứng Dụng',
       users: 'Người Dùng',
+      providers: 'Phương Thức Đăng Nhập',
       api_online: 'API Hoạt Động',
       logout: 'Đăng Xuất',
       signin: 'Đăng Nhập',
@@ -188,6 +225,38 @@ const translations = {
       loading: 'Đang tải danh sách ứng dụng...',
       empty: 'Chưa có ứng dụng nào. Hãy tạo ứng dụng đầu tiên để sinh cặp khóa AppID và AppToken.',
       empty_unauth: 'Vui lòng đăng nhập để xem và quản lý danh sách ứng dụng của bạn.',
+    },
+    providers: {
+      title: 'Phương Thức Đăng Nhập',
+      subtitle: 'Cấu hình các nhà cung cấp định danh (Google, Facebook) theo mô hình Firebase Authentication.',
+      info_title: 'Cấu Hình Phương Thức Đăng Nhập (Firebase Style)',
+      info_desc: 'Client microservices và frontends phát hiện các nhà cung cấp khả dụng qua API công khai GET /auth/providers.',
+      oauth_ready: 'Bộ máy OAuth 2.0: Sẵn Sàng',
+      table_provider: 'Nhà Cung Cấp',
+      table_client_id: 'Client ID',
+      table_secret: 'Client Secret',
+      table_callback: 'Authorized Callback URI',
+      loading: 'Đang tải danh sách nhà cung cấp...',
+      not_configured: '(Chưa cấu hình)',
+      secret_set: 'Đã lưu secret',
+      secret_none: 'Chưa có secret',
+      configure: 'Cấu hình',
+      enable: 'Bật',
+      disable: 'Tắt',
+      toggle_success: 'Đã cập nhật trạng thái nhà cung cấp.',
+      config_saved: 'Đã lưu cấu hình nhà cung cấp thành công.',
+      target_app_label: 'Dự Án / Ứng Dụng Đang Chọn:',
+      no_apps: 'Chưa có ứng dụng nào. Vui lòng tạo ứng dụng trong tab Quản Lý Ứng Dụng trước.',
+    },
+    provider_modal: {
+      title: 'Cấu Hình Nhà Cung Cấp',
+      desc: 'Điền Client ID và Client Secret từ Developer Console (Google Cloud hoặc Meta for Developers).',
+      client_id: 'Client ID',
+      client_secret: 'Client Secret',
+      secret_hint: 'Secret được lưu trữ bảo mật trên server. Để trống ô này nếu muốn giữ nguyên secret đã lưu trước đó.',
+      callback_label: 'Authorized Redirect URI (Sao chép URL này vào Developer Console)',
+      enable_label: 'Kích hoạt phương thức đăng nhập này',
+      portal_btn: 'Mở Developer Console',
     },
     table: {
       name: 'Tên Ứng Dụng',
@@ -244,6 +313,9 @@ const translations = {
       register_btn: 'Tạo Tài Khoản & Đăng Nhập',
       demo_title: 'Tài Khoản Quản Trị Mẫu',
       quick_fill: 'Điền Nhanh',
+      or_divider: 'HOẶC TIẾP TỤC VỚI',
+      oauth_google: 'Đăng nhập bằng Google',
+      oauth_facebook: 'Đăng nhập bằng Facebook',
     },
     create_app: {
       title: 'Tạo Ứng Dụng Mới',
@@ -285,6 +357,9 @@ const state = {
   lang: localStorage.getItem('auth_lang') || 'en',
   applications: [],
   users: [],
+  providers: [],
+  selectedAppId: null,
+  activeEditProvider: null,
   activeDetailApp: null,
   activeSdkTab: 'env',
 };
@@ -332,6 +407,10 @@ function setLanguage(lang) {
 
   if (state.users && state.users.length > 0) {
     renderUsersTable(state.users);
+  }
+
+  if (state.providers && state.providers.length > 0) {
+    renderProvidersTable(state.providers);
   }
 
   // Update detail modal if open
@@ -409,6 +488,7 @@ function updateAuthUI() {
   const overviewIdentity = document.getElementById('overview-user-identity');
   const overviewRole = document.getElementById('overview-user-role');
   const adminTab = document.getElementById('tab-btn-users');
+  const providersTab = document.getElementById('tab-btn-providers');
 
   if (state.token && state.user) {
     if (authView) authView.style.display = 'none';
@@ -424,8 +504,12 @@ function updateAuthUI() {
     if (overviewIdentity) overviewIdentity.textContent = state.user.email;
     if (overviewRole) overviewRole.textContent = `${t('overview.role_prefix')}${state.user.role}`;
 
+    const isAdmin = state.user.role === 'ADMIN';
     if (adminTab) {
-      adminTab.style.display = state.user.role === 'ADMIN' ? 'inline-flex' : 'none';
+      adminTab.style.display = isAdmin ? 'inline-flex' : 'none';
+    }
+    if (providersTab) {
+      providersTab.style.display = 'inline-flex';
     }
   } else {
     if (authView) authView.style.display = 'flex';
@@ -625,6 +709,9 @@ function renderApplications(apps) {
         <td style="color: var(--text-muted);">${escapeHtml(ownerEmail)}</td>
         <td style="color: var(--text-dim); font-size: 12px;">${createdDate}</td>
         <td style="text-align: right; white-space: nowrap;">
+          <button class="btn btn-secondary btn-sm" onclick="goToAppSettings('${app.id}')" title="Configure Sign-in Methods">
+            ${t('providers.title')}
+          </button>
           <button class="btn btn-secondary btn-sm" onclick="openDetailModal('${app.id}')">
             ${t('table.details')}
           </button>
@@ -1003,6 +1090,317 @@ function openRoleModal(userId, email, currentRole) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// OAUTH & PROVIDER MANAGEMENT (FIREBASE CONSOLE STYLE)
+// ─────────────────────────────────────────────────────────────────────────────
+function initiateOAuth(provider) {
+  const redirectUri = window.location.origin + window.location.pathname;
+  window.location.href = `${API_BASE}/auth/oauth/${provider}?redirect_uri=${encodeURIComponent(redirectUri)}`;
+}
+
+function checkOAuthCallbackToken() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  const error = urlParams.get('error') || urlParams.get('error_description');
+
+  if (error) {
+    showToast(`OAuth: ${error}`, 'error');
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return false;
+  }
+
+  if (token) {
+    state.token = token;
+    state.user = {
+      email: urlParams.get('email') || '',
+      name: urlParams.get('name') || '',
+      role: urlParams.get('role') || 'USER',
+    };
+    localStorage.setItem('auth_token', state.token);
+    localStorage.setItem('auth_user', JSON.stringify(state.user));
+    window.history.replaceState({}, document.title, window.location.pathname);
+    showToast(`${t('toasts.signed_in')} ${state.user.email}`);
+    updateAuthUI();
+    loadApplications();
+    return true;
+  }
+  return false;
+}
+
+function goToAppSettings(appId) {
+  state.selectedAppId = appId;
+  switchTab('providers');
+}
+
+async function onSelectAppForProviders(appId) {
+  state.selectedAppId = appId;
+  await loadOAuthProviders();
+}
+
+async function loadOAuthProviders() {
+  const tableBody = document.getElementById('providers-table-body');
+  const selectEl = document.getElementById('providers-app-select');
+  const metaEl = document.getElementById('providers-app-meta');
+  const badgeEl = document.getElementById('providers-app-status-badge');
+
+  if (!tableBody) return;
+
+  try {
+    // Ensure applications list is loaded
+    if (!state.applications || state.applications.length === 0) {
+      state.applications = await api('/applications');
+    }
+
+    if (!state.applications || state.applications.length === 0) {
+      if (selectEl) selectEl.innerHTML = `<option value="">-- ${t('providers.no_apps')} --</option>`;
+      tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 32px;">${t('providers.no_apps')}</td></tr>`;
+      if (metaEl) metaEl.innerHTML = '';
+      return;
+    }
+
+    // Determine selected app
+    if (!state.selectedAppId || !state.applications.some(a => a.id === state.selectedAppId)) {
+      state.selectedAppId = state.applications[0].id;
+    }
+
+    const currentApp = state.applications.find(a => a.id === state.selectedAppId) || state.applications[0];
+
+    if (selectEl) {
+      selectEl.innerHTML = state.applications.map(a =>
+        `<option value="${a.id}" ${a.id === state.selectedAppId ? 'selected' : ''}>${escapeHtml(a.name)} (${a.appId})</option>`
+      ).join('');
+    }
+
+    if (badgeEl) {
+      const isActive = currentApp.status === 'ACTIVE';
+      badgeEl.className = `badge ${isActive ? 'badge-success' : 'badge-disabled'}`;
+      badgeEl.textContent = currentApp.status;
+    }
+
+    if (metaEl) {
+      metaEl.innerHTML = `<span>AppID: <code>${currentApp.appId}</code></span>`;
+    }
+
+    tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 32px;">${t('providers.loading')}</td></tr>`;
+    const providers = await api(`/applications/${state.selectedAppId}/auth-methods`);
+    state.providers = providers;
+    renderProvidersTable(providers);
+  } catch (err) {
+    tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--danger); padding: 32px;">Error: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function renderProvidersTable(providers) {
+  const tableBody = document.getElementById('providers-table-body');
+  if (!tableBody) return;
+
+  tableBody.innerHTML = providers.map(p => {
+    const isGoogle = p.provider === 'GOOGLE';
+    const providerName = isGoogle ? 'Google' : 'Facebook';
+    const icon = isGoogle
+      ? `<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>`
+      : `<svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`;
+
+    const statusBadge = p.isEnabled
+      ? `<span class="provider-badge badge-enabled">ENABLED</span>`
+      : `<span class="provider-badge badge-disabled">DISABLED</span>`;
+
+    const clientIdDisplay = p.clientId
+      ? `<code style="font-size: 12px; color: var(--text-main);">${escapeHtml(p.clientId)}</code>`
+      : `<span style="color: var(--text-dim); font-style: italic;">${t('providers.not_configured')}</span>`;
+
+    const secretDisplay = p.hasSecret
+      ? `<span style="font-family: var(--font-mono); font-size: 11px; color: var(--success);">&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF; (${t('providers.secret_set')})</span>`
+      : `<span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">${t('providers.secret_none')}</span>`;
+
+    const callbackUrl = p.callbackUrl || `${API_BASE}/auth/oauth/${p.provider.toLowerCase()}/callback`;
+
+    return `
+      <tr>
+        <td>
+          <div class="provider-row-title">
+            ${icon}
+            <span>${providerName}</span>
+          </div>
+        </td>
+        <td>${statusBadge}</td>
+        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${clientIdDisplay}</td>
+        <td>${secretDisplay}</td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <code style="font-size: 11px; color: var(--text-muted);">${escapeHtml(callbackUrl)}</code>
+            <button class="btn btn-secondary btn-sm" onclick="copyToClipboard('${escapeHtml(callbackUrl)}', 'Callback URL')" style="padding: 2px 8px; font-size: 11px;">
+              ${t('detail.copy')}
+            </button>
+          </div>
+        </td>
+        <td style="text-align: right;">
+          <div style="display: inline-flex; gap: 6px;">
+            <button class="btn btn-secondary btn-sm" onclick="openEditProviderModal('${p.provider}')">
+              ${t('providers.configure')}
+            </button>
+            <button class="btn ${p.isEnabled ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="toggleProvider('${p.provider}')">
+              ${p.isEnabled ? t('providers.disable') : t('providers.enable')}
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openEditProviderModal(providerType) {
+  const provider = state.providers.find(p => p.provider === providerType);
+  if (!provider) return;
+
+  state.activeEditProvider = provider;
+  const isGoogle = provider.provider === 'GOOGLE';
+  const name = isGoogle ? 'Google' : 'Facebook';
+
+  const modalTitle = document.getElementById('modal-provider-title');
+  const modalIcon = document.getElementById('modal-provider-icon');
+  const typeInput = document.getElementById('modal-provider-type');
+  const clientIdInput = document.getElementById('modal-provider-client-id');
+  const clientSecretInput = document.getElementById('modal-provider-client-secret');
+  const secretStatus = document.getElementById('modal-provider-secret-status');
+  const callbackSpan = document.getElementById('modal-provider-callback');
+  const enabledCheckbox = document.getElementById('modal-provider-enabled');
+
+  if (modalTitle) modalTitle.textContent = `${t('provider_modal.title')}: ${name}`;
+  if (modalIcon) {
+    modalIcon.innerHTML = isGoogle
+      ? `<svg width="24" height="24" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>`
+      : `<svg width="24" height="24" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`;
+  }
+
+  if (typeInput) typeInput.value = provider.provider;
+  if (clientIdInput) clientIdInput.value = provider.clientId || '';
+  if (clientSecretInput) {
+    clientSecretInput.value = '';
+    clientSecretInput.type = 'password';
+    clientSecretInput.placeholder = provider.hasSecret
+      ? (state.lang === 'vi' ? '•••••••••••••••• (Để trống nếu giữ nguyên secret cũ)' : '•••••••••••••••• (Leave blank to keep current secret)')
+      : (state.lang === 'vi' ? 'Nhập Client Secret của nhà cung cấp...' : 'Enter client secret from provider...');
+  }
+  if (secretStatus) {
+    secretStatus.textContent = provider.hasSecret ? `✓ ${t('providers.secret_set')}` : `○ ${t('providers.secret_none')}`;
+    secretStatus.style.color = provider.hasSecret ? 'var(--success)' : 'var(--text-dim)';
+  }
+  const callbackUrl = provider.callbackUrl || `${API_BASE}/auth/oauth/${provider.provider.toLowerCase()}/callback`;
+  if (callbackSpan) callbackSpan.textContent = callbackUrl;
+  if (enabledCheckbox) enabledCheckbox.checked = Boolean(provider.isEnabled);
+
+  // Populate dynamic developer portal link & instructions
+  const guideTitle = document.getElementById('modal-guide-title');
+  const portalLink = document.getElementById('modal-provider-portal-link');
+  const portalBtnText = document.getElementById('modal-portal-btn-text');
+  const guideSteps = document.getElementById('modal-guide-steps');
+
+  if (portalBtnText) {
+    portalBtnText.textContent = t('provider_modal.portal_btn');
+  }
+
+  if (isGoogle) {
+    if (portalLink) portalLink.href = 'https://console.cloud.google.com/apis/credentials';
+    if (guideTitle) {
+      guideTitle.textContent = state.lang === 'vi'
+        ? '📋 4 bước lấy Google Client ID & Secret:'
+        : '📋 4 Steps to get Google Client ID & Secret:';
+    }
+    if (guideSteps) {
+      guideSteps.innerHTML = state.lang === 'vi'
+        ? `1. Mở <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: #818cf8; text-decoration: underline;">Google Cloud Console &nearr;</a> &rarr; Chọn hoặc tạo một project.<br>` +
+          `2. Vào <strong>APIs &amp; Services &rarr; Credentials &rarr; Create Credentials &rarr; OAuth client ID</strong> (Chọn Application type: <em>Web application</em>).<br>` +
+          `3. Tại mục <strong>Authorized redirect URIs</strong>, bấm Add URI và dán: <code style="color: #cbd5e1; background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px;">${callbackUrl}</code> (dùng nút Sao Chép bên dưới).<br>` +
+          `4. Sao chép <strong>Client ID</strong> và <strong>Client Secret</strong> dán vào 2 ô bên dưới &amp; tích chọn Kích hoạt.`
+        : `1. Open <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: #818cf8; text-decoration: underline;">Google Cloud Console &nearr;</a> &rarr; Select or create a project.<br>` +
+          `2. Go to <strong>APIs &amp; Services &rarr; Credentials &rarr; Create Credentials &rarr; OAuth client ID</strong> (Type: <em>Web application</em>).<br>` +
+          `3. Under <strong>Authorized redirect URIs</strong>, click Add URI and paste: <code style="color: #cbd5e1; background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px;">${callbackUrl}</code>.<br>` +
+          `4. Copy <strong>Client ID</strong> and <strong>Client Secret</strong> into the fields below &amp; check Enable.`;
+    }
+  } else {
+    if (portalLink) portalLink.href = 'https://developers.facebook.com/apps/';
+    if (guideTitle) {
+      guideTitle.textContent = state.lang === 'vi'
+        ? '📋 4 bước lấy Facebook App ID & Secret:'
+        : '📋 4 Steps to get Facebook App ID & Secret:';
+    }
+    if (guideSteps) {
+      guideSteps.innerHTML = state.lang === 'vi'
+        ? `1. Mở <a href="https://developers.facebook.com/apps/" target="_blank" style="color: #818cf8; text-decoration: underline;">Meta for Developers &nearr;</a> &rarr; Bấm <strong>Tạo ứng dụng (Create App)</strong>.<br>` +
+          `2. Thêm sản phẩm <strong>Facebook Login (Đăng nhập bằng Facebook)</strong> &rarr; Cài đặt.<br>` +
+          `3. Tại ô <strong>Valid OAuth Redirect URIs</strong>, dán đường dẫn: <code style="color: #cbd5e1; background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px;">${callbackUrl}</code>.<br>` +
+          `4. Vào <strong>Cài đặt &rarr; Cơ bản (Settings &rarr; Basic)</strong>, sao chép <strong>App ID</strong> (Client ID) và <strong>App Secret</strong> dán vào bên dưới &amp; Bật.`
+        : `1. Open <a href="https://developers.facebook.com/apps/" target="_blank" style="color: #818cf8; text-decoration: underline;">Meta for Developers &nearr;</a> &rarr; Click <strong>Create App</strong>.<br>` +
+          `2. Add product <strong>Facebook Login</strong> &rarr; Settings.<br>` +
+          `3. Under <strong>Valid OAuth Redirect URIs</strong>, paste: <code style="color: #cbd5e1; background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px;">${callbackUrl}</code>.<br>` +
+          `4. Go to <strong>App Settings &rarr; Basic</strong>, copy <strong>App ID</strong> (Client ID) and <strong>App Secret</strong> into the fields below &amp; Enable.`;
+    }
+  }
+
+  openModal('provider-modal');
+}
+
+function toggleModalSecretVisibility() {
+  const secretInput = document.getElementById('modal-provider-client-secret');
+  if (!secretInput) return;
+  secretInput.type = secretInput.type === 'password' ? 'text' : 'password';
+}
+
+function copyProviderCallback() {
+  const callbackSpan = document.getElementById('modal-provider-callback');
+  if (callbackSpan) {
+    copyToClipboard(callbackSpan.textContent.trim(), 'Callback URI');
+  }
+}
+
+async function saveProviderConfig() {
+  const providerType = document.getElementById('modal-provider-type')?.value;
+  const clientId = document.getElementById('modal-provider-client-id')?.value.trim();
+  const clientSecret = document.getElementById('modal-provider-client-secret')?.value.trim();
+  const isEnabled = document.getElementById('modal-provider-enabled')?.checked;
+  const saveBtn = document.getElementById('modal-provider-save-btn');
+
+  if (!providerType || !state.selectedAppId) return;
+  if (saveBtn) saveBtn.disabled = true;
+
+  try {
+    const payload = {
+      clientId,
+      isEnabled,
+    };
+    if (clientSecret) {
+      payload.clientSecret = clientSecret;
+    }
+
+    await api(`/applications/${state.selectedAppId}/auth-methods/${providerType}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+
+    showToast(t('providers.config_saved'));
+    closeModal('provider-modal');
+    await loadOAuthProviders();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
+async function toggleProvider(providerType) {
+  if (!state.selectedAppId) return;
+  try {
+    const updated = await api(`/applications/${state.selectedAppId}/auth-methods/${providerType}/toggle`, {
+      method: 'POST',
+    });
+    showToast(`${t('providers.toggle_success')} (${updated.provider}: ${updated.isEnabled ? 'ENABLED' : 'DISABLED'})`);
+    await loadOAuthProviders();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // UI HELPERS & NAVIGATION
 // ─────────────────────────────────────────────────────────────────────────────
 function switchTab(tabId) {
@@ -1017,6 +1415,7 @@ function switchTab(tabId) {
 
   if (tabId === 'apps') loadApplications();
   if (tabId === 'users') loadUsers();
+  if (tabId === 'providers') loadOAuthProviders();
   if (tabId === 'overview' && state.token) loadApplications();
 }
 
@@ -1055,7 +1454,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Apply saved or default language
   setLanguage(state.lang);
 
-  if (state.token) {
+  // Check if returning from OAuth flow with token
+  const hasCallbackToken = checkOAuthCallbackToken();
+
+  if (state.token && !hasCallbackToken) {
     loadApplications();
   }
 });
+

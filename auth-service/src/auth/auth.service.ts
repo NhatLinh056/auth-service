@@ -18,8 +18,8 @@ export class AuthService {
   /**
    * Lấy danh sách các OAuth Provider đang khả dụng (công khai cho client/frontend)
    */
-  async getPublicProviders() {
-    return this.oauthProvidersService.getPublicProviders();
+  async getPublicProviders(appId?: string) {
+    return this.oauthProvidersService.getPublicProviders(appId);
   }
 
   async register(registerDto: RegisterDto): Promise<Omit<User, 'passwordHash'>> {

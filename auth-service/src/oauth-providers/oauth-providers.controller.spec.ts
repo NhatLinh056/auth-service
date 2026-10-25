@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { OAuthProviderType } from '../generated/prisma/enums.js';
+import { OAuthProviderType, Role } from '../generated/prisma/enums.js';
+import type { JwtPayload } from '../common/strategies/jwt.strategy.js';
 import { OAuthProvidersController } from './oauth-providers.controller.js';
 import {
   OAuthProvidersService,
@@ -9,14 +10,21 @@ import {
 describe('OAuthProvidersController', () => {
   let controller: OAuthProvidersController;
   let mockService: {
-    findAll: ReturnType<typeof vi.fn>;
+    findAllByApplication: ReturnType<typeof vi.fn>;
     findByProvider: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
     toggle: ReturnType<typeof vi.fn>;
   };
 
+  const mockUser: JwtPayload = {
+    sub: 'user-uuid-1',
+    email: 'user@example.com',
+    role: Role.USER,
+  };
+
   const sampleSanitized: SanitizedOAuthProvider = {
     id: 'prov-1',
+    applicationId: 'app-uuid-1',
     provider: OAuthProviderType.GOOGLE,
     name: 'Google',
     isEnabled: true,
@@ -29,7 +37,7 @@ describe('OAuthProvidersController', () => {
 
   beforeEach(() => {
     mockService = {
-      findAll: vi.fn(),
+      findAllByApplication: vi.fn(),
       findByProvider: vi.fn(),
       update: vi.fn(),
       toggle: vi.fn(),
@@ -44,12 +52,12 @@ describe('OAuthProvidersController', () => {
   });
 
   describe('findAll', () => {
-    it('nên gọi service.findAll và trả về danh sách sanitized', async () => {
-      mockService.findAll.mockResolvedValue([sampleSanitized]);
+    it('nên gọi service.findAllByApplication và trả về danh sách sanitized', async () => {
+      mockService.findAllByApplication.mockResolvedValue([sampleSanitized]);
 
-      const result = await controller.findAll();
+      const result = await controller.findAll('app-uuid-1', mockUser);
       expect(result).toEqual([sampleSanitized]);
-      expect(mockService.findAll).toHaveBeenCalledOnce();
+      expect(mockService.findAllByApplication).toHaveBeenCalledWith('app-uuid-1', mockUser);
     });
   });
 
@@ -57,9 +65,9 @@ describe('OAuthProvidersController', () => {
     it('nên gọi service.findByProvider với đúng tham số', async () => {
       mockService.findByProvider.mockResolvedValue(sampleSanitized);
 
-      const result = await controller.findByProvider('google');
+      const result = await controller.findByProvider('app-uuid-1', 'google', mockUser);
       expect(result).toEqual(sampleSanitized);
-      expect(mockService.findByProvider).toHaveBeenCalledWith('google');
+      expect(mockService.findByProvider).toHaveBeenCalledWith('app-uuid-1', 'google', mockUser);
     });
   });
 
@@ -68,9 +76,9 @@ describe('OAuthProvidersController', () => {
       const dto = { clientId: 'updated-id', isEnabled: true };
       mockService.update.mockResolvedValue({ ...sampleSanitized, ...dto });
 
-      const result = await controller.update('google', dto);
+      const result = await controller.update('app-uuid-1', 'google', dto, mockUser);
       expect(result.clientId).toBe('updated-id');
-      expect(mockService.update).toHaveBeenCalledWith('google', dto);
+      expect(mockService.update).toHaveBeenCalledWith('app-uuid-1', 'google', dto, mockUser);
     });
   });
 
@@ -78,9 +86,9 @@ describe('OAuthProvidersController', () => {
     it('nên gọi service.toggle để đổi trạng thái', async () => {
       mockService.toggle.mockResolvedValue({ ...sampleSanitized, isEnabled: false });
 
-      const result = await controller.toggle('google');
+      const result = await controller.toggle('app-uuid-1', 'google', mockUser);
       expect(result.isEnabled).toBe(false);
-      expect(mockService.toggle).toHaveBeenCalledWith('google');
+      expect(mockService.toggle).toHaveBeenCalledWith('app-uuid-1', 'google', mockUser);
     });
   });
 });

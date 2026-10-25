@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
+import { OAuthService } from './oauth.service.js';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -15,6 +16,11 @@ describe('AuthController', () => {
     getPublicProviders: vi.fn(),
   };
 
+  const mockOAuthService = {
+    getAuthorizationUrl: vi.fn(),
+    handleCallback: vi.fn(),
+  };
+
   beforeEach(async () => {
     vi.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
@@ -23,6 +29,10 @@ describe('AuthController', () => {
         {
           provide: AuthService,
           useValue: mockAuthService,
+        },
+        {
+          provide: OAuthService,
+          useValue: mockOAuthService,
         },
         {
           provide: PrismaService,
@@ -117,6 +127,74 @@ describe('AuthController', () => {
       const result = await controller.getProviders();
       expect(result).toEqual(mockProviders);
       expect(mockAuthService.getPublicProviders).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('initiateOAuth', () => {
+    it('nên gọi oauthService.getAuthorizationUrl và redirect', async () => {
+      mockOAuthService.getAuthorizationUrl.mockResolvedValue('https://accounts.google.com/o/oauth2/auth');
+      const mockRes = {
+        redirect: vi.fn(),
+      } as any;
+
+      await controller.initiateOAuth('google', 'http://localhost:3001/auth/callback', mockRes);
+
+      expect(mockOAuthService.getAuthorizationUrl).toHaveBeenCalledWith(
+        'google',
+        'http://localhost:3001/auth/callback',
+      );
+      expect(mockRes.redirect).toHaveBeenCalledWith('https://accounts.google.com/o/oauth2/auth');
+    });
+  });
+
+  describe('handleOAuthCallback', () => {
+    it('nên redirect về redirectUri của client kèm token và thông tin người dùng', async () => {
+      mockOAuthService.handleCallback.mockResolvedValue({
+        accessToken: 'mock_jwt_token',
+        user: { id: 'u1', email: 'test@gmail.com', name: 'Test Google', role: 'USER' },
+        redirectUri: 'http://localhost:3001/auth/callback',
+      });
+
+      const mockRes = {
+        redirect: vi.fn(),
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+      } as any;
+
+      await controller.handleOAuthCallback('google', { code: 'c123', state: 's123' }, mockRes);
+
+      expect(mockRes.redirect).toHaveBeenCalled();
+      const redirectedUrl = mockRes.redirect.mock.calls[0][0];
+      expect(redirectedUrl).toContain('token=mock_jwt_token');
+      expect(redirectedUrl).toContain('email=test%40gmail.com');
+    });
+
+    it('nên trả về JSON nếu format=json được truyền', async () => {
+      const mockResult = {
+        accessToken: 'mock_jwt_token',
+        user: { id: 'u1', email: 'test@gmail.com', name: 'Test Google', role: 'USER' },
+        redirectUri: 'http://localhost:3001/auth/callback',
+      };
+      mockOAuthService.handleCallback.mockResolvedValue(mockResult);
+
+      const mockRes = {
+        redirect: vi.fn(),
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+      } as any;
+
+      await controller.handleOAuthCallback(
+        'google',
+        { code: 'c123', state: 's123', format: 'json' },
+        mockRes,
+      );
+
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        accessToken: mockResult.accessToken,
+        user: mockResult.user,
+        redirectUri: mockResult.redirectUri,
+      });
     });
   });
 

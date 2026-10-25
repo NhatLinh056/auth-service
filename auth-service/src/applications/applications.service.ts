@@ -11,9 +11,14 @@ import type { JwtPayload } from '../common/strategies/jwt.strategy.js';
 import { CreateApplicationDto } from './dto/create-application.dto.js';
 import { UpdateApplicationDto } from './dto/update-application.dto.js';
 
+import { OAuthProvidersService } from '../oauth-providers/oauth-providers.service.js';
+
 @Injectable()
 export class ApplicationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly oauthProvidersService: OAuthProvidersService,
+  ) {}
 
   /**
    * Sinh mã AppID ngẫu nhiên theo chuẩn định danh bảo mật:
@@ -82,7 +87,7 @@ export class ApplicationsService {
     const appId = await this.generateUniqueAppId();
     const appToken = this.generateAppToken();
 
-    return this.prisma.application.create({
+    const app = await this.prisma.application.create({
       data: {
         name: createAppDto.name,
         appId,
@@ -91,6 +96,10 @@ export class ApplicationsService {
         userId: targetUserId,
       },
     });
+
+    await this.oauthProvidersService.createDefaultProviders(app.id);
+
+    return app;
   }
 
   /**
