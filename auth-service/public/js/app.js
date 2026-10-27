@@ -109,8 +109,8 @@ const translations = {
       actions: 'Actions',
       role: 'Role',
       details: 'Details',
-      deactivate: 'Deactivate',
-      activate: 'Activate',
+      deactivate: 'Disable',
+      activate: 'Enable',
       delete: 'Delete',
       assign_role: 'Assign Role',
       status_active: 'ACTIVE',
@@ -250,14 +250,14 @@ const translations = {
     },
     guide: {
       title: 'Cách Microservice Khác Kết Nối Tới Auth Service',
-      subtitle: '3 bước đơn giản để bất kỳ microservice nào sử dụng AppID & AppToken để xác thực qua Auth Service.',
-      ready_pill: 'Trạng Thái: Sẵn Sàng Kết Nối',
+      subtitle: 'Quy trình 3 bước đơn giản để bất kỳ microservice nào (như Demo Service, Billing,...) xác thực bảo mật qua AppID & AppToken.',
+      ready_pill: 'Cơ Chế AppAuth: Sẵn Sàng',
       step1_title: 'Lấy AppID & AppToken',
-      step1_desc: 'Vào tab "Quản Lý Ứng Dụng" tạo một App. Copy mã AppID và AppToken dán vào file cấu hình (.env) của microservice.',
+      step1_desc: 'Tạo ứng dụng trong tab "Ứng Dụng", sao chép AppID và AppToken dán vào file cấu hình (.env) của microservice.',
       step2_title: 'Gửi Kèm 2 Header HTTP',
-      step2_desc: 'Mỗi khi microservice gọi API sang Auth Service, tự động gắn 2 header X-App-Id và X-App-Token vào request.',
-      step3_title: 'Auth Service Tự Động Xác Thực',
-      step3_desc: 'AppAuthGuard tự đối soát database PostgreSQL. Nếu hợp lệ và đang mở (ACTIVE) sẽ trả về 200 OK cho phép xử lý.',
+      step2_desc: 'Khi microservice gọi bất kỳ API nào tới Auth Service, gắn kèm 2 header chứng thực vào HTTP Request.',
+      step3_title: 'Auth Service Tự Động Phê Duyệt',
+      step3_desc: 'AppAuthGuard đối soát DB PostgreSQL. Nếu token hợp lệ và trạng thái BẬT (ACTIVE), yêu cầu được phê duyệt ngay.',
     },
     apps: {
       title: 'Quản Lý Ứng Dụng',
@@ -319,8 +319,8 @@ const translations = {
       actions: 'Thao Tác',
       role: 'Vai Trò',
       details: 'Chi Tiết',
-      deactivate: 'Khóa',
-      activate: 'Mở Khóa',
+      deactivate: 'Tắt',
+      activate: 'Bật',
       delete: 'Xóa',
       assign_role: 'Phân Quyền',
       status_active: 'HOẠT ĐỘNG',
@@ -572,6 +572,34 @@ function showToast(message, type = 'success') {
     toast.style.transform = 'translateY(8px)';
     setTimeout(() => toast.remove(), 200);
   }, 3200);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PASSWORD VISIBILITY TOGGLE & SNIPPET HELPER
+// ─────────────────────────────────────────────────────────────────────────────
+function togglePasswordVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+
+  const eyeOpen = btn.querySelector('.eye-open');
+  const eyeClosed = btn.querySelector('.eye-closed');
+  if (eyeOpen && eyeClosed) {
+    eyeOpen.style.display = isPassword ? 'none' : 'block';
+    eyeClosed.style.display = isPassword ? 'block' : 'none';
+  }
+}
+
+function copySnippetText(btn) {
+  const box = btn.closest('.code-snippet-box');
+  const pre = box ? box.querySelector('.code-snippet') : null;
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.textContent.trim()).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = state.lang === 'vi' ? 'Đã chép!' : 'Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 1800);
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -911,21 +939,23 @@ function renderApplications(apps) {
             ${isActive ? t('table.status_active') : t('table.status_inactive')}
           </span>
         </td>
-        <td style="color: var(--text-muted);">${escapeHtml(ownerEmail)}</td>
-        <td style="color: var(--text-dim); font-size: 12px;">${createdDate}</td>
+        <td style="color: var(--text-muted); max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(ownerEmail)}">${escapeHtml(ownerEmail)}</td>
+        <td style="color: var(--text-dim); font-size: 12px; white-space: nowrap;">${createdDate}</td>
         <td style="text-align: right; white-space: nowrap;">
-          <button class="btn btn-secondary btn-sm" onclick="goToAppSettings('${app.id}')" title="${t('apps.goto_providers_title')}">
-            ${t('apps.btn_providers')}
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="openDetailModal('${app.id}')">
-            ${t('table.details')}
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="toggleAppStatus('${app.id}', '${app.status}')">
-            ${isActive ? t('table.deactivate') : t('table.activate')}
-          </button>
-          <button class="btn btn-danger btn-sm" onclick="deleteApp('${app.id}', '${escapeHtml(app.name)}')">
-            ${t('table.delete')}
-          </button>
+          <div class="app-actions-group">
+            <button class="btn btn-secondary btn-sm" onclick="goToAppSettings('${app.id}')" title="${t('apps.goto_providers_title')}">
+              ${t('apps.btn_providers')}
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="openDetailModal('${app.id}')">
+              ${t('table.details')}
+            </button>
+            <button class="btn ${isActive ? 'btn-secondary' : 'btn-success-subtle'} btn-sm" onclick="toggleAppStatus('${app.id}', '${app.status}')" title="${isActive ? t('table.deactivate') : t('table.activate')}">
+              ${isActive ? t('table.deactivate') : t('table.activate')}
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="deleteApp('${app.id}', '${escapeHtml(app.name)}')">
+              ${t('table.delete')}
+            </button>
+          </div>
         </td>
       </tr>
     `;

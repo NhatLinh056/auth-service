@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Demo Service (Project 2) — Client Application</title>
+  <title>Customer Portal — Cổng Dịch Vụ Khách Hàng</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261028_01">
 </head>
 <body>
 
@@ -21,89 +21,49 @@
           </svg>
         </div>
         <div class="brand-text">
-          <span class="brand-title">Demo Service</span>
-          <span class="brand-tag">Project 2 &bull; Client Microservice</span>
+          <span class="brand-title" data-i18n="nav.brand_title">Cổng Khách Hàng</span>
+          <span class="brand-tag" data-i18n="nav.brand_tag">Dịch Vụ Trực Tuyến</span>
         </div>
       </div>
 
       <div class="nav-right">
-        <!-- Service Handshake Status Pill -->
-        <div class="status-pill" id="handshake-pill" title="Inter-service connectivity to Auth Service">
+        <!-- Service Status Pill -->
+        <div class="status-pill" id="handshake-pill" title="Trạng thái hệ thống">
           <span class="status-dot" id="handshake-dot"></span>
-          <span id="handshake-text">Checking Auth Service...</span>
+          <span id="handshake-text" data-i18n="status.online">Hệ Thống Trực Tuyến</span>
         </div>
 
         <!-- Language Switcher -->
         <div class="lang-switcher">
-          <button class="lang-btn active" id="lang-btn-en" onclick="setLanguage('en')">EN</button>
-          <button class="lang-btn" id="lang-btn-vi" onclick="setLanguage('vi')">VI</button>
+          <button class="lang-btn" id="lang-btn-en" onclick="setLanguage('en')">EN</button>
+          <button class="lang-btn active" id="lang-btn-vi" onclick="setLanguage('vi')">VI</button>
         </div>
       </div>
     </div>
   </header>
 
   <!-- Main Container -->
-  <main class="main-container" style="max-width: 680px; margin: 40px auto; padding: 0 16px;">
-
-    <!-- Service Connection Banner -->
-    <div class="connection-banner" style="margin-bottom: 24px;">
-      <div class="connection-header">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <div class="pulse-indicator"></div>
-          <h2 class="banner-title" data-i18n="banner.title">Federated OAuth 2.0 Client Application</h2>
-        </div>
-        <span class="badge badge-port">Port 3001</span>
-      </div>
-      <p class="banner-desc" data-i18n="banner.desc">
-        This client application delegates user authentication to <strong>Auth Service (Project 1, Port 3000)</strong> via OAuth 2.0 (Google &amp; Facebook).
-      </p>
-      <div class="connection-meta-grid">
-        <div class="meta-item">
-          <span class="meta-label" data-i18n="banner.target_auth">Central Auth Service:</span>
-          <a href="http://localhost:3000/dashboard/" target="_blank" class="meta-link" id="meta-auth-url">http://localhost:3000/dashboard/ &nearr;</a>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label">App ID:</span>
-          <code class="meta-code" id="meta-app-id">Loading...</code>
-        </div>
-      </div>
-    </div>
+  <main class="main-container" style="max-width: 520px; margin: 48px auto; padding: 0 16px;">
 
     <!-- ─────────────────────────────────────────────────────────────────────────
          VIEW 1: UNAUTHENTICATED (SIGN IN BUTTONS)
          ───────────────────────────────────────────────────────────────────────── -->
     <div class="card" id="unauth-view">
-      <div class="card-header">
-        <div class="card-icon card-icon-auth">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div class="card-header" style="text-align: center; justify-content: center; flex-direction: column; gap: 8px; padding-bottom: 8px;">
+        <div class="card-icon card-icon-auth" style="margin: 0 auto 4px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
             <polyline points="10 17 15 12 10 7"></polyline>
             <line x1="15" y1="12" x2="3" y2="12"></line>
           </svg>
         </div>
-        <div>
-          <h3 class="card-title" data-i18n="auth.title">Sign In via Auth Service</h3>
-          <p class="card-subtitle" data-i18n="auth.subtitle">Choose an enabled OAuth 2.0 identity provider</p>
-        </div>
+        <h3 class="card-title" style="font-size: 20px;" data-i18n="auth.title">Đăng Nhập Tài Khoản</h3>
+        <p class="card-subtitle" data-i18n="auth.subtitle">Chọn phương thức tài khoản để đăng nhập nhanh chóng</p>
       </div>
 
-      <div class="card-body">
-        <!-- Discovered Providers Status -->
-        <div class="provider-discovery-box">
-          <div class="discovery-header">
-            <span class="discovery-title" data-i18n="auth.available_providers">Sign-in Methods from Auth Service</span>
-            <button class="btn-refresh" onclick="refreshProviders()" title="Refresh providers list">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-              <span data-i18n="btn.refresh">Refresh</span>
-            </button>
-          </div>
-          <div id="providers-status-list" class="providers-status-list">
-            <div class="provider-skeleton" data-i18n="auth.loading_providers">Querying available providers from Auth Service...</div>
-          </div>
-        </div>
-
-        <!-- Social OAuth Sign In Actions -->
-        <div class="oauth-actions" style="margin-top: 20px;">
+      <div class="card-body" style="padding-top: 16px;">
+        <!-- Social Sign In Actions -->
+        <div class="oauth-actions">
           <!-- Google Button -->
           <button type="button" class="btn-oauth btn-oauth-google" id="btn-oauth-google" onclick="loginWithOAuth('google')">
             <svg width="20" height="20" viewBox="0 0 24 24">
@@ -112,22 +72,17 @@
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
-            <span data-i18n="auth.btn_google">Sign in with Google</span>
+            <span data-i18n="auth.btn_google">Đăng nhập bằng Google</span>
           </button>
 
-          <!-- Facebook Button -->
+          <!-- Facebook Button with distinct white background badge and blue FB 'f' -->
           <button type="button" class="btn-oauth btn-oauth-facebook" id="btn-oauth-facebook" onclick="loginWithOAuth('facebook')">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2">
-              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            <svg width="22" height="22" viewBox="0 0 24 24" style="flex-shrink: 0;">
+              <circle cx="12" cy="12" r="11" fill="#ffffff"/>
+              <path fill="#1877F2" d="M14.5 12h-2v7h-3v-7h-1.5v-2.5h1.5v-1.6c0-2.1 1.3-3.3 3.2-3.3.9 0 1.7.1 1.9.1v2.2h-1.3c-1 0-1.3.5-1.3 1.2v1.4h2.5l-.5 2.5z"/>
             </svg>
-            <span data-i18n="auth.btn_facebook">Sign in with Facebook</span>
+            <span data-i18n="auth.btn_facebook">Đăng nhập bằng Facebook</span>
           </button>
-        </div>
-
-        <!-- Help Info Box (OAuth instructions) -->
-        <div style="margin-top: 24px; padding: 14px 16px; background: rgba(99, 102, 241, 0.06); border: 1px dashed rgba(99, 102, 241, 0.25); border-radius: var(--radius-md); font-size: 13px; line-height: 1.6; color: var(--text-muted);">
-          <strong style="color: var(--text-main);" data-i18n="auth.oauth_hint_title">💡 Real OAuth Configuration:</strong>
-          <span data-i18n="auth.oauth_hint_desc">To enable real Google/Facebook sign-in, open Developer Console (Port 3000) &rarr; "Sign-in Methods", enter your OAuth credentials from Google Cloud Console or Meta for Developers, and toggle Enable.</span>
         </div>
       </div>
     </div>
@@ -145,10 +100,10 @@
         </div>
         <div style="flex: 1;">
           <div style="display: flex; align-items: center; justify-content: space-between;">
-            <h3 class="card-title" data-i18n="session.title">Authenticated User Profile</h3>
-            <span class="badge badge-success" data-i18n="session.active_badge">Active Session</span>
+            <h3 class="card-title" data-i18n="session.title">Thông Tin Tài Khoản</h3>
+            <span class="badge badge-success" data-i18n="session.active_badge">Đang Hoạt Động</span>
           </div>
-          <p class="card-subtitle" data-i18n="session.subtitle">Identity returned by Auth Service (Project 1)</p>
+          <p class="card-subtitle" data-i18n="session.subtitle">Phiên đăng nhập đã được xác thực an toàn</p>
         </div>
       </div>
 
@@ -168,16 +123,16 @@
           <table class="data-table" style="font-size: 13px;">
             <tbody>
               <tr>
-                <td style="width: 140px; color: var(--text-dim); font-weight: 500;" data-i18n="session.user_id">User ID (UID)</td>
+                <td style="width: 150px; color: var(--text-dim); font-weight: 500;" data-i18n="session.user_id">Mã Tài Khoản (UID)</td>
                 <td><code id="user-id-display" class="meta-code">...</code></td>
               </tr>
               <tr>
-                <td style="color: var(--text-dim); font-weight: 500;" data-i18n="session.provider">Identity Provider</td>
+                <td style="color: var(--text-dim); font-weight: 500;" data-i18n="session.provider">Phương Thức Đăng Nhập</td>
                 <td><span id="user-provider-display" class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">OAuth</span></td>
               </tr>
               <tr>
-                <td style="color: var(--text-dim); font-weight: 500;" data-i18n="session.auth_status">Auth Status</td>
-                <td><span style="color: var(--success); font-weight: 500;" data-i18n="session.verified_text">✓ JWT Validated via Auth Service</span></td>
+                <td style="color: var(--text-dim); font-weight: 500;" data-i18n="session.auth_status">Trạng Thái Xác Thực</td>
+                <td><span style="color: var(--success); font-weight: 500;" data-i18n="session.verified_text">✓ Đã Xác Thực &amp; Hoạt Động</span></td>
               </tr>
             </tbody>
           </table>
@@ -186,8 +141,8 @@
         <!-- JWT Token Block -->
         <div class="token-container" style="margin-bottom: 24px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span class="token-label" data-i18n="session.jwt_label">JWT Access Token (Bearer):</span>
-            <button class="btn btn-secondary btn-xs" onclick="copyToken()" data-i18n="btn.copy">Copy Token</button>
+            <span class="token-label" data-i18n="session.jwt_label">Mã Phiên Đăng Nhập (Access Token JWT):</span>
+            <button class="btn btn-secondary btn-xs" onclick="copyToken()" data-i18n="btn.copy">Sao Chép Token</button>
           </div>
           <div class="token-row">
             <code class="token-value" id="user-token-display">eyJhbGci...</code>
@@ -196,11 +151,8 @@
 
         <!-- Logout Action Button -->
         <div style="display: flex; gap: 12px; justify-content: flex-end; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 18px;">
-          <a href="http://localhost:3000/dashboard/" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration: none;">
-            <span data-i18n="btn.open_console">Auth Service Console &nearr;</span>
-          </a>
           <button class="btn btn-danger btn-sm" onclick="logout()" data-i18n="btn.sign_out">
-            Sign Out
+            Đăng Xuất
           </button>
         </div>
       </div>
@@ -211,6 +163,6 @@
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20261028_01"></script>
 </body>
 </html>
