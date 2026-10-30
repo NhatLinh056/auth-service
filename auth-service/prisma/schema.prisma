@@ -1,7 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Prisma Schema for Central Identity Provider (Auth Service)
 
 generator client {
   provider = "prisma-client"
@@ -52,6 +49,7 @@ model OAuthIdentity {
   updatedAt      DateTime          @updatedAt
 
   @@unique([provider, providerUserId])
+  @@index([userId])
   @@map("oauth_identities")
 }
 
@@ -69,6 +67,7 @@ model OAuthProvider {
   updatedAt     DateTime          @updatedAt
 
   @@unique([applicationId, provider])
+  @@index([applicationId])
   @@map("oauth_providers")
 }
 
@@ -84,5 +83,6 @@ model Application {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
+  @@index([userId])
   @@map("applications")
 }

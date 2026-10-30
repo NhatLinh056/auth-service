@@ -1,141 +1,115 @@
-# Authentication & Microservice Interoperability Platform
+# HỆ THỐNG XÁC THỰC VÀ PHÂN QUYỀN CHO KIẾN TRÚC MICROSERVICES
+(Identity & Access Management Platform)
 
-> **Project 3 — Hệ Thống Xác Thực & Phân Quyền Liên Thông Giữa Các Microservices**  
-> Kiến trúc Monorepo tiêu chuẩn chứa 2 dịch vụ độc lập: **Auth Service (IAM Core)** và **Demo Service (Client Microservice)**.
-
----
-
-## 🏛️ Sơ Đồ Kiến Trúc Hệ Thống (Architecture)
-
-```
-                     ┌─────────────────────────────────────────────────────────┐
-                     │               NGƯỜI DÙNG / TRÌNH DUYỆT                  │
-                     └────────────────────┬────────────────────────────────────┘
-                                          │
-                  1. Login / Register     │ 2. Gọi API kèm Bearer JWT
-                  & Nhận User JWT         │    (ví dụ: GET /orders)
-                                          │
-                                          ▼
-┌───────────────────────────────┐                  ┌───────────────────────────────┐
-│         PROJECT 1             │                  │         PROJECT 2             │
-│        auth-service           │ ◄─────────────── │         demo-service          │
-│       (Cổng: 3000)            │  3. Xác thực &   │         (Cổng: 3001)          │
-│                               │     Ủy quyền     │                               │
-│ • Quản lý User & RBAC         │                  │ • Không có DB User            │
-│ • Cấp JWT (Access Token)      │  Headers gửi kèm:│ • AppAuthMiddleware           │
-│ • Quản lý AppID / AppToken    │  - X-App-Id      │   tự động tiêm App ID & Token │
-│ • AppAuthGuard & RBAC Guards  │  - X-App-Token   │ • Nghiệp vụ Đơn Hàng (Orders) │
-│ • Developer Console (/dashboard/) - Authorization│ • Bắt tay kiểm tra kết nối    │
-└───────────────┬───────────────┘                  └───────────────────────────────┘
-                │
-                ▼
-      ┌───────────────────┐
-      │    PostgreSQL     │
-      │  auth_service_db  │
-      └───────────────────┘
-```
+- Đề tài: Nghiên cứu và xây dựng hệ thống quản lý định danh, xác thực và phân quyền tập trung cho kiến trúc Microservices.
+- Tác giả: Lê Nhật Linh - Lớp CNTT-Việt Pháp K68, Trường Công nghệ Thông tin & Truyền thông, Đại học Bách khoa Hà Nội (HUST).
 
 ---
 
-## 📂 Cấu Trúc Thư Mục Repository
+## 1. Giới thiệu tổng quan
 
-```text
-.
-├── auth-service/                  # [PROJECT 1] Dịch vụ IAM & Xác thực Trung tâm (Port 3000)
-│   ├── src/                       # Source code NestJS (Auth, Users, Roles, Applications)
-│   ├── prisma/                    # Schema database PostgreSQL (Prisma 7 ORM)
-│   ├── public/                    # Developer & Admin Console WebApp (/dashboard/)
-│   ├── test/                      # 120 E2E tests trên PostgreSQL thật
-│   ├── package.json               # Dependencies độc lập của Project 1
-│   └── .env.example
-│
-├── demo-service/                  # [PROJECT 2] Client Microservice Demo (Port 3001)
-│   ├── src/                       # Source code NestJS (AppAuthMiddleware, Orders Module)
-│   ├── test/                      # Integration tests liên thông sang Project 1
-│   ├── package.json               # Dependencies độc lập của Project 2
-│   └── .env.example
-│
-├── HANDOFF.md                     # Tài liệu nhật ký kỹ thuật & roadmap chi tiết
-├── README.md                      # Hướng dẫn tổng quan toàn bộ hệ thống (file này)
-└── .gitignore                     # Bỏ qua node_modules, .env, dist của cả 2 services
+Dự án cung cấp giải pháp Quản lý Định danh và Quyền truy cập tập trung (Identity & Access Management - IAM / Central Identity Provider) cho các hệ thống phân tán (Microservices). Hệ thống được tổ chức thành hai phân hệ độc lập:
+
+1. auth-service (Cổng 3000):
+   Dịch vụ IAM trung tâm chịu trách nhiệm quản lý tài khoản người dùng, băm mật khẩu bằng bcrypt, cấp phát JSON Web Token (JWT) không lưu trạng thái, phân quyền dựa trên vai trò (RBAC: ADMIN / USER), quản lý ứng dụng thành viên (Application Management qua AppID / AppToken) và cung cấp Developer Console.
+
+2. demo-service (Cổng 3001):
+   Dịch vụ khách độc lập (Client Microservice) đóng vai trò ứng dụng kiểm chứng (Proof of Concept - PoC). Dịch vụ tích hợp auth-client để thực hiện bắt tay dịch vụ (Service Handshake) và ủy quyền thẩm định token người dùng (Delegated User JWT Verification).
+   Lưu ý về nghiệp vụ: Phân hệ "Đơn hàng" (Orders) trong demo-service là nghiệp vụ mẫu giả lập (Sample Resource với dữ liệu in-memory), nhằm chứng minh cơ chế bảo vệ endpoint nội bộ bằng UserAuthGuard mà không cần quản lý cơ sở dữ liệu người dùng riêng.
+
+---
+
+## 2. Sơ đồ kiến trúc tổng thể
+
+```
+   [Người dùng / Client]
+            |
+    1. Đăng nhập & Nhận JWT
+            v
++-------------------------------+     2. Gọi API kèm Bearer JWT     +-------------------------------+
+|         auth-service          | <-------------------------------- |         demo-service          |
+|         (Port: 3000)          |       3. Handshake & Verify       |         (Port: 3001)          |
+| - Quản lý User & RBAC         |          Headers gửi kèm:         | - Nghiệp vụ mẫu: Đơn hàng     |
+| - Cấp phát & Kiểm tra JWT     |          - X-App-Id               | - UserAuthGuard ủy quyền JWT  |
+| - Quản lý AppID / AppToken    |          - X-App-Token            | - Bắt tay kiểm tra kết nối    |
+| - Sign-in Methods đa dự án    |                                   | - Không lưu trữ DB User riêng |
+| - Developer Console WebApp    |                                   | - Client Portal (/status)     |
++---------------+---------------+                                   +-------------------------------+
+                |
+                v
+      +-------------------+
+      |    PostgreSQL     |
+      |  auth_service_db  |
+      +-------------------+
 ```
 
 ---
 
-## 🚀 Hướng Dẫn Khởi Chạy Nhanh (Quickstart)
+## 3. Tính năng cốt lõi
 
-### Bước 1: Khởi động PROJECT 1 (Auth Service — Port 3000)
+1. Xác thực tập trung (Authentication):
+   Đăng ký và đăng nhập mật khẩu với thuật toán băm bcrypt (10 salt rounds), cấp phát JWT Access Token không lưu trạng thái.
 
-1. Mở terminal, di chuyển vào thư mục `auth-service`:
-   ```bash
-   cd auth-service
-   ```
-2. Cài đặt thư viện và chuẩn bị file môi trường `.env`:
-   ```bash
-   npm install
-   cp .env.example .env
-   ```
-   *Đảm bảo PostgreSQL đang chạy và chuỗi `DATABASE_URL` trong `.env` chính xác.*
-3. Chạy migration và seed dữ liệu khởi tạo (nếu chưa có):
-   ```bash
-   npx prisma migrate dev
-   ```
-4. Khởi chạy server ở chế độ phát triển:
-   ```bash
-   npm run start:dev
-   ```
-   *Auth Service sẽ lắng nghe tại: `http://localhost:3000`*
-   *Developer Console có thể truy cập tại: `http://localhost:3000/dashboard/`*
+2. Phân quyền theo vai trò (RBAC):
+   Phân định quyền hạn giữa ADMIN và USER, bảo vệ route bằng Custom Guard (@Auth(), RolesGuard).
+
+3. Bảo mật liên dịch vụ (Service-to-Service):
+   Cấp phát AppID và AppToken (entropy 256-bit), hỗ trợ thu hồi và tái sinh token ngay lập tức để bảo vệ kết nối giữa các microservices.
+
+4. Cấu hình đăng nhập đa dự án (Project-scoped Sign-in Methods):
+   Mỗi ứng dụng thành viên được cấu hình bật/tắt các phương thức OAuth (Google, Facebook) độc lập, bảo đảm cô lập cấu hình đa khách hàng (Multi-Tenancy).
+
+5. Giao diện Developer Console:
+   Giao diện quản trị Single Page Application xây dựng bằng React 19 + TypeScript + Vite, tích hợp phục vụ trực tiếp tại cổng 3000.
+
+6. Cơ chế phòng thủ an toàn thông tin:
+   Ngăn chặn lỗ hổng IDOR bằng OwnerOrAdminGuard, phòng chống Bcrypt DoS bằng giới hạn độ dài mật khẩu (@MaxLength), chống CSRF trong luồng OAuth bằng tham số state có chữ ký HMAC.
 
 ---
 
-### Bước 2: Tạo Khóa Kết Nối Trên Developer Console
+## 4. Công nghệ sử dụng
 
-1. Mở trình duyệt truy cập: `http://localhost:3000/dashboard/`.
-2. Đăng nhập bằng tài khoản Quản trị viên (Admin) mặc định:
-   * **Email:** `admin@example.com`
-   * **Mật khẩu:** `Admin123!`
-   *(Hoặc click nút **"Điền Nhanh" / "Quick Fill"** trên màn hình đăng nhập).*
-3. Chuyển sang tab **"Applications"** $\rightarrow$ Click **"+ Create Application"**.
-4. Điền tên ứng dụng (ví dụ: `Demo Order Service`) $\rightarrow$ Click Tạo.
-5. Click **"Chi Tiết" (Details)** trên ứng dụng vừa tạo:
-   * Sao chép **App ID** (ví dụ: `app_xxxxxxxxxxxx`)
-   * Sao chép **App Token** (ví dụ: `apt_xxxxxxxxxxxxxxxxxxxxxxxx`)
+- Backend: NestJS 12, TypeScript 6, Node.js (ES Modules).
+- Cơ sở dữ liệu: PostgreSQL 16+, Prisma ORM 7.
+- Bảo mật & Mật mã: Passport.js, JWT, bcrypt, Node.js crypto (CSPRNG).
+- Frontend Console: React 19, TypeScript, Vite 8, Vanilla CSS Design System.
+- Kiểm thử tự động: Vitest (179 Unit tests + 137 E2E tests + 20 Client tests = 100% Passed).
 
 ---
 
-### Bước 3: Cấu Hình & Khởi Động PROJECT 2 (Demo Service — Port 3001)
+## 5. Hướng dẫn khởi chạy hệ thống
 
-1. Mở terminal thứ 2, di chuyển vào thư mục `demo-service`:
-   ```bash
-   cd demo-service
-   ```
-2. Cài đặt thư viện và tạo file cấu hình `.env`:
-   ```bash
-   npm install
-   cp .env.example .env
-   ```
-3. Điền các giá trị đã lấy từ Bước 2 vào `.env` của `demo-service`:
-   ```env
-   PORT=3001
-   AUTH_SERVICE_URL=http://localhost:3000
-   APP_ID=app_xxxxxxxxxxxx
-   APP_TOKEN=apt_xxxxxxxxxxxxxxxxxxxxxxxx
-   ```
-4. Khởi chạy Demo Service:
-   ```bash
-   npm run start:dev
-   ```
-   *Demo Service sẽ lắng nghe tại: `http://localhost:3001`*
+### Bước 1: Khởi động Central Auth Service (Cổng 3000)
 
----
+```bash
+cd auth-service
+npm install
+cp .env.example .env
+# Đồng bộ lược đồ cơ sở dữ liệu PostgreSQL
+npx prisma generate
+npx prisma db push
+# Chạy máy chủ ở chế độ phát triển
+npm run start:dev
+```
 
-### Bước 4: Kiểm Chứng Liên Thông (Verification)
+- Địa chỉ truy cập Developer Console: http://localhost:3000 (hoặc http://localhost:3000/dashboard/)
+- Tài khoản quản trị khởi tạo mặc định: admin@example.com / Admin123!
+- Tài liệu API Swagger: http://localhost:3000/api
 
-1. **Kiểm tra bắt tay liên thông (Handshake):**
-   ```bash
-   curl -i http://localhost:3001/status
-   ```
-   *Kết quả mong đợi:* Nhận về `200 OK` xác nhận kết nối thành công với Auth Service.
-2. **Kiểm tra gọi API nghiệp vụ được bảo vệ:**
-   * Gửi request tới `http://localhost:3001/orders` kèm theo Bearer JWT của người dùng để kiểm chứng Project 2 ủy quyền xác thực sang Project 1 thành công.
+### Bước 2: Khởi động Demo Service (Cổng 3001)
+
+Mở một cửa sổ terminal mới:
+
+```bash
+cd demo-service
+npm install
+cp .env.example .env
+# Khởi động dịch vụ khách
+npm run start:dev
+```
+
+### Bước 3: Kiểm tra liên thông giữa hai dịch vụ
+
+- Kiểm tra trạng thái bắt tay dịch vụ: Truy cập http://localhost:3001/status trên trình duyệt (kết quả mong đợi: status: "ONLINE", handshakeStatus: "SUCCESS").
+- Gọi thử nghiệm endpoint nghiệp vụ mẫu: Gửi yêu cầu GET http://localhost:3001/orders kèm Bearer Token của người dùng lấy từ Auth Service.
+
