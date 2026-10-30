@@ -22,14 +22,14 @@ export class UsersService implements OnModuleInit {
   }
 
   async ensureDefaultAdmin(): Promise<void> {
-    const adminEmail = 'admin@example.com';
+    const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || 'admin@example.com';
     const existing = await this.prisma.user.findUnique({
       where: { email: adminEmail },
     });
 
-    const passwordHash = await bcrypt.hash('Admin123!', 10);
-
     if (!existing) {
+      const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'Admin123!';
+      const passwordHash = await bcrypt.hash(defaultPassword, 10);
       await this.prisma.user.create({
         data: {
           email: adminEmail,
@@ -38,17 +38,9 @@ export class UsersService implements OnModuleInit {
           role: Role.ADMIN,
         },
       });
-      this.logger.log('Đã tạo tài khoản quản trị mặc định: admin@example.com / Admin123!');
+      this.logger.log(`Đã khởi tạo tài khoản quản trị mặc định: ${adminEmail}`);
     } else {
-      await this.prisma.user.update({
-        where: { email: adminEmail },
-        data: {
-          passwordHash,
-          role: Role.ADMIN,
-          name: existing.name || 'Administrator',
-        },
-      });
-      this.logger.log('Đã đồng bộ tài khoản quản trị: admin@example.com / Admin123!');
+      this.logger.log(`Tài khoản quản trị đã sẵn sàng: ${adminEmail}`);
     }
   }
 

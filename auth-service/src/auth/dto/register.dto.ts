@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @ApiProperty({
@@ -12,10 +12,11 @@ export class RegisterDto {
 
   @ApiProperty({
     example: 'password123',
-    description: 'Mật khẩu (ít nhất 6 ký tự)',
+    description: 'Mật khẩu (6 - 128 ký tự)',
   })
   @IsString({ message: 'Mật khẩu phải là chuỗi' })
   @MinLength(6, { message: 'Mật khẩu phải có ít nhất 6 ký tự' })
+  @MaxLength(128, { message: 'Mật khẩu không được vượt quá 128 ký tự' })
   password: string;
 
   @ApiPropertyOptional({

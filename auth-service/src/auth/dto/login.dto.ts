@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({
@@ -16,5 +16,6 @@ export class LoginDto {
   })
   @IsString({ message: 'Mật khẩu phải là chuỗi' })
   @IsNotEmpty({ message: 'Mật khẩu không được để trống' })
+  @MaxLength(128, { message: 'Mật khẩu không được vượt quá 128 ký tự' })
   password: string;
 }

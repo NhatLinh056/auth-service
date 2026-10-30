@@ -8,10 +8,9 @@ import { HealthService } from './health.service.js';
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
-  // @ApiOperation: mô tả endpoint này làm gì — hiển thị trên Swagger UI
   @ApiOperation({ summary: 'Kiểm tra trạng thái server' })
   @Get()
-  getHealth(): object {
+  async getHealth(): Promise<object> {
     return this.healthService.getStatus();
   }
 }

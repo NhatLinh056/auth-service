@@ -10,7 +10,11 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // --- Kích hoạt CORS ---
-  app.enableCors();
+  const corsOrigin = process.env.CORS_ORIGIN;
+  app.enableCors({
+    origin: corsOrigin ? corsOrigin.split(',').map((o) => o.trim()) : true,
+    credentials: true,
+  });
 
   // --- Cấu hình Validation toàn cục ---
   app.useGlobalPipes(
@@ -28,15 +32,17 @@ async function bootstrap() {
   app.useStaticAssets(join(process.cwd(), 'public'));
 
   // --- Cấu hình Swagger ---
-  const config = new DocumentBuilder()
-    .setTitle('Auth Service API')
-    .setDescription('Authentication & Authorization Service')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+  if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_SWAGGER === 'true') {
+    const config = new DocumentBuilder()
+      .setTitle('Auth Service API')
+      .setDescription('Authentication & Authorization Service')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document);
+  }
 
   await app.listen(process.env.PORT ?? 3000);
 }

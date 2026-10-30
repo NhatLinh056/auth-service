@@ -13,10 +13,18 @@ import { OAuthService } from './oauth.service.js';
     UsersModule,
     OAuthProvidersModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'super-secret-jwt-key-for-project-3',
-      signOptions: {
-        expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any,
+    JwtModule.registerAsync({
+      useFactory: () => {
+        const secret = process.env.JWT_SECRET;
+        if (process.env.NODE_ENV === 'production' && (!secret || secret === 'super-secret-jwt-key-for-project-3')) {
+          throw new Error('FATAL: JWT_SECRET must be configured with a secure private key in production!');
+        }
+        return {
+          secret: secret || 'super-secret-jwt-key-for-project-3',
+          signOptions: {
+            expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any,
+          },
+        };
       },
     }),
   ],

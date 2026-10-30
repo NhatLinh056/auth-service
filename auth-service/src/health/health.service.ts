@@ -1,15 +1,26 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service.js';
 
-// @Injectable() báo cho NestJS biết class này là một Service
-// NestJS sẽ tự động tạo instance và inject vào nơi cần dùng
 @Injectable()
 export class HealthService {
-  // Hàm này chứa logic thực sự
-  // Controller sẽ gọi hàm này và lấy kết quả trả về cho client
-  getStatus(): object {
+  private readonly logger = new Logger(HealthService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getStatus(): Promise<object> {
+    let dbStatus = 'connected';
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+    } catch (err: any) {
+      this.logger.error(`Database health check failed: ${err.message}`);
+      dbStatus = 'disconnected';
+    }
+
     return {
-      status: 'ok',
+      status: dbStatus === 'connected' ? 'ok' : 'degraded',
       message: 'Auth Service is running',
+      database: dbStatus,
+      uptimeSeconds: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
     };
   }

@@ -15,6 +15,11 @@ export interface JwtPayload {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
+    const jwtSecret = process.env['JWT_SECRET'];
+    if (process.env.NODE_ENV === 'production' && (!jwtSecret || jwtSecret === 'super-secret-jwt-key-for-project-3')) {
+      throw new Error('FATAL: JWT_SECRET must be configured with a secure private key in production!');
+    }
+
     super({
       // Cách lấy token: đọc từ header "Authorization: Bearer <token>"
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -23,7 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ignoreExpiration: false,
 
       // Secret key phải khớp với key đã dùng để ký token trong AuthService.login()
-      secretOrKey: process.env['JWT_SECRET'] || 'super-secret-jwt-key-for-project-3',
+      secretOrKey: jwtSecret || 'super-secret-jwt-key-for-project-3',
     });
   }
 
