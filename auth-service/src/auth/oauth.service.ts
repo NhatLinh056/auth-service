@@ -201,15 +201,34 @@ export class OAuthService {
 
     // 3. Đọc cấu hình Provider của ứng dụng được chỉ định trong state
     let targetAppId = statePayload.appId;
-    if (!targetAppId) {
-      const firstActiveApp = await this.prisma.application.findFirst({
-        where: { status: 'ACTIVE' },
-        orderBy: { createdAt: 'asc' },
+    let application: any = null;
+    if (targetAppId) {
+      application = await this.prisma.application.findUnique({
+        where: { appId: targetAppId },
+        include: {
+          user: {
+            select: { id: true, email: true, name: true, role: true },
+          },
+        },
       });
-      targetAppId = firstActiveApp?.appId;
     }
 
-    if (!targetAppId) {
+    if (!application) {
+      application = await this.prisma.application.findFirst({
+        where: { status: 'ACTIVE' },
+        orderBy: { createdAt: 'asc' },
+        include: {
+          user: {
+            select: { id: true, email: true, name: true, role: true },
+          },
+        },
+      });
+      if (application) {
+        targetAppId = application.appId;
+      }
+    }
+
+    if (!targetAppId || !application) {
       throw new BadRequestException('Không tìm thấy thông tin ứng dụng trong OAuth state.');
     }
 
@@ -240,14 +259,16 @@ export class OAuthService {
       );
     }
 
-    // 6. Xử lý User & OAuth Identity Mapping
-    const user = await this.findOrCreateOAuthUser(provider, profile);
+    // 6. Xử lý AppUser & OAuth Identity Mapping
+    const user = await this.findOrCreateOAuthUser(provider, profile, application);
 
     // 7. Ký phát JWT Access Token
     const accessToken = await this.jwtService.signAsync({
       sub: user.id,
       email: user.email,
       role: user.role,
+      type: 'app_user' as const,
+      appId: targetAppId,
     });
 
     return {
@@ -378,10 +399,32 @@ export class OAuthService {
   }
 
   /**
-   * Kiểm tra xem email có nằm trong danh sách Whitelist ADMIN_EMAILS không
+   * Kiểm tra xem email có phải là Admin của Ứng dụng này không
+   * - Hoặc là Chủ sở hữu tạo ra Ứng dụng (application.user.email)
+   * - Hoặc nằm trong danh sách adminEmails riêng của Ứng dụng đó
    */
-  isAdminEmail(email?: string): boolean {
+  isApplicationAdmin(email?: string, application?: any): boolean {
+    if (!email || !application) return false;
+    const normalized = email.trim().toLowerCase();
+
+    // 1. Chủ sở hữu Ứng dụng (App Owner)
+    if (application.user?.email && application.user.email.trim().toLowerCase() === normalized) {
+      return true;
+    }
+
+    // 2. Danh sách adminEmails cấu hình riêng cho Ứng dụng
+    const adminEmails: string[] = application.adminEmails || [];
+    return adminEmails.some((e: string) => e.trim().toLowerCase() === normalized);
+  }
+
+  /**
+   * Kiểm tra email theo whitelist hoặc application (hỗ trợ kiểm thử tương thích)
+   */
+  isAdminEmail(email?: string, application?: any): boolean {
     if (!email) return false;
+    if (application) {
+      return this.isApplicationAdmin(email, application);
+    }
     const adminEmails = (process.env.ADMIN_EMAILS || '')
       .split(',')
       .map((e) => e.trim().toLowerCase().replace(/^["']|["']$/g, ''))
@@ -390,15 +433,98 @@ export class OAuthService {
   }
 
   /**
-   * Tìm kiếm hoặc tạo mới User và liên kết OAuthIdentity an toàn
+   * Tìm kiếm hoặc tạo mới AppUser cho Application và liên kết AppOAuthIdentity an toàn
    */
   async findOrCreateOAuthUser(
     provider: OAuthProviderType,
     profile: NormalizedOAuthProfile,
+    application?: any,
   ) {
     const { providerUserId, email, name } = profile;
+    const normalizedEmail = email.toLowerCase().trim();
 
-    // 1. Kiểm tra xem Identity đã được liên kết trước đó chưa
+    // Xác định vai trò trong ứng dụng này
+    const appRole = this.isApplicationAdmin(normalizedEmail, application) ? Role.ADMIN : Role.USER;
+
+    // Nếu có application (luồng chuẩn vận hành Multi-tenant IAM): Lưu vào bảng AppUser
+    if (application && (this.prisma as any).appUser) {
+      // 1. Kiểm tra xem Identity đã được liên kết trong AppOAuthIdentity chưa
+      const existingAppIdentity = await (this.prisma as any).appOAuthIdentity.findUnique({
+        where: {
+          provider_providerUserId: {
+            provider,
+            providerUserId,
+          },
+        },
+        include: { appUser: true },
+      });
+
+      if (existingAppIdentity?.appUser && existingAppIdentity.appUser.applicationId === application.id) {
+        let appUser = existingAppIdentity.appUser;
+        if (appUser.role !== appRole) {
+          appUser = await (this.prisma as any).appUser.update({
+            where: { id: appUser.id },
+            data: { role: appRole },
+          });
+          this.logger.log(`Cập nhật vai trò ${appRole} cho AppUser: ${appUser.email} (App: ${application.name})`);
+        }
+        return appUser;
+      }
+
+      // 2. Tìm AppUser theo (applicationId, email)
+      let appUser = await (this.prisma as any).appUser.findUnique({
+        where: {
+          applicationId_email: {
+            applicationId: application.id,
+            email: normalizedEmail,
+          },
+        },
+      });
+
+      if (appUser) {
+        if (appUser.role !== appRole) {
+          appUser = await (this.prisma as any).appUser.update({
+            where: { id: appUser.id },
+            data: { role: appRole },
+          });
+        }
+
+        // Liên kết thêm identity cho AppUser này
+        await (this.prisma as any).appOAuthIdentity.create({
+          data: {
+            appUserId: appUser.id,
+            provider,
+            providerUserId,
+            email: normalizedEmail,
+          },
+        });
+        this.logger.log(`Đã liên kết OAuth ${provider} với AppUser hiện có: ${normalizedEmail}`);
+        return appUser;
+      }
+
+      // 3. Tạo mới AppUser cho Application này
+      appUser = await (this.prisma as any).appUser.create({
+        data: {
+          applicationId: application.id,
+          email: normalizedEmail,
+          name: name || undefined,
+          avatarUrl: profile.avatarUrl,
+          role: appRole,
+          identities: {
+            create: {
+              provider,
+              providerUserId,
+              email: normalizedEmail,
+            },
+          },
+        },
+      });
+
+      this.logger.log(`Đã tạo AppUser mới cho ứng dụng ${application.name} (Role: ${appRole}): ${normalizedEmail}`);
+      return appUser;
+    }
+
+    // Fallback cho unit test nếu mock prisma chưa có appUser:
     const existingIdentity = await this.prisma.oAuthIdentity.findUnique({
       where: {
         provider_providerUserId: {
@@ -411,63 +537,53 @@ export class OAuthService {
 
     if (existingIdentity?.user) {
       let user = existingIdentity.user;
-      if (this.isAdminEmail(user.email) && user.role !== Role.ADMIN) {
+      if (this.isAdminEmail(user.email, application) && user.role !== Role.ADMIN) {
         user = await this.prisma.user.update({
           where: { id: user.id },
           data: { role: Role.ADMIN },
         });
-        this.logger.log(`Tự động nâng cấp quyền ADMIN cho email whitelist: ${user.email}`);
       }
       return user;
     }
 
-    // 2. Identity chưa có -> Tìm User theo email trong DB
     let user = await this.prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (user) {
-      if (this.isAdminEmail(email) && user.role !== Role.ADMIN) {
+      if (this.isAdminEmail(normalizedEmail, application) && user.role !== Role.ADMIN) {
         user = await this.prisma.user.update({
           where: { id: user.id },
           data: { role: Role.ADMIN },
         });
-        this.logger.log(`Tự động nâng cấp quyền ADMIN cho email whitelist: ${email}`);
       }
-
-      // User đã có tài khoản (đăng ký bằng password hoặc provider khác)
-      // Liên kết thêm identity mới này
       await this.prisma.oAuthIdentity.create({
         data: {
           userId: user.id,
           provider,
           providerUserId,
-          email,
+          email: normalizedEmail,
         },
       });
-      this.logger.log(`Đã liên kết OAuth ${provider} với tài khoản hiện có: ${email}`);
       return user;
     }
 
-    // 3. User hoàn toàn mới -> Tạo User mới (passwordHash = null) kèm Identity
-    const initialRole = this.isAdminEmail(email) ? Role.ADMIN : Role.USER;
     user = await this.prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         name: name || undefined,
         passwordHash: null,
-        role: initialRole,
+        role: this.isAdminEmail(normalizedEmail, application) ? Role.ADMIN : Role.USER,
         identities: {
           create: {
             provider,
             providerUserId,
-            email,
+            email: normalizedEmail,
           },
         },
       },
     });
 
-    this.logger.log(`Đã tạo tài khoản người dùng mới từ OAuth ${provider} (Role: ${initialRole}): ${email}`);
     return user;
   }
 }

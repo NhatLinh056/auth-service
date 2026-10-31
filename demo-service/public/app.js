@@ -1,6 +1,7 @@
 /**
  * CLIENT APPLICATION LOGIC
- * Standalone Client Portal: Social Sign In (Google / Facebook) -> Display User Profile -> Logout
+ * Standalone Client Portal: Social Sign In (Google / Facebook) & Developer Sign In (Project 1 Owner)
+ * Multi-tenant RBAC: Project 1 App Owner is ADMIN in Project 2, End-users are USER
  * Bilingual: English (EN) and Vietnamese (VI)
  */
 
@@ -11,16 +12,16 @@ const translations = {
   en: {
     nav: {
       brand_title: 'Client Portal',
-      brand_tag: 'Online Portal',
+      brand_tag: 'Online Services',
     },
     auth: {
       title: 'Sign In to Your Account',
-      subtitle: 'Choose your social account to sign in securely',
+      subtitle: 'Select the sign-in method according to your role',
       btn_google: 'Sign in with Google',
       btn_facebook: 'Sign in with Facebook',
     },
     session: {
-      title: 'Authenticated User Profile',
+      title: 'Account Information',
       subtitle: 'Secure active user session',
       active_badge: 'Active Session',
       user_id: 'User ID (UID)',
@@ -43,7 +44,7 @@ const translations = {
     status: {
       online: 'System Online',
       connected: 'System Online',
-      disconnected: 'System Offline',
+      disconnected: 'Disconnected',
       offline: 'System Offline',
     }
   },
@@ -54,7 +55,7 @@ const translations = {
     },
     auth: {
       title: 'Đăng Nhập Tài Khoản',
-      subtitle: 'Chọn phương thức tài khoản để đăng nhập nhanh chóng',
+      subtitle: 'Chọn phương thức phù hợp với vai trò của bạn',
       btn_google: 'Đăng nhập bằng Google',
       btn_facebook: 'Đăng nhập bằng Facebook',
     },
@@ -156,22 +157,79 @@ function updateAuthUI() {
     if (unauthView) unauthView.style.display = 'none';
     if (authView) authView.style.display = 'block';
 
+    const role = state.user.role || 'USER';
+    const isAdmin = role === 'ADMIN';
+
     // Populate user profile info
     const nameEl = document.getElementById('user-name-display');
     const emailEl = document.getElementById('user-email-display');
     const roleEl = document.getElementById('user-role-display');
     const idEl = document.getElementById('user-id-display');
     const providerEl = document.getElementById('user-provider-display');
+    const p1RoleEl = document.getElementById('user-p1-role-display');
+    const p2RoleEl = document.getElementById('user-p2-role-display');
     const avatarEl = document.getElementById('user-avatar');
     const tokenEl = document.getElementById('user-token-display');
+    const explanationBox = document.getElementById('role-explanation-box');
 
     if (nameEl) nameEl.textContent = state.user.name || state.user.email?.split('@')[0] || 'User';
     if (emailEl) emailEl.textContent = state.user.email || 'N/A';
-    if (roleEl) roleEl.textContent = state.user.role || 'USER';
     if (idEl) idEl.textContent = state.user.id || state.user.sub || 'N/A';
+
+    if (roleEl) {
+      roleEl.textContent = role;
+      roleEl.className = isAdmin ? 'user-role-badge badge-admin' : 'user-role-badge badge-user';
+      roleEl.style.background = isAdmin ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.2)';
+      roleEl.style.color = isAdmin ? '#10b981' : '#818cf8';
+      roleEl.style.borderColor = isAdmin ? 'rgba(16, 185, 129, 0.4)' : 'rgba(99, 102, 241, 0.4)';
+    }
+
     if (providerEl) {
       const p = (state.user.provider || 'OAuth').toUpperCase();
       providerEl.textContent = p;
+    }
+
+    if (p1RoleEl) {
+      // In Project 1 (BaaS Platform), developers and users are normal users (or admin if platform superadmin)
+      p1RoleEl.textContent = state.user.p1Role || (state.user.email === 'admin@example.com' ? 'ADMIN' : 'USER');
+    }
+
+    if (p2RoleEl) {
+      if (isAdmin) {
+        p2RoleEl.textContent = state.lang === 'vi' ? 'ADMIN (Chủ sở hữu Ứng dụng)' : 'ADMIN (App Owner)';
+        p2RoleEl.style.background = 'rgba(16, 185, 129, 0.2)';
+        p2RoleEl.style.color = '#10b981';
+      } else {
+        p2RoleEl.textContent = state.lang === 'vi' ? 'USER (Khách hàng vãng lai)' : 'USER (Customer)';
+        p2RoleEl.style.background = 'rgba(99, 102, 241, 0.2)';
+        p2RoleEl.style.color = '#818cf8';
+      }
+    }
+
+    if (explanationBox) {
+      if (isAdmin) {
+        explanationBox.style.background = 'rgba(16, 185, 129, 0.08)';
+        explanationBox.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+        explanationBox.innerHTML = `
+          <div style="color: #10b981; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <span>👑 Quyền Quản Trị Viên (ADMIN) — Chủ Sở Hữu Ứng Dụng</span>
+          </div>
+          <div style="color: var(--text-muted); font-size: 12px; line-height: 1.5;">
+            Tài khoản này sở hữu Ứng dụng tại Project 1 (Auth Service). Trong phạm vi dịch vụ Project 2, bạn được tự động trao toàn quyền <strong>Quản Trị (ADMIN)</strong>: Có thể xem danh sách toàn bộ đơn hàng của tất cả khách hàng trong hệ thống.
+          </div>
+        `;
+      } else {
+        explanationBox.style.background = 'rgba(99, 102, 241, 0.08)';
+        explanationBox.style.borderColor = 'rgba(99, 102, 241, 0.3)';
+        explanationBox.innerHTML = `
+          <div style="color: #818cf8; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <span>👤 Quyền Khách Hàng (USER) — Người Dùng Vãng Lai</span>
+          </div>
+          <div style="color: var(--text-muted); font-size: 12px; line-height: 1.5;">
+            Bạn đang đăng nhập với tư cách khách hàng của ứng dụng. Bạn chỉ có quyền xem và tạo đơn hàng của riêng tài khoản bạn; không thể xem dữ liệu đơn hàng của người khác.
+          </div>
+        `;
+      }
     }
 
     if (avatarEl) {
@@ -187,6 +245,105 @@ function updateAuthUI() {
   } else {
     if (unauthView) unauthView.style.display = 'block';
     if (authView) authView.style.display = 'none';
+  }
+}
+
+/**
+ * Synchronize user profile with Project 2 backend (checks if user is App Owner)
+ */
+async function syncUserProfile() {
+  if (!state.token) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${state.token}`
+      }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.user) {
+        state.user = {
+          ...state.user,
+          ...data.user,
+          role: data.user.role,
+          isAppOwner: data.user.isAppOwner,
+        };
+        localStorage.setItem('demo_user', JSON.stringify(state.user));
+        updateAuthUI();
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to sync profile with Project 2:', err.message);
+  }
+}
+
+/**
+ * Handle Developer/Admin Sign-In using Project 1 Auth Service Credentials
+ */
+async function loginWithDeveloper() {
+  const emailInput = document.getElementById('dev-email');
+  const passwordInput = document.getElementById('dev-password');
+  const btn = document.getElementById('btn-dev-login');
+
+  const email = emailInput?.value.trim();
+  const password = passwordInput?.value.trim();
+
+  if (!email || !password) {
+    showToast(state.lang === 'vi' ? 'Vui lòng nhập email và mật khẩu' : 'Please enter email and password', 'error');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = state.lang === 'vi' ? 'Đang xác thực...' : 'Authenticating...';
+  }
+
+  try {
+    const res = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || (state.lang === 'vi' ? 'Đăng nhập thất bại' : 'Authentication failed'));
+    }
+
+    state.token = data.accessToken;
+    state.user = {
+      id: data.user?.id,
+      email: data.user?.email || email,
+      name: data.user?.name || email.split('@')[0],
+      p1Role: data.user?.role || 'USER',
+      role: 'ADMIN', // Will be confirmed by syncUserProfile()
+      provider: 'Password (Project 1)',
+    };
+
+    localStorage.setItem('demo_token', state.token);
+    localStorage.setItem('demo_user', JSON.stringify(state.user));
+
+    await syncUserProfile();
+    updateAuthUI();
+
+    showToast(
+      state.lang === 'vi'
+        ? `Đăng nhập thành công với vai trò Quản Trị Viên (ADMIN): ${state.user.email}`
+        : `Authenticated as App Administrator: ${state.user.email}`,
+      'success'
+    );
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = state.lang === 'vi' ? 'Đăng Nhập với tư cách Quản Trị Viên (ADMIN)' : 'Sign In as Administrator';
+    }
   }
 }
 
@@ -213,7 +370,6 @@ function handleUrlCallback() {
   }
 
   if (token) {
-    // Decode user info from params or parse JWT
     let user = null;
     const email = params.get('email');
     const name = params.get('name');
@@ -222,7 +378,6 @@ function handleUrlCallback() {
     const avatar = params.get('avatar');
 
     try {
-      // Decode JWT payload
       const parts = token.split('.');
       if (parts.length === 3) {
         const payload = JSON.parse(atob(parts[1]));
@@ -246,7 +401,11 @@ function handleUrlCallback() {
 
     window.history.replaceState({}, document.title, window.location.pathname);
     updateAuthUI();
-    showToast(`${t('toasts.signed_in')} ${user?.email || ''}`);
+
+    // Verify app-level role immediately
+    syncUserProfile().then(() => {
+      showToast(`${t('toasts.signed_in')} ${state.user?.email || ''}`);
+    });
   }
 }
 
@@ -278,7 +437,7 @@ async function fetchOrders() {
   if (btn) btn.disabled = true;
 
   try {
-    const res = await fetch('/orders', {
+    const res = await fetch(`${API_BASE}/orders`, {
       headers: {
         'Authorization': `Bearer ${state.token}`
       }
@@ -294,10 +453,10 @@ async function fetchOrders() {
         badge.textContent = `${res.status} OK`;
       }
       if (statusLabel) {
-        const role = data.user?.role || 'USER';
+        const role = data.user?.role || state.user?.role || 'USER';
         statusLabel.textContent = role === 'ADMIN'
-          ? (state.lang === 'vi' ? '✓ Xác thực thành công (Quyền ADMIN: xem toàn bộ đơn hàng)' : '✓ Verified (ADMIN: full orders view)')
-          : (state.lang === 'vi' ? '✓ Xác thực thành công (Quyền USER: chỉ xem đơn hàng cá nhân)' : '✓ Verified (USER: scoped user orders)');
+          ? (state.lang === 'vi' ? '✓ Xác thực thành công (Quyền ADMIN): Xem toàn bộ đơn hàng của toàn hệ thống Project 2' : '✓ Verified (ADMIN): Viewing all system orders')
+          : (state.lang === 'vi' ? '✓ Xác thực thành công (Quyền USER): Hệ thống tự động lọc chỉ trả về đơn hàng cá nhân' : '✓ Verified (USER): Filtered to personal scoped orders');
       }
       showToast(state.lang === 'vi' ? 'Đã gọi API /orders thành công!' : 'API /orders fetched successfully!', 'success');
     } else {
@@ -327,6 +486,56 @@ async function fetchOrders() {
   }
 }
 
+async function createSampleOrder() {
+  const btn = document.getElementById('btn-create-order');
+
+  if (!state.token) {
+    showToast(state.lang === 'vi' ? 'Chưa có token xác thực.' : 'Missing authentication token.', 'error');
+    return;
+  }
+
+  const sampleItems = [
+    { item: 'Tai nghe không dây Sony WH-1000XM5', price: 349, quantity: 1 },
+    { item: 'Chuột không dây Logitech MX Master 3S', price: 99, quantity: 1 },
+    { item: 'Bàn phím cơ Keychron Q1 Pro Wireless', price: 219, quantity: 1 },
+    { item: 'Màn hình Dell UltraSharp 27 4K USB-C', price: 620, quantity: 1 },
+  ];
+
+  const randomItem = sampleItems[Math.floor(Math.random() * sampleItems.length)];
+
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      },
+      body: JSON.stringify(randomItem)
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      showToast(
+        state.lang === 'vi'
+          ? `Đã tạo đơn hàng mới: "${randomItem.item}" ($${randomItem.price})!`
+          : `Created order: "${randomItem.item}" ($${randomItem.price})!`,
+        'success'
+      );
+      // Automatically refresh orders list
+      await fetchOrders();
+    } else {
+      showToast(`Lỗi tạo đơn: ${data.message || res.statusText}`, 'error');
+    }
+  } catch (err) {
+    showToast(`Lỗi kết nối: ${err.message}`, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 function copyToken() {
   if (!state.token) return;
   navigator.clipboard.writeText(state.token).then(() => {
@@ -346,7 +555,6 @@ function loginWithOAuth(provider) {
   }
 
   showToast(t('toasts.oauth_redirect'));
-  // Redirect to Auth Service OAuth endpoint with redirect_uri and app_id
   const redirectUri = window.location.origin + '/';
   const appId = state.handshake?.handshake?.appId || state.handshake?.appId || '';
   const targetUrl = `${AUTH_SERVICE_URL}/auth/oauth/${provider}?redirect_uri=${encodeURIComponent(redirectUri)}${appId ? `&app_id=${encodeURIComponent(appId)}` : ''}`;
@@ -369,27 +577,6 @@ async function refreshProviders() {
 }
 
 function renderProvidersList(providers) {
-  const listEl = document.getElementById('providers-status-list');
-  if (listEl) {
-    if (!providers || providers.length === 0) {
-      listEl.innerHTML = `<div class="provider-skeleton" style="color: var(--text-dim);">No providers available.</div>`;
-    } else {
-      listEl.innerHTML = providers.map(p => {
-        const isEnabled = Boolean(p.enabled);
-        const pName = p.name || p.provider;
-        return `
-          <div class="provider-item" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); margin-bottom: 8px;">
-            <span style="font-weight: 500;">${pName}</span>
-            <span class="badge ${isEnabled ? 'badge-success' : 'badge-disabled'}">
-              ${isEnabled ? 'ACTIVE' : 'DISABLED'}
-            </span>
-          </div>
-        `;
-      }).join('');
-    }
-  }
-
-  // Update button states
   const googleBtn = document.getElementById('btn-oauth-google');
   const fbBtn = document.getElementById('btn-oauth-facebook');
 
@@ -412,6 +599,9 @@ function renderProvidersList(providers) {
 function updateHandshakeUI() {
   const dot = document.getElementById('handshake-dot');
   const text = document.getElementById('handshake-text');
+  const bannerAppName = document.getElementById('banner-app-name');
+  const bannerAppStatus = document.getElementById('banner-app-status');
+  const bannerOwnerEmail = document.getElementById('banner-owner-email');
 
   const isConnected = state.handshakeStatus === 'CONNECTED';
   const isOffline = state.handshakeStatus === 'OFFLINE';
@@ -423,6 +613,19 @@ function updateHandshakeUI() {
     if (isConnected) text.textContent = t('status.online');
     else if (isOffline) text.textContent = t('status.offline');
     else text.textContent = t('status.disconnected');
+  }
+
+  if (state.handshake) {
+    const appName = state.handshake.handshake?.appName || state.handshake.appName || 'Demo Order Service';
+    const appStatus = state.handshake.handshake?.applicationStatus || state.handshake.status || 'ACTIVE';
+    const ownerEmail = state.handshake.handshake?.owner?.email || 'user@example.com';
+
+    if (bannerAppName) bannerAppName.textContent = appName;
+    if (bannerAppStatus) {
+      bannerAppStatus.textContent = appStatus;
+      bannerAppStatus.className = appStatus === 'ACTIVE' ? 'badge badge-success' : 'badge badge-danger';
+    }
+    if (bannerOwnerEmail) bannerOwnerEmail.textContent = ownerEmail;
   }
 }
 
@@ -458,4 +661,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   updateAuthUI();
   await checkHandshake();
   await refreshProviders();
+  if (state.token) {
+    await syncUserProfile();
+  }
 });

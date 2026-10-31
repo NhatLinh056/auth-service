@@ -8,16 +8,28 @@ import {
 import axios, { AxiosInstance } from 'axios';
 import { appConfig } from '../config/app.config.js';
 
-export interface VerifyServiceResult {
-  statusCode: number;
+export interface ApplicationOwnerInfo {
+  id: string;
+  email: string;
+  name?: string;
+  role: string;
+}
+
+export interface ApplicationInfo {
+  id: string;
+  name: string;
+  appId: string;
   status: string;
-  application: {
-    id: string;
-    name: string;
-    appId: string;
-    status: string;
-    userId: string;
-  };
+  userId: string;
+  user?: ApplicationOwnerInfo;
+}
+
+export interface VerifyServiceResult {
+  statusCode?: number;
+  status?: string;
+  valid?: boolean;
+  message?: string;
+  application: ApplicationInfo;
 }
 
 export interface AuthUserProfile {
@@ -25,6 +37,9 @@ export interface AuthUserProfile {
   email: string;
   name?: string;
   role: string;
+  isAppOwner?: boolean;
+  provider?: string;
+  avatar?: string;
 }
 
 export interface OAuthProviderInfo {
@@ -33,16 +48,42 @@ export interface OAuthProviderInfo {
   enabled: boolean;
 }
 
+/** TTL cho cache thông tin ứng dụng: 5 phút (ms) */
+const APPLICATION_CACHE_TTL_MS = 5 * 60 * 1000;
+
 @Injectable()
 export class AuthClientService {
   private readonly logger = new Logger(AuthClientService.name);
   private readonly http: AxiosInstance;
+  private cachedApplication: ApplicationInfo | null = null;
+  /** Thời điểm cache được ghi lần cuối (null = chưa có cache) */
+  private cachedAt: number | null = null;
 
   constructor() {
     this.http = axios.create({
       baseURL: appConfig.authServiceUrl,
       timeout: 5000,
     });
+  }
+
+  /**
+   * Kiểm tra cache còn hiệu lực không (chưa hết TTL 5 phút)
+   */
+  private isCacheValid(): boolean {
+    return (
+      this.cachedApplication !== null &&
+      this.cachedAt !== null &&
+      Date.now() - this.cachedAt < APPLICATION_CACHE_TTL_MS
+    );
+  }
+
+  /**
+   * Xoá cache — buộc verifyService() gọi lại Auth Service lần tiếp theo
+   */
+  invalidateCache(): void {
+    this.cachedApplication = null;
+    this.cachedAt = null;
+    this.logger.log('Application cache invalidated');
   }
 
   /**
@@ -56,7 +97,17 @@ export class AuthClientService {
   }
 
   /**
-   * Handshake with Auth Service to verify credentials and ACTIVE status
+   * Get cached application info (or null if not yet verified / cache expired)
+   */
+  getCachedApplication(): ApplicationInfo | null {
+    if (!this.isCacheValid()) return null;
+    return this.cachedApplication;
+  }
+
+  /**
+   * Handshake with Auth Service to verify credentials and ACTIVE status.
+   * Kết quả được cache trong APPLICATION_CACHE_TTL_MS (5 phút).
+   * Gọi lại tự động khi cache hết hạn hoặc bị invalidate.
    */
   async verifyService(): Promise<VerifyServiceResult> {
     try {
@@ -64,6 +115,10 @@ export class AuthClientService {
         baseURL: appConfig.authServiceUrl,
         headers: this.getServiceHeaders(),
       });
+      if (response.data?.application) {
+        this.cachedApplication = response.data.application;
+        this.cachedAt = Date.now();
+      }
       return response.data;
     } catch (err: any) {
       const status = err.response?.status;
@@ -99,6 +154,11 @@ export class AuthClientService {
 
   /**
    * Delegated verification of End-User JWT with Auth Service
+   * Maps RBAC:
+   * - If the user is the Owner of this Application (User of Project 1 who registered this app)
+   *   -> Assigned role 'ADMIN' in Project 2 context
+   * - Otherwise (e.g. End-user / Customer signing in via Google/Facebook)
+   *   -> Assigned role 'USER' in Project 2 context
    */
   async verifyUserToken(token: string): Promise<AuthUserProfile> {
     if (!token) {
@@ -113,8 +173,46 @@ export class AuthClientService {
           ...this.getServiceHeaders(),
         },
       });
-      return response.data;
+
+      const user = response.data;
+
+      // Lazy load / refresh application info nếu cache hết hạn hoặc chưa có
+      if (!this.isCacheValid()) {
+        try {
+          await this.verifyService();
+        } catch {
+          // Nếu handshake thất bại, tiếp tục với role gốc của user
+        }
+      }
+
+      // Check if user is the Owner of this Application
+      if (this.cachedApplication) {
+        const ownerUserId = this.cachedApplication.userId || this.cachedApplication.user?.id;
+        const ownerEmail = this.cachedApplication.user?.email;
+        const adminEmails: string[] = (this.cachedApplication as any).adminEmails || [];
+
+        const isOwner =
+          (Boolean(ownerUserId) && user.id === ownerUserId) ||
+          (Boolean(ownerEmail) && Boolean(user.email) && user.email.toLowerCase() === ownerEmail!.toLowerCase());
+
+        const isDelegatedAdmin =
+          Boolean(user.email) &&
+          adminEmails.some((e: string) => e.toLowerCase() === user.email.toLowerCase());
+
+        // Phân quyền tại Project 2:
+        // - ADMIN: Phải là Chủ sở hữu ứng dụng (App Owner) hoặc nằm trong danh sách adminEmails được ủy quyền.
+        // - Lưu ý: Platform Admin (Project 1) không mặc định là Admin của Project 2 (chỉ quản lý platform).
+        const isAdmin = isOwner || isDelegatedAdmin;
+
+        user.isAppOwner = Boolean(isOwner);
+        user.role = isAdmin ? 'ADMIN' : 'USER';
+      }
+
+      return user;
     } catch (err: any) {
+      if (err instanceof UnauthorizedException || err instanceof ForbiddenException) {
+        throw err;
+      }
       const status = err.response?.status;
       const message = err.response?.data?.message || err.message;
 

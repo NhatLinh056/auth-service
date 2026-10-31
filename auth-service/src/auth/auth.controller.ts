@@ -220,6 +220,7 @@ export class AuthController {
         name: app.name,
         appId: app.appId,
         status: app.status,
+        adminEmails: app.adminEmails || [],
         userId: app.userId,
         user: app.user,
       },

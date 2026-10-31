@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { AppStatus } from '../../generated/prisma/enums.js';
 
 export class UpdateApplicationDto {
@@ -20,4 +20,13 @@ export class UpdateApplicationDto {
   @IsOptional()
   @IsEnum(AppStatus, { message: 'Trạng thái ứng dụng phải là ACTIVE hoặc INACTIVE' })
   status?: AppStatus;
+
+  @ApiPropertyOptional({
+    example: ['admin@company.com'],
+    description: 'Danh sách email được cấp quyền Quản trị viên (ADMIN) riêng cho ứng dụng này',
+  })
+  @IsOptional()
+  @IsArray({ message: 'adminEmails phải là mảng các địa chỉ email' })
+  @IsString({ each: true, message: 'Mỗi email trong adminEmails phải là chuỗi' })
+  adminEmails?: string[];
 }

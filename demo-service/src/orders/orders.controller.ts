@@ -40,6 +40,13 @@ export class OrdersController {
         applicationStatus: handshake.application?.status || (handshake as any).status || 'ACTIVE',
         appId: handshake.application?.appId || (handshake as any).appId,
         appName: handshake.application?.name || (handshake as any).appName,
+        owner: {
+          userId: handshake.application?.userId || handshake.application?.user?.id,
+          email: handshake.application?.user?.email,
+          name: handshake.application?.user?.name,
+          roleInProject1: handshake.application?.user?.role || 'USER',
+          roleInProject2: 'ADMIN (Chủ sở hữu ứng dụng)',
+        },
       },
       availableOAuthProviders: providers,
       timestamp: new Date().toISOString(),
@@ -53,6 +60,16 @@ export class OrdersController {
   @Get('auth/providers')
   async getAuthProviders() {
     return this.authClientService.getAvailableProviders();
+  }
+
+  /**
+   * Protected Profile Endpoint in Project 2 Context
+   * Returns user profile with resolved application-level role (ADMIN if App Owner, USER if customer)
+   */
+  @Get('auth/me')
+  @UseGuards(UserAuthGuard)
+  getMe(@CurrentUser() user: AuthUserProfile): { user: AuthUserProfile } {
+    return { user };
   }
 
   /**

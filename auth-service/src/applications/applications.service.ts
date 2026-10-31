@@ -184,6 +184,7 @@ export class ApplicationsService {
       data: {
         ...(updateAppDto.name !== undefined && { name: updateAppDto.name }),
         ...(updateAppDto.status !== undefined && { status: updateAppDto.status }),
+        ...(updateAppDto.adminEmails !== undefined && { adminEmails: updateAppDto.adminEmails }),
       },
       include: {
         user: {
@@ -191,6 +192,26 @@ export class ApplicationsService {
             id: true,
             email: true,
             name: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Xem danh sách người dùng cuối (khách hàng) của ứng dụng
+   */
+  async getAppUsers(id: string, currentUser: JwtPayload) {
+    await this.findById(id, currentUser);
+    return (this.prisma as any).appUser.findMany({
+      where: { applicationId: id },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        identities: {
+          select: {
+            provider: true,
+            email: true,
+            createdAt: true,
           },
         },
       },

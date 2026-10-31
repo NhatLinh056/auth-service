@@ -128,4 +128,18 @@ export class ApplicationsController {
   ) {
     return this.applicationsService.regenerateAppToken(id, currentUser);
   }
+
+  @Get(':id/users')
+  @Auth()
+  @ApiOperation({ summary: 'Xem danh sách khách hàng / người dùng cuối của ứng dụng (chủ sở hữu hoặc ADMIN)' })
+  @ApiParam({ name: 'id', description: 'UUID của ứng dụng' })
+  @ApiResponse({ status: 200, description: 'Trả về danh sách AppUser thuộc ứng dụng' })
+  @ApiResponse({ status: 401, description: 'Chưa xác thực (Thiếu hoặc sai JWT token)' })
+  @ApiResponse({ status: 403, description: 'Không có quyền truy cập người dùng của ứng dụng người khác' })
+  getAppUsers(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: JwtPayload,
+  ) {
+    return this.applicationsService.getAppUsers(id, currentUser);
+  }
 }

@@ -36,7 +36,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Xem thông tin profile của người dùng đang đăng nhập' })
   @ApiResponse({ status: 200, description: 'Trả về thông tin profile cá nhân' })
   async getMe(@Request() req: RequestWithUser) {
-    const user = await this.usersService.findById(req.user.sub);
+    const user = await this.usersService.findById(req.user.sub, req.user.type);
     if (!user) {
       throw new NotFoundException('Không tìm thấy người dùng');
     }

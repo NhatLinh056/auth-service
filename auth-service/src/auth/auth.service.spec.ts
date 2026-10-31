@@ -163,6 +163,7 @@ describe('AuthService', () => {
         sub: 'user-1',
         email: 'user@example.com',
         role: 'USER',
+        type: 'platform',
       });
     });
   });

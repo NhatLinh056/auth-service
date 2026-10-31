@@ -45,6 +45,9 @@ describe('AuthClientService', () => {
 
       const res = await service.verifyService();
       expect(res).toEqual(mockResult);
+      // Sau khi verifyService thành công, cache phải được ghi
+      expect((service as any).cachedApplication).toEqual(mockResult.application);
+      expect((service as any).cachedAt).toBeTypeOf('number');
     });
 
     it('should throw UnauthorizedException on 401 rejection', async () => {
@@ -99,6 +102,131 @@ describe('AuthClientService', () => {
       });
 
       await expect(service.verifyUserToken('expired.jwt.token')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should assign ADMIN role in Project 2 if user is the Application Owner (User of Project 1)', async () => {
+      (service as any).cachedApplication = {
+        id: 'app-uuid',
+        name: 'Demo App',
+        appId: 'app_test_123',
+        status: 'ACTIVE',
+        userId: 'developer-user-id',
+        user: {
+          id: 'developer-user-id',
+          email: 'developer@example.com',
+          name: 'App Developer',
+          role: 'USER', // In Project 1, developer is a normal USER
+        },
+      };
+      (service as any).cachedAt = Date.now(); // cache còn hạn
+
+      const mockUser = {
+        id: 'developer-user-id',
+        email: 'developer@example.com',
+        role: 'USER', // Platform role
+        name: 'App Developer',
+      };
+
+      vi.spyOn((service as any).http, 'get').mockResolvedValueOnce({
+        data: mockUser,
+      });
+
+      const res = await service.verifyUserToken('dev.jwt.token');
+      expect(res.role).toBe('ADMIN');
+      expect(res.isAppOwner).toBe(true);
+    });
+
+    it('should assign USER role in Project 2 if user is an end-user / customer', async () => {
+      (service as any).cachedApplication = {
+        id: 'app-uuid',
+        name: 'Demo App',
+        appId: 'app_test_123',
+        status: 'ACTIVE',
+        userId: 'developer-user-id',
+        user: {
+          id: 'developer-user-id',
+          email: 'developer@example.com',
+          name: 'App Developer',
+          role: 'USER',
+        },
+      };
+      (service as any).cachedAt = Date.now(); // cache còn hạn
+
+      const mockCustomer = {
+        id: 'customer-123',
+        email: 'customer@gmail.com',
+        role: 'USER',
+        name: 'Regular Customer',
+      };
+
+      vi.spyOn((service as any).http, 'get').mockResolvedValueOnce({
+        data: mockCustomer,
+      });
+
+      const res = await service.verifyUserToken('customer.jwt.token');
+      expect(res.role).toBe('USER');
+      expect(res.isAppOwner).toBe(false);
+    });
+
+    it('should assign USER role in Project 2 if user is Platform Admin but not App Owner or delegated admin', async () => {
+      (service as any).cachedApplication = {
+        id: 'app-uuid',
+        name: 'Demo App',
+        appId: 'app_test_123',
+        status: 'ACTIVE',
+        userId: 'developer-user-id',
+        user: {
+          id: 'developer-user-id',
+          email: 'developer@example.com',
+          name: 'App Developer',
+          role: 'USER',
+        },
+        adminEmails: ['manager@example.com'],
+      };
+      (service as any).cachedAt = Date.now();
+
+      const mockPlatformAdmin = {
+        id: 'platform-admin-id',
+        email: 'admin@example.com',
+        role: 'ADMIN', // ADMIN of Project 1 (Platform)
+        name: 'Platform Administrator',
+      };
+
+      vi.spyOn((service as any).http, 'get').mockResolvedValueOnce({
+        data: mockPlatformAdmin,
+      });
+
+      const res = await service.verifyUserToken('admin.jwt.token');
+      expect(res.role).toBe('USER');
+      expect(res.isAppOwner).toBe(false);
+    });
+  });
+
+  describe('getCachedApplication & TTL', () => {
+    it('should return null when cache is empty', () => {
+      expect(service.getCachedApplication()).toBeNull();
+    });
+
+    it('should return application when cache is fresh', () => {
+      const mockApp = { id: 'app-uuid', name: 'Demo', appId: 'app_test_123', status: 'ACTIVE', userId: 'u1' };
+      (service as any).cachedApplication = mockApp;
+      (service as any).cachedAt = Date.now(); // fresh
+      expect(service.getCachedApplication()).toEqual(mockApp);
+    });
+
+    it('should return null when cache has expired (TTL > 5 minutes)', () => {
+      const mockApp = { id: 'app-uuid', name: 'Demo', appId: 'app_test_123', status: 'ACTIVE', userId: 'u1' };
+      (service as any).cachedApplication = mockApp;
+      (service as any).cachedAt = Date.now() - 6 * 60 * 1000; // 6 phút trước → hết hạn
+      expect(service.getCachedApplication()).toBeNull();
+    });
+
+    it('should invalidate cache correctly', () => {
+      (service as any).cachedApplication = { id: 'app-uuid' };
+      (service as any).cachedAt = Date.now();
+      service.invalidateCache();
+      expect((service as any).cachedApplication).toBeNull();
+      expect((service as any).cachedAt).toBeNull();
     });
   });
 

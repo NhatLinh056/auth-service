@@ -54,10 +54,72 @@ export class UsersService implements OnModuleInit {
     });
   }
 
-  async findById(id: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
+  async findById(id: string, type?: 'platform' | 'app_user'): Promise<any | null> {
+    // Nếu JWT khai báo rõ type='app_user' → tìm thẳng trong app_users, không qua users
+    if (type === 'app_user') {
+      const appUser = await (this.prisma as any).appUser.findUnique({
+        where: { id },
+        include: {
+          application: {
+            select: {
+              appId: true,
+              name: true,
+            },
+          },
+        },
+      });
+      if (!appUser) return null;
+      return {
+        id: appUser.id,
+        email: appUser.email,
+        name: appUser.name,
+        role: appUser.role,
+        avatarUrl: appUser.avatarUrl,
+        appId: appUser.application?.appId,
+        appName: appUser.application?.name,
+        isAppUser: true,
+        createdAt: appUser.createdAt,
+        updatedAt: appUser.updatedAt,
+      };
+    }
+
+    // type='platform' hoặc không có type (backwards-compat token cũ) → tìm trong users trước
+    const user = await this.prisma.user.findUnique({
       where: { id },
     });
+    if (user) return user;
+
+    // Fallback: token cũ (không có type) có thể là AppUser → thử lookup
+    if (type === undefined) {
+      const appUser = await (this.prisma as any).appUser.findUnique({
+        where: { id },
+        include: {
+          application: {
+            select: {
+              appId: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      if (appUser) {
+        return {
+          id: appUser.id,
+          email: appUser.email,
+          name: appUser.name,
+          role: appUser.role,
+          avatarUrl: appUser.avatarUrl,
+          appId: appUser.application?.appId,
+          appName: appUser.application?.name,
+          isAppUser: true,
+          createdAt: appUser.createdAt,
+          updatedAt: appUser.updatedAt,
+        };
+      }
+    }
+
+    return null;
   }
 
   async findByEmail(email: string): Promise<User | null> {

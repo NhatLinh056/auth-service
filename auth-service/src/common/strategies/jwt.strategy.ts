@@ -3,13 +3,16 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 // Định nghĩa shape của JWT payload sau khi decode
-// Tương ứng với những gì AuthService.login() đã ký vào token
+// Tương ứng với những gì AuthService.login() / OAuthService đã ký vào token
 export interface JwtPayload {
-  sub: string;   // user.id
+  sub: string;        // user.id (Platform User) hoặc app_user.id (AppUser)
   email: string;
   role: string;
-  iat?: number;  // issued at (tự động thêm bởi JwtService)
-  exp?: number;  // expiration (tự động thêm bởi JwtService)
+  /** Phân biệt nguồn gốc token: 'platform' = tài khoản Developer/Admin, 'app_user' = khách hàng OAuth */
+  type: 'platform' | 'app_user';
+  appId?: string;     // Chỉ có khi type='app_user' — ứng dụng mà AppUser thuộc về
+  iat?: number;       // issued at (tự động thêm bởi JwtService)
+  exp?: number;       // expiration (tự động thêm bởi JwtService)
 }
 
 @Injectable()
@@ -39,6 +42,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       sub: payload.sub,
       email: payload.email,
       role: payload.role,
+      type: payload.type ?? 'platform', // Backwards-compat: token cũ không có type → coi là platform
+      appId: payload.appId,
     };
   }
 }

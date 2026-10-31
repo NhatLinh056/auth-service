@@ -77,12 +77,46 @@ model Application {
   appId          String          @unique
   appToken       String
   status         AppStatus       @default(ACTIVE)
+  adminEmails    String[]        @default([])
   userId         String
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   oauthProviders OAuthProvider[]
+  appUsers       AppUser[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
   @@index([userId])
   @@map("applications")
+}
+
+model AppUser {
+  id            String             @id @default(uuid())
+  applicationId String
+  application   Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  email         String
+  name          String?
+  avatarUrl     String?
+  role          Role               @default(USER)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  identities    AppOAuthIdentity[]
+
+  @@unique([applicationId, email])
+  @@index([applicationId])
+  @@map("app_users")
+}
+
+model AppOAuthIdentity {
+  id             String            @id @default(uuid())
+  appUserId      String
+  appUser        AppUser           @relation(fields: [appUserId], references: [id], onDelete: Cascade)
+  provider       OAuthProviderType
+  providerUserId String
+  email          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([provider, providerUserId])
+  @@index([appUserId])
+  @@map("app_oauth_identities")
 }

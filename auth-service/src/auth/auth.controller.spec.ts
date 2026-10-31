@@ -247,6 +247,7 @@ describe('AuthController', () => {
         name: 'Order Service',
         appId: 'app_1234567890abcdef12345678',
         status: 'ACTIVE',
+        adminEmails: [],
         userId: 'user-uuid-1',
         user: {
           id: 'user-uuid-1',
