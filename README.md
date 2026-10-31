@@ -1,11 +1,6 @@
 # HỆ THỐNG XÁC THỰC VÀ PHÂN QUYỀN CHO KIẾN TRÚC MICROSERVICES
 (Identity & Access Management Platform)
 
-- Đề tài: Nghiên cứu và xây dựng hệ thống quản lý định danh, xác thực và phân quyền tập trung cho kiến trúc Microservices.
-- Tác giả: Lê Nhật Linh - Lớp CNTT-Việt Pháp K68, Trường Công nghệ Thông tin & Truyền thông, Đại học Bách khoa Hà Nội (HUST).
-
----
-
 ## 1. Giới thiệu tổng quan
 
 Dự án cung cấp giải pháp Quản lý Định danh và Quyền truy cập tập trung (Identity & Access Management - IAM / Central Identity Provider) cho các hệ thống phân tán (Microservices). Hệ thống được tổ chức thành hai phân hệ độc lập:
