@@ -1,6 +1,10 @@
 # HỆ THỐNG XÁC THỰC VÀ PHÂN QUYỀN CHO KIẾN TRÚC MICROSERVICES
 (Identity & Access Management Platform)
 
+- Đề tài: Nghiên cứu và xây dựng hệ thống quản lý định danh, xác thực và phân quyền tập trung cho kiến trúc Microservices.
+- Tác giả: Lê Nhật Linh - Lớp CNTT-Việt Pháp K68, Trường Công nghệ Thông tin & Truyền thông, Đại học Bách khoa Hà Nội (HUST).
+
+---
 
 ## 1. Giới thiệu tổng quan
 
@@ -10,28 +14,27 @@ Dự án cung cấp giải pháp Quản lý Định danh và Quyền truy cập 
    Dịch vụ IAM trung tâm chịu trách nhiệm quản lý tài khoản người dùng, băm mật khẩu bằng bcrypt, cấp phát JSON Web Token (JWT) không lưu trạng thái, phân quyền dựa trên vai trò (RBAC: ADMIN / USER), quản lý ứng dụng thành viên (Application Management qua AppID / AppToken) và cung cấp Developer Console.
 
 2. demo-service (Cổng 3001):
-   Dịch vụ khách độc lập (Client Microservice) đóng vai trò ứng dụng kiểm chứng (Proof of Concept - PoC). Dịch vụ tích hợp auth-client để thực hiện bắt tay dịch vụ (Service Handshake) và ủy quyền thẩm định token người dùng (Delegated User JWT Verification).
-   Lưu ý về nghiệp vụ: Phân hệ "Đơn hàng" (Orders) trong demo-service là nghiệp vụ mẫu giả lập (Sample Resource với dữ liệu in-memory), nhằm chứng minh cơ chế bảo vệ endpoint nội bộ bằng UserAuthGuard mà không cần quản lý cơ sở dữ liệu người dùng riêng.
+   Dịch vụ khách độc lập (Client Microservice) đóng vai trò ứng dụng kiểm chứng (Proof of Concept - PoC). Dịch vụ cung cấp giao diện Cổng Khách Hàng (Customer Portal) cho phép đăng nhập qua Google hoặc Facebook, hiển thị trực quan hồ sơ người dùng sau khi xác thực (Họ tên, Email, Avatar, Vai trò, UID và Token JWT). Dịch vụ tích hợp auth-client để thực hiện bắt tay dịch vụ (Service Handshake) qua AppID / AppToken và ủy quyền thẩm định token người dùng (Delegated User JWT Verification). Đồng thời, dịch vụ tích hợp REST API mẫu (/orders) được bảo vệ bởi UserAuthGuard để minh họa việc kiểm soát quyền truy cập tài nguyên nội bộ mà không cần lưu trữ cơ sở dữ liệu người dùng riêng.
 
 ---
 
 ## 2. Sơ đồ kiến trúc tổng thể
 
 ```
-   [Người dùng / Client]
+   [Người dùng / Trình duyệt]
             |
     1. Đăng nhập & Nhận JWT
             v
 +-------------------------------+     2. Gọi API kèm Bearer JWT     +-------------------------------+
 |         auth-service          | <-------------------------------- |         demo-service          |
 |         (Port: 3000)          |       3. Handshake & Verify       |         (Port: 3001)          |
-| - Quản lý User & RBAC         |          Headers gửi kèm:         | - Nghiệp vụ mẫu: Đơn hàng     |
-| - Cấp phát & Kiểm tra JWT     |          - X-App-Id               | - UserAuthGuard ủy quyền JWT  |
-| - Quản lý AppID / AppToken    |          - X-App-Token            | - Bắt tay kiểm tra kết nối    |
-| - Sign-in Methods đa dự án    |                                   | - Không lưu trữ DB User riêng |
-| - Developer Console WebApp    |                                   | - Client Portal (/status)     |
-+---------------+---------------+                                   +-------------------------------+
-                |
+| - Quản lý User & RBAC         |          Headers gửi kèm:         | - Cổng Khách Hàng (Web Portal)|
+| - Cấp phát & Kiểm tra JWT     |          - X-App-Id               | - Hiển thị Profile & Token JWT|
+| - Quản lý AppID / AppToken    |          - X-App-Token            | - UserAuthGuard ủy quyền JWT  |
+| - Sign-in Methods đa dự án    |                                   | - Bắt tay kiểm tra kết nối    |
+| - Developer Console WebApp    |                                   | - Không lưu trữ DB User riêng |
++---------------+---------------+                                   | - REST API mẫu (/orders)      |
+                |                                                   +-------------------------------+
                 v
       +-------------------+
       |    PostgreSQL     |
@@ -68,8 +71,8 @@ Dự án cung cấp giải pháp Quản lý Định danh và Quyền truy cập 
 - Backend: NestJS 12, TypeScript 6, Node.js (ES Modules).
 - Cơ sở dữ liệu: PostgreSQL 16+, Prisma ORM 7.
 - Bảo mật & Mật mã: Passport.js, JWT, bcrypt, Node.js crypto (CSPRNG).
-- Frontend Console: React 19, TypeScript, Vite 8, Vanilla CSS Design System.
-- Kiểm thử tự động: Vitest (179 Unit tests + 137 E2E tests + 20 Client tests = 100% Passed).
+- Frontend Console & Client Portal: React 19, TypeScript, Vite 8, HTML5/CSS3.
+- Kiểm thử tự động: Vitest (181 Unit tests + 137 E2E tests + 20 Client tests = 100% Passed).
 
 ---
 
@@ -106,6 +109,6 @@ npm run start:dev
 
 ### Bước 3: Kiểm tra liên thông giữa hai dịch vụ
 
+- Truy cập Cổng Khách Hàng: Mở trình duyệt tại http://localhost:3001 để thử nghiệm đăng nhập qua Google / Facebook và xem thông tin hồ sơ tài khoản (UID, Role, Token JWT).
 - Kiểm tra trạng thái bắt tay dịch vụ: Truy cập http://localhost:3001/status trên trình duyệt (kết quả mong đợi: status: "ONLINE", handshakeStatus: "SUCCESS").
-- Gọi thử nghiệm endpoint nghiệp vụ mẫu: Gửi yêu cầu GET http://localhost:3001/orders kèm Bearer Token của người dùng lấy từ Auth Service.
-
+- Gọi thử nghiệm REST API nội bộ: Gửi yêu cầu GET http://localhost:3001/orders kèm Bearer Token của người dùng lấy từ Auth Service để kiểm tra phân quyền dữ liệu.

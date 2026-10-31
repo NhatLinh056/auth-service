@@ -2,26 +2,30 @@
 
 Dịch vụ khách độc lập (Client Microservice) minh họa mô hình liên thông dịch vụ và ủy quyền xác thực với Auth Service (Project 1).
 
-Lưu ý quan trọng về bản chất nghiệp vụ:
-Dịch vụ này KHÔNG PHẢI là một hệ thống quản lý đơn hàng hay thương mại điện tử thực tế. Phân hệ "Đơn hàng" (Orders) chỉ là một tài nguyên mẫu giả lập (Sample Resource với dữ liệu lưu trong bộ nhớ in-memory), được xây dựng để chứng minh cơ chế bảo vệ tài nguyên nội bộ thông qua ủy quyền xác thực người dùng mà không cần lưu trữ cơ sở dữ liệu tài khoản cục bộ.
+Dịch vụ cung cấp giao diện Cổng Dịch Vụ Khách Hàng (Customer Portal) phục vụ tại http://localhost:3001, cho phép người dùng đăng nhập bằng tài khoản mạng xã hội và hiển thị hồ sơ cá nhân đã được xác thực an toàn.
 
 ---
 
 ## 1. Tính năng cốt lõi
 
-1. Bắt tay dịch vụ (Service-to-Service Handshake):
+1. Giao diện Cổng Khách Hàng (Customer Portal Web UI):
+   - Cho phép người dùng đăng nhập qua các nhà cung cấp bên thứ ba (Google, Facebook).
+   - Hiển thị trực quan bảng thông tin tài khoản sau khi đăng nhập: Họ tên, Email, Ảnh đại diện, Vai trò (USER / ADMIN), Mã tài khoản (UID) và chuỗi Access Token (JWT).
+   - Cung cấp tính năng sao chép token và nút đăng xuất tài khoản.
+
+2. Bắt tay dịch vụ (Service-to-Service Handshake):
    - Đọc AppID và AppToken từ biến môi trường (.env).
    - Gửi yêu cầu bắt tay tới endpoint GET /auth/verify-service trên Auth Service (http://localhost:3000).
    - Xác nhận quyền hạn hoạt động hợp lệ và trạng thái ACTIVE của ứng dụng khách.
 
-2. Ủy quyền xác thực người dùng (Delegated User JWT Verification):
+3. Ủy quyền xác thực người dùng (Delegated User JWT Verification):
    - Không chứa bất kỳ bảng cơ sở dữ liệu User hay mật khẩu nào.
    - Nhận Bearer JWT từ người dùng và ủy quyền thẩm định qua Auth Service (GET /users/me).
    - Trích xuất định danh và quyền hạn (@CurrentUser()) để kiểm soát quyền truy cập tài nguyên.
 
-3. Tài nguyên mẫu Đơn hàng (Mock Orders API):
-   - Cung cấp các endpoint GET /orders, POST /orders, GET /orders/:id.
-   - Minh họa phân quyền RBAC: Tài khoản ADMIN xem được toàn bộ đơn hàng; tài khoản USER chỉ xem được đơn hàng của chính mình.
+4. REST API mẫu nội bộ (/orders):
+   - Cung cấp các endpoint GET /orders, POST /orders, GET /orders/:id được bảo vệ bởi UserAuthGuard.
+   - Đóng vai trò API mẫu backend để chứng minh cách bảo vệ endpoint nội bộ và phân quyền RBAC (tài khoản ADMIN xem được toàn bộ danh sách, tài khoản USER chỉ xem được dữ liệu của chính mình).
 
 ---
 
@@ -55,9 +59,9 @@ Dịch vụ sẽ khởi động tại: http://localhost:3001
 
 | Phương thức | Endpoint | Cơ chế bảo vệ | Mô tả chức năng |
 | :--- | :--- | :--- | :--- |
+| GET | / | Public | Giao diện Cổng Khách Hàng (Customer Portal) |
 | GET | /status | Public | Bắt tay kiểm tra kết nối với Auth Service qua AppID / AppToken |
 | GET | /auth/providers | Public | Truy vấn danh sách nhà cung cấp OAuth khả dụng từ Auth Service |
-| GET | /orders | UserAuthGuard | Lấy danh sách đơn hàng (ủy quyền xác thực User JWT) |
-| POST | /orders | UserAuthGuard | Tạo đơn hàng mới cho người dùng hiện tại |
-| GET | /orders/:id | UserAuthGuard | Lấy chi tiết đơn hàng theo ID |
-
+| GET | /orders | UserAuthGuard | REST API mẫu: Lấy danh sách tài nguyên (ủy quyền xác thực User JWT) |
+| POST | /orders | UserAuthGuard | REST API mẫu: Tạo tài nguyên mới gắn với định danh người dùng |
+| GET | /orders/:id | UserAuthGuard | REST API mẫu: Lấy chi tiết tài nguyên theo ID |
