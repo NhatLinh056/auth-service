@@ -11,7 +11,7 @@ Dịch vụ cung cấp giao diện Cổng Dịch Vụ Khách Hàng (Customer Por
 1. Giao diện Cổng Khách Hàng (Customer Portal Web UI):
    - Cho phép người dùng đăng nhập qua các nhà cung cấp bên thứ ba (Google, Facebook).
    - Hiển thị trực quan bảng thông tin tài khoản sau khi đăng nhập: Họ tên, Email, Ảnh đại diện, Vai trò (USER / ADMIN), Mã tài khoản (UID) và chuỗi Access Token (JWT).
-   - Cung cấp tính năng sao chép token và nút đăng xuất tài khoản.
+   - Tích hợp nút kiểm tra API trực tiếp trên giao diện và nút đăng xuất tài khoản.
 
 2. Bắt tay dịch vụ (Service-to-Service Handshake):
    - Đọc AppID và AppToken từ biến môi trường (.env).
@@ -25,7 +25,7 @@ Dịch vụ cung cấp giao diện Cổng Dịch Vụ Khách Hàng (Customer Por
 
 4. REST API mẫu nội bộ (/orders):
    - Cung cấp các endpoint GET /orders, POST /orders, GET /orders/:id được bảo vệ bởi UserAuthGuard.
-   - Đóng vai trò API mẫu backend để chứng minh cách bảo vệ endpoint nội bộ và phân quyền RBAC (tài khoản ADMIN xem được toàn bộ danh sách, tài khoản USER chỉ xem được dữ liệu của chính mình).
+   - Kiểm tra trực quan dễ dàng: Bấm trực tiếp nút "Gọi Thử API /orders" trên giao diện http://localhost:3001 để xem phản hồi JSON phân quyền (ADMIN xem toàn bộ, USER chỉ xem dữ liệu cá nhân) mà không cần cấu hình curl/Postman thủ công.
 
 ---
 
@@ -62,6 +62,6 @@ Dịch vụ sẽ khởi động tại: http://localhost:3001
 | GET | / | Public | Giao diện Cổng Khách Hàng (Customer Portal) |
 | GET | /status | Public | Bắt tay kiểm tra kết nối với Auth Service qua AppID / AppToken |
 | GET | /auth/providers | Public | Truy vấn danh sách nhà cung cấp OAuth khả dụng từ Auth Service |
-| GET | /orders | UserAuthGuard | REST API mẫu: Lấy danh sách tài nguyên (ủy quyền xác thực User JWT) |
+| GET | /orders | UserAuthGuard | REST API mẫu: Lấy danh sách tài nguyên (kiểm tra phân quyền RBAC) |
 | POST | /orders | UserAuthGuard | REST API mẫu: Tạo tài nguyên mới gắn với định danh người dùng |
 | GET | /orders/:id | UserAuthGuard | REST API mẫu: Lấy chi tiết tài nguyên theo ID |

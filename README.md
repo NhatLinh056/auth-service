@@ -104,6 +104,6 @@ npm run start:dev
 
 ### Bước 3: Kiểm tra liên thông giữa hai dịch vụ
 
-- Truy cập Cổng Khách Hàng: Mở trình duyệt tại http://localhost:3001 để thử nghiệm đăng nhập qua Google / Facebook và xem thông tin hồ sơ tài khoản (UID, Role, Token JWT).
-- Kiểm tra trạng thái bắt tay dịch vụ: Truy cập http://localhost:3001/status trên trình duyệt (kết quả mong đợi: status: "ONLINE", handshakeStatus: "SUCCESS").
-- Gọi thử nghiệm REST API nội bộ: Gửi yêu cầu GET http://localhost:3001/orders kèm Bearer Token của người dùng lấy từ Auth Service để kiểm tra phân quyền dữ liệu.
+- Truy cập Cổng Khách Hàng: Mở trình duyệt tại http://localhost:3001 để đăng nhập thử nghiệm bằng Google hoặc Facebook.
+- Kiểm tra trạng thái bắt tay dịch vụ: Mở http://localhost:3001/status (kết quả mong đợi: status: "ONLINE", handshakeStatus: "SUCCESS").
+- Kiểm tra phân quyền API (/orders): Sau khi đăng nhập tại http://localhost:3001, bấm trực tiếp nút "Gọi Thử API /orders" trên màn hình để xem dữ liệu phân quyền theo vai trò (USER / ADMIN) ngay tại giao diện mà không cần cấu hình header thủ công.
