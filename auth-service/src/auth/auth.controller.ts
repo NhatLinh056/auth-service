@@ -154,31 +154,52 @@ export class AuthController {
     },
     @Res() res: Response,
   ) {
-    const result = await this.oauthService.handleCallback(provider, query);
+    try {
+      const result = await this.oauthService.handleCallback(provider, query);
 
-    // Hỗ trợ trả JSON trực tiếp cho API test / E2E test
-    if (query.format === 'json') {
-      return res.status(HttpStatus.OK).json({
-        accessToken: result.accessToken,
-        user: result.user,
-        redirectUri: result.redirectUri,
-      });
-    }
+      // Hỗ trợ trả JSON trực tiếp cho API test / E2E test
+      if (query.format === 'json') {
+        return res.status(HttpStatus.OK).json({
+          accessToken: result.accessToken,
+          user: result.user,
+          redirectUri: result.redirectUri,
+        });
+      }
 
-    // Luồng mặc định: Redirect về redirectUri của Client (Project 2 / Web UI) kèm token
-    const targetUrl = new URL(result.redirectUri);
-    targetUrl.searchParams.set('token', result.accessToken);
-    targetUrl.searchParams.set('email', result.user.email);
-    if (result.user.name) {
-      targetUrl.searchParams.set('name', result.user.name);
-    }
-    targetUrl.searchParams.set('role', result.user.role);
-    targetUrl.searchParams.set('provider', (result.user.provider || provider).toLowerCase());
-    if (result.user.avatarUrl) {
-      targetUrl.searchParams.set('avatar', result.user.avatarUrl);
-    }
+      // Luồng mặc định: Redirect về redirectUri của Client (Project 2 / Web UI) kèm token
+      const targetUrl = new URL(result.redirectUri);
+      targetUrl.searchParams.set('token', result.accessToken);
+      targetUrl.searchParams.set('email', result.user.email);
+      if (result.user.name) {
+        targetUrl.searchParams.set('name', result.user.name);
+      }
+      targetUrl.searchParams.set('role', result.user.role);
+      targetUrl.searchParams.set('provider', (result.user.provider || provider).toLowerCase());
+      if (result.user.avatarUrl) {
+        targetUrl.searchParams.set('avatar', result.user.avatarUrl);
+      }
 
-    return res.redirect(targetUrl.toString());
+      return res.redirect(targetUrl.toString());
+    } catch (err: any) {
+      // Nếu API client yêu cầu format JSON (như trong các bài test) thì ném lỗi bình thường
+      if (query.format === 'json') {
+        throw err;
+      }
+
+      // Trích xuất client redirect URI từ OAuth state token
+      const clientRedirectUri = this.oauthService.extractRedirectUriFromState(query.state);
+      const targetUrl = new URL(clientRedirectUri);
+
+      // Truyền thông điệp lỗi về Frontend để hiển thị Toast thông báo thân thiện
+      const errorMessage =
+        query.error_description ||
+        query.error ||
+        err?.message ||
+        'OAuth authentication was cancelled';
+      targetUrl.searchParams.set('error', errorMessage);
+
+      return res.redirect(targetUrl.toString());
+    }
   }
 
   @Get('verify-service')

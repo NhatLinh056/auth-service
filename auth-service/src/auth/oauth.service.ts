@@ -51,6 +51,22 @@ export class OAuthService {
   ) {}
 
   /**
+   * Trích xuất an toàn redirectUri của client từ OAuth state token
+   */
+  extractRedirectUriFromState(state?: string): string {
+    if (!state) return 'http://localhost:3001/';
+    try {
+      const decoded = this.jwtService.decode(state) as any;
+      if (decoded && decoded.redirectUri && typeof decoded.redirectUri === 'string') {
+        return decoded.redirectUri;
+      }
+    } catch {
+      // Fallback mặc định về Client Portal nếu token không hợp lệ
+    }
+    return 'http://localhost:3001/';
+  }
+
+  /**
    * Tạo URL chuyển hướng đăng nhập OAuth 2.0 (Authorization Request)
    */
   async getAuthorizationUrl(

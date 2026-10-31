@@ -1,3 +1,4 @@
+import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -19,6 +20,7 @@ describe('AuthController', () => {
   const mockOAuthService = {
     getAuthorizationUrl: vi.fn(),
     handleCallback: vi.fn(),
+    extractRedirectUriFromState: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -195,6 +197,46 @@ describe('AuthController', () => {
         user: mockResult.user,
         redirectUri: mockResult.redirectUri,
       });
+    });
+
+    it('nên redirect về client kèm query error khi OAuth bị từ chối hoặc người dùng hủy', async () => {
+      mockOAuthService.handleCallback.mockRejectedValue(
+        new UnauthorizedException('Nhà cung cấp OAuth từ chối xác thực: Permissions error'),
+      );
+      mockOAuthService.extractRedirectUriFromState.mockReturnValue('http://localhost:3001/');
+
+      const mockRes = {
+        redirect: vi.fn(),
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+      } as any;
+
+      await controller.handleOAuthCallback(
+        'facebook',
+        { error: 'access_denied', error_description: 'Permissions error', state: 's123' },
+        mockRes,
+      );
+
+      expect(mockRes.redirect).toHaveBeenCalled();
+      const redirectUrl = mockRes.redirect.mock.calls[0][0];
+      expect(redirectUrl).toContain('http://localhost:3001/');
+      expect(redirectUrl).toContain('error=');
+    });
+
+    it('nên ném lỗi nếu format=json được truyền và xảy ra lỗi OAuth', async () => {
+      mockOAuthService.handleCallback.mockRejectedValue(
+        new UnauthorizedException('OAuth failed'),
+      );
+
+      const mockRes = {
+        redirect: vi.fn(),
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+      } as any;
+
+      await expect(
+        controller.handleOAuthCallback('google', { error: 'access_denied', format: 'json' }, mockRes),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 

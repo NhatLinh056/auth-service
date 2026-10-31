@@ -196,7 +196,18 @@ function handleUrlCallback() {
   const error = params.get('error') || params.get('error_description');
 
   if (error) {
-    showToast(`Error: ${error}`, 'error');
+    let msg = `Error: ${error}`;
+    const lower = error.toLowerCase();
+    if (
+      lower.includes('denied') ||
+      lower.includes('cancel') ||
+      lower.includes('permission') ||
+      lower.includes('từ chối') ||
+      lower.includes('permissions error')
+    ) {
+      msg = state.lang === 'vi' ? 'Bạn đã hủy yêu cầu đăng nhập.' : 'Sign-in request was cancelled.';
+    }
+    showToast(msg, 'error');
     window.history.replaceState({}, document.title, window.location.pathname);
     return;
   }
