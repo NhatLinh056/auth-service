@@ -256,8 +256,75 @@ function logout() {
   localStorage.removeItem('demo_token');
   localStorage.removeItem('demo_user');
 
+  const resultBox = document.getElementById('orders-result-box');
+  if (resultBox) resultBox.style.display = 'none';
+
   updateAuthUI();
   showToast(t('toasts.signed_out'));
+}
+
+async function fetchOrders() {
+  const btn = document.getElementById('btn-fetch-orders');
+  const resultBox = document.getElementById('orders-result-box');
+  const jsonDisplay = document.getElementById('orders-json-display');
+  const badge = document.getElementById('orders-badge');
+  const statusLabel = document.getElementById('orders-status-label');
+
+  if (!state.token) {
+    showToast(state.lang === 'vi' ? 'Chưa có token xác thực.' : 'Missing authentication token.', 'error');
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch('/orders', {
+      headers: {
+        'Authorization': `Bearer ${state.token}`
+      }
+    });
+
+    const data = await res.json();
+
+    if (resultBox) resultBox.style.display = 'block';
+
+    if (res.ok) {
+      if (badge) {
+        badge.className = 'badge badge-success';
+        badge.textContent = `${res.status} OK`;
+      }
+      if (statusLabel) {
+        const role = data.user?.role || 'USER';
+        statusLabel.textContent = role === 'ADMIN'
+          ? (state.lang === 'vi' ? '✓ Xác thực thành công (Quyền ADMIN: xem toàn bộ đơn hàng)' : '✓ Verified (ADMIN: full orders view)')
+          : (state.lang === 'vi' ? '✓ Xác thực thành công (Quyền USER: chỉ xem đơn hàng cá nhân)' : '✓ Verified (USER: scoped user orders)');
+      }
+      showToast(state.lang === 'vi' ? 'Đã gọi API /orders thành công!' : 'API /orders fetched successfully!', 'success');
+    } else {
+      if (badge) {
+        badge.className = 'badge badge-danger';
+        badge.textContent = `${res.status} ${res.statusText || 'Error'}`;
+      }
+      if (statusLabel) statusLabel.textContent = state.lang === 'vi' ? 'Lỗi gọi API:' : 'API Error:';
+      showToast(`Lỗi: ${data.message || res.statusText}`, 'error');
+    }
+
+    if (jsonDisplay) {
+      jsonDisplay.textContent = JSON.stringify(data, null, 2);
+    }
+  } catch (err) {
+    if (resultBox) resultBox.style.display = 'block';
+    if (badge) {
+      badge.className = 'badge badge-danger';
+      badge.textContent = 'Network Error';
+    }
+    if (jsonDisplay) {
+      jsonDisplay.textContent = JSON.stringify({ error: err.message }, null, 2);
+    }
+    showToast(state.lang === 'vi' ? 'Không thể kết nối đến API /orders.' : 'Failed to connect to API /orders.', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 function copyToken() {

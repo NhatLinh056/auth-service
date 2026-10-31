@@ -43,7 +43,7 @@
   </header>
 
   <!-- Main Container -->
-  <main class="main-container" style="max-width: 520px; margin: 48px auto; padding: 0 16px;">
+  <main class="main-container" style="max-width: 580px; margin: 48px auto; padding: 0 16px;">
 
     <!-- ─────────────────────────────────────────────────────────────────────────
          VIEW 1: UNAUTHENTICATED (SIGN IN BUTTONS)
@@ -139,13 +139,44 @@
         </div>
 
         <!-- JWT Token Block -->
-        <div class="token-container" style="margin-bottom: 24px;">
+        <div class="token-container" style="margin-bottom: 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <span class="token-label" data-i18n="session.jwt_label">Mã Phiên Đăng Nhập (Access Token JWT):</span>
             <button class="btn btn-secondary btn-xs" onclick="copyToken()" data-i18n="btn.copy">Sao Chép Token</button>
           </div>
           <div class="token-row">
             <code class="token-value" id="user-token-display">eyJhbGci...</code>
+          </div>
+        </div>
+
+        <!-- Interactive Protected API Testing Block -->
+        <div class="api-test-container" style="margin-bottom: 24px; padding: 16px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div>
+              <div style="font-weight: 600; font-size: 14px; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 11px; font-weight: 600;">GET</span>
+                <code style="font-family: var(--font-mono); font-size: 13px;">/orders</code>
+                <span style="font-size: 12px; color: var(--text-muted); font-weight: normal;">(UserAuthGuard)</span>
+              </div>
+              <p style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">
+                Kiểm tra cơ chế ủy quyền xác thực token và phân quyền RBAC
+              </p>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btn-fetch-orders" onclick="fetchOrders()" style="display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span>Gọi Thử API /orders</span>
+            </button>
+          </div>
+
+          <!-- API Response Output Display -->
+          <div id="orders-result-box" style="display: none; margin-top: 14px; border-top: 1px solid var(--border-subtle); padding-top: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 12px; font-weight: 500; color: var(--text-muted);" id="orders-status-label">Kết Quả Phản Hồi:</span>
+              <span id="orders-badge" class="badge badge-success" style="font-size: 11px;">200 OK</span>
+            </div>
+            <pre id="orders-json-display" style="background: var(--bg-surface-subtle); padding: 12px; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 12px; color: #a5b4fc; max-height: 220px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; margin: 0; border: 1px solid var(--border-subtle);"></pre>
           </div>
         </div>
 
