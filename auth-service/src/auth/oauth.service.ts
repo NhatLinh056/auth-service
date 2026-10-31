@@ -378,6 +378,18 @@ export class OAuthService {
   }
 
   /**
+   * Kiểm tra xem email có nằm trong danh sách Whitelist ADMIN_EMAILS không
+   */
+  isAdminEmail(email?: string): boolean {
+    if (!email) return false;
+    const adminEmails = (process.env.ADMIN_EMAILS || '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase().replace(/^["']|["']$/g, ''))
+      .filter(Boolean);
+    return adminEmails.includes(email.trim().toLowerCase());
+  }
+
+  /**
    * Tìm kiếm hoặc tạo mới User và liên kết OAuthIdentity an toàn
    */
   async findOrCreateOAuthUser(
@@ -398,7 +410,15 @@ export class OAuthService {
     });
 
     if (existingIdentity?.user) {
-      return existingIdentity.user;
+      let user = existingIdentity.user;
+      if (this.isAdminEmail(user.email) && user.role !== Role.ADMIN) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { role: Role.ADMIN },
+        });
+        this.logger.log(`Tự động nâng cấp quyền ADMIN cho email whitelist: ${user.email}`);
+      }
+      return user;
     }
 
     // 2. Identity chưa có -> Tìm User theo email trong DB
@@ -407,6 +427,14 @@ export class OAuthService {
     });
 
     if (user) {
+      if (this.isAdminEmail(email) && user.role !== Role.ADMIN) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { role: Role.ADMIN },
+        });
+        this.logger.log(`Tự động nâng cấp quyền ADMIN cho email whitelist: ${email}`);
+      }
+
       // User đã có tài khoản (đăng ký bằng password hoặc provider khác)
       // Liên kết thêm identity mới này
       await this.prisma.oAuthIdentity.create({
@@ -422,12 +450,13 @@ export class OAuthService {
     }
 
     // 3. User hoàn toàn mới -> Tạo User mới (passwordHash = null) kèm Identity
+    const initialRole = this.isAdminEmail(email) ? Role.ADMIN : Role.USER;
     user = await this.prisma.user.create({
       data: {
         email,
         name: name || undefined,
         passwordHash: null,
-        role: Role.USER,
+        role: initialRole,
         identities: {
           create: {
             provider,
@@ -438,7 +467,7 @@ export class OAuthService {
       },
     });
 
-    this.logger.log(`Đã tạo tài khoản người dùng mới từ OAuth ${provider}: ${email}`);
+    this.logger.log(`Đã tạo tài khoản người dùng mới từ OAuth ${provider} (Role: ${initialRole}): ${email}`);
     return user;
   }
 }

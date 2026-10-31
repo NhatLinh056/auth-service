@@ -273,5 +273,12 @@ describe('OAuthService', () => {
       });
       expect(result.user.id).toBe('existing-uuid');
     });
+
+    it('nên tự động nhận diện và gán role ADMIN nếu email nằm trong whitelist ADMIN_EMAILS', () => {
+      process.env.ADMIN_EMAILS = 'vipadmin@google.com,another@admin.com';
+      expect(service.isAdminEmail('vipadmin@google.com')).toBe(true);
+      expect(service.isAdminEmail('VIPADMIN@GOOGLE.COM')).toBe(true);
+      expect(service.isAdminEmail('normal@google.com')).toBe(false);
+    });
   });
 });

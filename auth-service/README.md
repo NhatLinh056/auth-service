@@ -14,6 +14,7 @@ Dịch vụ IAM (Identity & Access Management) trung tâm cung cấp giải phá
 
 2. Phân quyền truy cập dựa trên vai trò (RBAC):
    - Hỗ trợ các vai trò người dùng: ADMIN, USER.
+   - Cấu hình Whitelist Email Quản trị (ADMIN_EMAILS) tự động cấp quyền ADMIN khi đăng nhập qua Google hoặc Facebook.
    - Bảo vệ các endpoint nội bộ và quản trị bằng Custom Decorator (@Auth()) và RolesGuard.
    - Cơ chế phòng thủ IDOR (Insecure Direct Object References) với OwnerOrAdminGuard.
 
@@ -35,7 +36,7 @@ Dịch vụ IAM (Identity & Access Management) trung tâm cung cấp giải phá
 - Framework: NestJS 12, Node.js (ES Modules).
 - Ngôn ngữ: TypeScript 6.
 - Cơ sở dữ liệu: PostgreSQL 16+, Prisma ORM 7.
-- Kiểm thử: Vitest (179 Unit tests + 137 E2E tests = 100% Passed).
+- Kiểm thử: Vitest (182 Unit tests + 137 E2E tests = 100% Passed).
 - Tài liệu API: OpenAPI / Swagger UI.
 
 ---
@@ -48,7 +49,8 @@ Tạo file .env từ .env.example:
 PORT=3000
 DATABASE_URL=postgresql://user:password@localhost:5432/auth_service_db
 JWT_SECRET=your_jwt_secret_key
-JWT_EXPIRES_IN=1d
+JWT_EXPIRES_IN=7d
+ADMIN_EMAILS="admin@example.com,developer@company.com"
 ```
 
 ### Bước 2: Đồng bộ cơ sở dữ liệu và khởi động
@@ -73,4 +75,3 @@ npm run test:e2e
 - Tài khoản quản trị mặc định: admin@example.com / Admin123!
 - Tài liệu API Swagger: http://localhost:3000/api
 - Kiểm tra sức khỏe hệ thống: http://localhost:3000/health
-

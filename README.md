@@ -45,7 +45,7 @@ Dự án cung cấp giải pháp Quản lý Định danh và Quyền truy cập 
    Đăng ký và đăng nhập mật khẩu với thuật toán băm bcrypt (10 salt rounds), cấp phát JWT Access Token không lưu trạng thái.
 
 2. Phân quyền theo vai trò (RBAC):
-   Phân định quyền hạn giữa ADMIN và USER, bảo vệ route bằng Custom Guard (@Auth(), RolesGuard).
+   Phân định quyền hạn giữa ADMIN và USER, hỗ trợ cấu hình danh sách Whitelist Email Quản trị (ADMIN_EMAILS) tự động cấp quyền ADMIN khi đăng nhập qua Google hoặc Facebook, bảo vệ route bằng Custom Guard (@Auth(), RolesGuard).
 
 3. Bảo mật liên dịch vụ (Service-to-Service):
    Cấp phát AppID và AppToken (entropy 256-bit), hỗ trợ thu hồi và tái sinh token ngay lập tức để bảo vệ kết nối giữa các microservices.
@@ -67,7 +67,7 @@ Dự án cung cấp giải pháp Quản lý Định danh và Quyền truy cập 
 - Cơ sở dữ liệu: PostgreSQL 16+, Prisma ORM 7.
 - Bảo mật & Mật mã: Passport.js, JWT, bcrypt, Node.js crypto (CSPRNG).
 - Frontend Console & Client Portal: React 19, TypeScript, Vite 8, HTML5/CSS3.
-- Kiểm thử tự động: Vitest (181 Unit tests + 137 E2E tests + 20 Client tests = 100% Passed).
+- Kiểm thử tự động: Vitest (182 Unit tests + 137 E2E tests + 20 Client tests = 100% Passed).
 
 ---
 
