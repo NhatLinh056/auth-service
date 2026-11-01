@@ -48,7 +48,10 @@ Hệ thống cung cấp sẵn script nạp dữ liệu mẫu giúp chạy demo n
 | **Platform Admin** | `admin@example.com` / `Admin123!` | Quản trị viên nền tảng (Role: ADMIN) |
 | **App Developer** | `developer@example.com` / `Password123!` | Lập trình viên sở hữu ứng dụng mẫu (Role: USER) |
 | **Ứng dụng mẫu** | `Demo Order Service`<br>AppID: `app_22c57454b00eb44a55c66bf4`<br>AppToken: `apt_926a40eb5a7b8a7341ef0347f4d2fa640b69663ffff2a034197e65e5f030fa51` | Khớp 100% với cấu hình Client Microservice |
-| **Admin Emails** | `["developer@example.com", "manager@example.com"]` | Tự động nhận quyền ADMIN khi đăng nhập Google/FB |
+
+> **Cơ chế phân quyền OAuth (Admin vs Khách Hàng):**
+> - Mặc định, mọi tài khoản Google/Facebook đăng nhập vào Client App đều nhận vai trò `USER`.
+> - Để cấp quyền `ADMIN` cho một tài khoản OAuth cụ thể, người quản trị có thể cấu hình biến `SEED_ADMIN_EMAILS=your_email@gmail.com` trong file `.env` trước khi seed, hoặc cập nhật trường `adminEmails` của ứng dụng qua Developer Console / API `PATCH /applications/:id`.
 
 ---
 

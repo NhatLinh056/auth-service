@@ -49,16 +49,21 @@ async function seed() {
     const sampleAppToken =
       'apt_926a40eb5a7b8a7341ef0347f4d2fa640b69663ffff2a034197e65e5f030fa51';
     
-    // Đọc từ biến môi trường SEED_ADMIN_EMAILS nếu có, mặc định dùng email mẫu an toàn
+    // Đọc từ biến môi trường SEED_ADMIN_EMAILS nếu có, mặc định là mảng rỗng []
     const sampleAdminEmails = process.env.SEED_ADMIN_EMAILS
       ? process.env.SEED_ADMIN_EMAILS.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
-      : ['developer@example.com', 'manager@example.com'];
+      : [];
 
     const appRes = await client.query(
       `INSERT INTO applications (id, name, "appId", "appToken", status, "adminEmails", "userId", "createdAt", "updatedAt")
        VALUES (gen_random_uuid(), 'Demo Order Service', $1, $2, 'ACTIVE', $3, $4, NOW(), NOW())
        ON CONFLICT ("appId") DO UPDATE 
-       SET name = 'Demo Order Service', "appToken" = $2, status = 'ACTIVE', "adminEmails" = $3, "userId" = $4, "updatedAt" = NOW()
+       SET name = 'Demo Order Service', 
+           "appToken" = $2, 
+           status = 'ACTIVE', 
+           "adminEmails" = CASE WHEN array_length($3::text[], 1) > 0 THEN $3 ELSE applications."adminEmails" END, 
+           "userId" = $4, 
+           "updatedAt" = NOW()
        RETURNING id, name, "appId", "adminEmails";`,
       [sampleAppId, sampleAppToken, sampleAdminEmails, devUserId]
     );

@@ -73,7 +73,15 @@ Hệ thống cung cấp sẵn script nạp dữ liệu mẫu giúp chạy demo n
 | **Platform Admin** | `admin@example.com` / `Admin123!` | Đăng nhập tại Developer Console (Cổng 3000) |
 | **App Developer** | `developer@example.com` / `Password123!` | Lập trình viên sở hữu ứng dụng mẫu |
 | **Ứng dụng mẫu** | `Demo Order Service`<br>AppID: `app_22c57454b00eb44a55c66bf4`<br>AppToken: `apt_926a40eb5a7b8a7341ef0347f4d2fa640b69663ffff2a034197e65e5f030fa51` | Khớp 100% với file `.env.example` của Demo Service |
-| **Admin Emails** | `["developer@example.com", "manager@example.com"]` | Khi các email này đăng nhập Google/FB sẽ tự nhận **ADMIN** |
+
+> **Cơ chế phân quyền OAuth (Admin vs Khách Hàng):**
+> - **Mặc định:** Khi bất kỳ tài khoản Google/Facebook nào đăng nhập vào Demo Service (Cổng 3001), hệ thống sẽ cấp vai trò **`Khách Hàng (USER)`**. Người dùng chỉ có quyền xem và tạo đơn hàng của chính mình.
+> - **Cấp quyền Quản Trị Viên (ADMIN):** Để trải nghiệm vai trò ADMIN khi đăng nhập Google/Facebook, người kiểm thử có thể chỉ định email của mình làm Admin bằng một trong hai cách:
+>   - **Cách 1 (Cấu hình qua file môi trường):** Thêm email Google/Facebook của bạn vào biến `SEED_ADMIN_EMAILS` trong file `auth-service/.env` trước khi chạy seed:
+>     ```env
+>     SEED_ADMIN_EMAILS=your_email@gmail.com
+>     ```
+>   - **Cách 2 (Cập nhật trên Developer Console):** Đăng nhập tại `http://localhost:3000` bằng tài khoản App Developer (`developer@example.com`), vào chi tiết ứng dụng "Demo Order Service" để cấu hình danh sách email quản trị.
 
 ---
 
@@ -114,13 +122,15 @@ npm run start:dev
 ### Bước 3: Trải nghiệm Demo thực tế
 
 1. Mở trình duyệt tại **http://localhost:3001** (Customer Portal).
-2. **Kịch bản Admin**: Đăng nhập bằng Google hoặc Facebook với email nằm trong danh sách Admin (ví dụ: email bạn đã thêm vào danh sách `Admin Emails` của ứng dụng trên Developer Console):
-   - Nhận huy hiệu **`👑 Quản Trị Viên (ADMIN)`**.
-   - Xem được **toàn bộ đơn hàng** của tất cả người dùng trong hệ thống.
-3. **Kịch bản Khách Hàng**: Đăng nhập bằng tài khoản Google/Facebook thông thường khác:
-   - Nhận huy hiệu **`👤 Khách Hàng (USER)`**.
-   - Chỉ xem và quản lý đơn hàng của riêng cá nhân bạn.
-   - Bấm `+ Đặt Hàng Thử Nghiệm` để tạo đơn và theo dõi trực tiếp trên bảng.
+2. **Kịch bản 1 — Khách Hàng Thông Thường (USER):**
+   - Bấm **"Đăng nhập với Google"** hoặc **"Đăng nhập với Facebook"** bằng tài khoản thông thường (chưa khai báo trong danh sách Admin).
+   - Nhận huy hiệu **`Khách Hàng (USER)`**.
+   - Bấm **"+ Đặt Hàng Thử Nghiệm"** để tạo đơn hàng mới.
+   - Bảng Đơn Hàng chỉ hiển thị duy nhất các đơn hàng do tài khoản này tạo (dữ liệu được cô lập bảo mật tuyệt đối).
+3. **Kịch bản 2 — Quản Trị Viên (ADMIN):**
+   - Bấm **"Đăng xuất"**, sau đó đăng nhập bằng tài khoản Google hoặc Facebook đã được cấp quyền Admin trong hệ thống.
+   - Nhận huy hiệu **`Quản Trị Viên (ADMIN)`**.
+   - Bảng Đơn Hàng hiển thị **toàn bộ đơn hàng của tất cả khách hàng** trong hệ thống.
 
 ---
 

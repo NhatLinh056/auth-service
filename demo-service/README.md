@@ -17,7 +17,7 @@ Dịch vụ cung cấp giao diện Cổng Dịch Vụ Khách Hàng (Customer Por
 2. **Giao diện Cổng Khách Hàng (Customer Portal Web UI tại http://localhost:3001):**
    - Thiết kế tinh gọn, hiện đại theo phong cách Dark Mode chuyên nghiệp.
    - Đăng nhập 1-click qua Google hoặc Facebook.
-   - Quản lý phiên làm việc: Hiển thị Avatar, Họ tên, Email, Huy hiệu vai trò (`👑 Quản Trị Viên` / `👤 Khách Hàng`) và Access Token JWT.
+   - Quản lý phiên làm việc: Hiển thị Avatar, Họ tên, Email, Huy hiệu vai trò (`Quản Trị Viên (ADMIN)` / `Khách Hàng (USER)`) và Access Token JWT.
    - **Giao diện Quản lý Đơn hàng trực quan (Orders Table)**:
      + Bảng danh sách đơn hàng với đầy đủ thông tin: Mã đơn, Tên sản phẩm, Số lượng, Đơn giá, Khách hàng đặt mua, Trạng thái đơn (PENDING, CONFIRMED, SHIPPED).
      + Nút `+ Đặt Hàng Thử Nghiệm`: Giúp khách hàng tạo đơn hàng mẫu tức thì.
