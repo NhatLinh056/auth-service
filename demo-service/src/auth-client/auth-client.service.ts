@@ -48,8 +48,8 @@ export interface OAuthProviderInfo {
   enabled: boolean;
 }
 
-/** TTL cho cache thông tin ứng dụng: 5 phút (ms) */
-const APPLICATION_CACHE_TTL_MS = 5 * 60 * 1000;
+/** TTL cho cache thông tin ứng dụng: 30 giây (ms) để phản hồi nhanh cấu hình từ Developer Console */
+const APPLICATION_CACHE_TTL_MS = 30 * 1000;
 
 @Injectable()
 export class AuthClientService {

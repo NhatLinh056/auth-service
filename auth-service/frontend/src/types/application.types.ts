@@ -6,6 +6,7 @@ export interface Application {
   appId: string;
   appToken?: string;
   status: ApplicationStatus;
+  adminEmails?: string[];
   userId: string;
   user?: {
     id: string;
@@ -24,4 +25,5 @@ export interface CreateAppPayload {
 export interface UpdateAppPayload {
   name?: string;
   status?: ApplicationStatus;
+  adminEmails?: string[];
 }
