@@ -9,7 +9,7 @@ Dự án cung cấp giải pháp Quản lý Định danh và Quyền truy cập 
 Dịch vụ IAM trung tâm chịu trách nhiệm quản lý tài khoản người dùng nền tảng (Platform Users - Lập trình viên/Admin), băm mật khẩu bằng bcrypt, cấp phát JWT có trường `type` để phân biệt nguồn gốc token, phân quyền dựa trên vai trò (RBAC: ADMIN / USER), quản lý ứng dụng thành viên (Application Management qua AppID / AppToken), lưu trữ người dùng cuối theo từng ứng dụng (AppUser / AppOAuthIdentity) và cung cấp Developer Console.
 
 **2. demo-service (Cổng 3001) — Project 2:**
-Dịch vụ khách độc lập (Client Microservice) đóng vai trò ứng dụng kiểm chứng (Proof of Concept - PoC). Dịch vụ cung cấp giao diện Cổng Khách Hàng (Customer Portal) cho phép đăng nhập qua Google hoặc Facebook, kiểm tra kết nối với Auth Service qua bắt tay dịch vụ (Service Handshake), ủy quyền thẩm định JWT người dùng qua `GET /users/me`, và cung cấp REST API mẫu `/orders` được bảo vệ bởi UserAuthGuard với phân quyền RBAC đa tầng. Cache thông tin ứng dụng với TTL 5 phút để cân bằng hiệu năng và tính nhất quán.
+Dịch vụ khách độc lập (Client Microservice) đóng vai trò ứng dụng kiểm chứng (Proof of Concept - PoC). Dịch vụ cung cấp giao diện Cổng Khách Hàng (Customer Portal) cho phép đăng nhập nhanh qua Google hoặc Facebook, kiểm tra kết nối với Auth Service qua bắt tay dịch vụ (Service Handshake), ủy quyền thẩm định JWT người dùng qua `GET /users/me`, và cung cấp REST API mẫu `/orders` được bảo vệ bởi UserAuthGuard với phân quyền RBAC đa tầng. Cache thông tin ứng dụng với TTL 5 phút để cân bằng hiệu năng và tính nhất quán.
 
 ---
 
@@ -18,7 +18,7 @@ Dịch vụ khách độc lập (Client Microservice) đóng vai trò ứng dụ
 ```
    [Người dùng / Trình duyệt]
             |
-    1. Đăng nhập & Nhận JWT (type: platform | app_user)
+    1. Đăng nhập qua OAuth (Google / Facebook)
             v
 +-------------------------------+     2. Gọi API kèm Bearer JWT     +-------------------------------+
 |         auth-service          | <-------------------------------- |         demo-service          |
@@ -26,7 +26,7 @@ Dịch vụ khách độc lập (Client Microservice) đóng vai trò ứng dụ
 | - Bảng users (Platform Users) |          Headers gửi kèm:         | - Cổng Khách Hàng (Web Portal)|
 | - Bảng app_users (AppUsers)   |          - X-App-Id               | - UserAuthGuard ủy quyền JWT  |
 | - Cấp phát JWT (type field)   |          - X-App-Token            | - TTL Cache 5 phút            |
-| - Quản lý AppID / AppToken    |                                   | - REST API mẫu (/orders)      |
+| - Quản lý AppID / AppToken    |                                   | - Bảng Quản Lý Đơn Hàng       |
 | - Sign-in Methods đa dự án    |                                   | - Không lưu DB User riêng     |
 | - Developer Console WebApp    |                                   +-------------------------------+
 +---------------+---------------+
@@ -56,7 +56,7 @@ Hệ thống phân tách quyền hạn tuyệt đối giữa tầng **Nền tả
 | **Platform Admin** | `users` | `platform` | **ADMIN** (Quản lý toàn bộ nền tảng) | **USER** (Không có quyền admin tại app của người khác) |
 | **App Developer** (Chủ ứng dụng) | `users` | `platform` | **USER** (Lập trình viên đăng ký app) | **ADMIN** (Chủ sở hữu ứng dụng - `isAppOwner`) |
 | **Delegated Admin** | `app_users` | `app_user` | — (Không có tài khoản nền tảng) | **ADMIN** (Được chủ app ủy quyền qua `adminEmails`) |
-| **End-User** (Khách hàng vãng lai) | `app_users` | `app_user` | — (Chỉ thuộc phạm vi app con) | **USER** (Chỉ xem và quản lý dữ liệu của chính mình) |
+| **End-User** (Khách hàng vãng lai) | `app_users` | `app_user` | — (Chỉ thuộc phạm vi app con) | **USER** (Chỉ xem và quản lý đơn hàng của chính mình) |
 
 **Cấu trúc JWT payload phân biệt nguồn gốc:**
 - Đăng nhập mật khẩu (Platform User / Developer): `{ sub, email, role, type: "platform", iat, exp }`
@@ -64,39 +64,20 @@ Hệ thống phân tách quyền hạn tuyệt đối giữa tầng **Nền tả
 
 ---
 
-## 4. Tính năng cốt lõi
+## 4. Dữ liệu mẫu khởi tạo sẵn (Demo Out-of-the-Box)
 
-1. **Xác thực tập trung (Authentication):**
-   Đăng ký và đăng nhập mật khẩu với bcrypt (10 salt rounds), cấp phát JWT có trường `type` phân biệt rõ ràng Platform User và AppUser.
+Hệ thống cung cấp sẵn script nạp dữ liệu mẫu giúp chạy demo ngay lập tức:
 
-2. **Phân quyền đa tầng (Multi-tenant RBAC):**
-   Tách bạch Platform Users (lập trình viên) và AppUsers (khách hàng), cô lập dữ liệu theo từng ứng dụng. Hỗ trợ cấu hình `adminEmails` động theo từng ứng dụng.
-
-3. **Bảo mật liên dịch vụ (Service-to-Service):**
-   AppID và AppToken (CSPRNG 256-bit), hỗ trợ thu hồi và tái sinh token tức thì.
-
-4. **Sign-in Methods đa dự án:**
-   Mỗi ứng dụng cấu hình bật/tắt OAuth (Google, Facebook) độc lập.
-
-5. **Cache TTL (demo-service):**
-   Thông tin ứng dụng được cache với TTL 5 phút; tự động làm mới khi hết hạn hoặc khi gọi `invalidateCache()`.
-
-6. **Cơ chế phòng thủ:**
-   Chống IDOR bằng OwnerOrAdminGuard, chống Bcrypt DoS bằng `@MaxLength`, chống CSRF trong luồng OAuth bằng `state` có chữ ký JWT.
+| Mục | Dữ liệu mẫu | Ghi chú |
+| :--- | :--- | :--- |
+| **Platform Admin** | `admin@example.com` / `Admin123!` | Đăng nhập tại Developer Console (Cổng 3000) |
+| **App Developer** | `developer@example.com` / `Password123!` | Lập trình viên sở hữu ứng dụng mẫu |
+| **Ứng dụng mẫu** | `Demo Order Service`<br>AppID: `app_22c57454b00eb44a55c66bf4`<br>AppToken: `apt_926a40eb5a7b8a7341ef0347f4d2fa640b69663ffff2a034197e65e5f030fa51` | Khớp 100% với file `.env.example` của Demo Service |
+| **Admin Emails** | `["developer@example.com", "lenhatlinh056205@gmail.com"]` | Khi các email này đăng nhập Google/FB sẽ tự nhận **ADMIN** |
 
 ---
 
-## 5. Công nghệ sử dụng
-
-- Backend: NestJS 12, TypeScript 6, Node.js (ES Modules).
-- Cơ sở dữ liệu: PostgreSQL 16+, Prisma ORM 7.
-- Bảo mật & Mật mã: Passport.js, JWT, bcrypt, Node.js crypto (CSPRNG).
-- Frontend Console & Client Portal: React 19, TypeScript, Vite 8, HTML5/CSS3.
-- Kiểm thử tự động: Vitest (182 Unit + 27 Unit + 137 E2E = 346 tests — 100% Passed).
-
----
-
-## 6. Hướng dẫn khởi chạy hệ thống
+## 5. Hướng dẫn khởi chạy hệ thống
 
 ### Bước 1: Khởi động Central Auth Service (Cổng 3000)
 
@@ -104,15 +85,17 @@ Hệ thống phân tách quyền hạn tuyệt đối giữa tầng **Nền tả
 cd auth-service
 npm install
 cp .env.example .env
-# Đồng bộ lược đồ cơ sở dữ liệu PostgreSQL
-npx prisma generate
+
+# Tạo bảng và nạp toàn bộ dữ liệu mẫu (chỉ chạy 1 lần đầu)
 npx prisma db push
-# Chạy máy chủ ở chế độ phát triển
+npm run seed
+
+# Khởi động máy chủ phát triển
 npm run start:dev
 ```
 
 - Developer Console: http://localhost:3000 (hoặc http://localhost:3000/dashboard/)
-- Tài khoản quản trị nền tảng mặc định: `admin@example.com` / `Admin123!`
+- Tài khoản quản trị mặc định: `admin@example.com` / `Admin123!`
 - Tài liệu API Swagger: http://localhost:3000/api
 
 ### Bước 2: Khởi động Demo Service (Cổng 3001)
@@ -123,12 +106,31 @@ Mở một cửa sổ terminal mới:
 cd demo-service
 npm install
 cp .env.example .env
+
 # Khởi động dịch vụ khách
 npm run start:dev
 ```
 
-### Bước 3: Kiểm tra liên thông giữa hai dịch vụ
+### Bước 3: Trải nghiệm Demo thực tế
 
-- Cổng Khách Hàng: http://localhost:3001 — đăng nhập thử nghiệm bằng Google hoặc Facebook.
-- Trạng thái bắt tay dịch vụ: http://localhost:3001/status (kỳ vọng: `status: "ONLINE"`, `handshakeStatus: "SUCCESS"`).
-- Kiểm tra phân quyền API: Sau khi đăng nhập tại http://localhost:3001, nhấn nút **"Gọi Thử API /orders"** để xem dữ liệu theo vai trò (USER / ADMIN).
+1. Mở trình duyệt tại **http://localhost:3001** (Customer Portal).
+2. **Kịch bản Admin**: Đăng nhập bằng Google hoặc Facebook với email nằm trong danh sách Admin (ví dụ: `lenhatlinh056205@gmail.com` hoặc email bạn cấu hình trong Console):
+   - Nhận huy hiệu **`👑 Quản Trị Viên (ADMIN)`**.
+   - Xem được **toàn bộ đơn hàng** của tất cả người dùng trong hệ thống.
+3. **Kịch bản Khách Hàng**: Đăng nhập bằng tài khoản Google/Facebook thông thường khác:
+   - Nhận huy hiệu **`👤 Khách Hàng (USER)`**.
+   - Chỉ xem và quản lý đơn hàng của riêng cá nhân bạn.
+   - Bấm `+ Đặt Hàng Thử Nghiệm` để tạo đơn và theo dõi trực tiếp trên bảng.
+
+---
+
+## 6. Công nghệ sử dụng & Kiểm thử tự động
+
+- **Backend**: NestJS 12, TypeScript 6, Node.js (ES Modules).
+- **Cơ sở dữ liệu**: PostgreSQL 16+, Prisma ORM 7.
+- **Bảo mật & Mật mã**: Passport.js, JWT, bcrypt, Node.js crypto (CSPRNG).
+- **Frontend**: React 19, TypeScript, Vite 8, HTML5/CSS3 Clean Dark Mode.
+- **Kiểm thử tự động**: Vitest (**346/346 tests PASSED — 100%**).
+  - Auth Service Unit Tests: 182 passed
+  - Demo Service Unit Tests: 27 passed
+  - Auth Service E2E Tests: 137 passed

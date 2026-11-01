@@ -39,7 +39,20 @@ Dịch vụ IAM (Identity & Access Management) trung tâm cung cấp giải phá
 
 ---
 
-## 2. Cấu trúc JWT
+## 2. Dữ liệu mẫu khởi tạo (Seed Data)
+
+Hệ thống cung cấp sẵn script nạp dữ liệu mẫu giúp chạy demo ngay lập tức:
+
+| Mục | Dữ liệu mẫu | Ghi chú |
+| :--- | :--- | :--- |
+| **Platform Admin** | `admin@example.com` / `Admin123!` | Quản trị viên nền tảng (Role: ADMIN) |
+| **App Developer** | `developer@example.com` / `Password123!` | Lập trình viên sở hữu ứng dụng mẫu (Role: USER) |
+| **Ứng dụng mẫu** | `Demo Order Service`<br>AppID: `app_22c57454b00eb44a55c66bf4`<br>AppToken: `apt_926a40eb5a7b8a7341ef0347f4d2fa640b69663ffff2a034197e65e5f030fa51` | Khớp 100% với cấu hình Client Microservice |
+| **Admin Emails** | `["developer@example.com", "lenhatlinh056205@gmail.com"]` | Tự động nhận quyền ADMIN khi đăng nhập Google/FB |
+
+---
+
+## 3. Cấu trúc JWT
 
 | Trường | Loại | Mô tả |
 | :--- | :--- | :--- |
@@ -48,16 +61,6 @@ Dịch vụ IAM (Identity & Access Management) trung tâm cung cấp giải phá
 | `role` | `ADMIN` / `USER` | Vai trò của người dùng |
 | `type` | `platform` / `app_user` | Phân biệt nguồn gốc token |
 | `appId` | string? | Chỉ có khi `type = "app_user"` — ứng dụng mà AppUser thuộc về |
-
----
-
-## 3. Công nghệ sử dụng
-
-- Framework: NestJS 12, Node.js (ES Modules).
-- Ngôn ngữ: TypeScript 6.
-- Cơ sở dữ liệu: PostgreSQL 16+, Prisma ORM 7.
-- Kiểm thử: Vitest (182 Unit tests + 137 E2E tests = 319 tests — 100% Passed).
-- Tài liệu API: OpenAPI / Swagger UI.
 
 ---
 
@@ -72,19 +75,21 @@ JWT_SECRET=your_jwt_secret_key
 JWT_EXPIRES_IN=7d
 ```
 
-### Bước 2: Đồng bộ cơ sở dữ liệu và khởi động
+### Bước 2: Tạo bảng và nạp dữ liệu mẫu
 ```bash
 # Cài đặt dependencies
 npm install
 
 # Đồng bộ schema Prisma với PostgreSQL
-npx prisma generate
 npx prisma db push
+
+# Nạp dữ liệu mẫu tự động
+npm run seed
 
 # Chạy máy chủ ở chế độ phát triển
 npm run start:dev
 
-# Chạy toàn bộ kiểm thử
+# Chạy kiểm thử tự động
 npm test
 npm run test:e2e
 ```
@@ -94,22 +99,3 @@ npm run test:e2e
 - Tài khoản quản trị mặc định: `admin@example.com` / `Admin123!`
 - Tài liệu API Swagger: http://localhost:3000/api
 - Kiểm tra sức khỏe hệ thống: http://localhost:3000/health
-
----
-
-## 5. Danh sách Endpoints chính
-
-| Phương thức | Endpoint | Bảo vệ | Mô tả |
-| :--- | :--- | :--- | :--- |
-| POST | /auth/register | Public | Đăng ký tài khoản Platform User mới |
-| POST | /auth/login | Public | Đăng nhập, nhận JWT (`type: "platform"`) |
-| GET | /auth/providers | Public | Danh sách OAuth Provider khả dụng |
-| GET | /auth/oauth/:provider | Public | Khởi tạo luồng OAuth 2.0 |
-| GET | /auth/oauth/:provider/callback | Public | Callback OAuth, cấp JWT (`type: "app_user"`) |
-| GET | /auth/verify-service | AppAuth | Xác thực danh tính dịch vụ thành viên |
-| GET | /users/me | JWT | Lấy profile (định tuyến theo `type` trong JWT) |
-| GET | /users | JWT + ADMIN | Danh sách Platform Users (bảng `users`) |
-| GET | /applications | JWT | Danh sách ứng dụng của Developer |
-| GET | /applications/:id/users | JWT + Owner/ADMIN | Danh sách AppUsers của ứng dụng |
-| PATCH | /applications/:id | JWT + Owner/ADMIN | Cập nhật thông tin ứng dụng, `adminEmails` |
-| POST | /applications/:id/regenerate-token | JWT + Owner/ADMIN | Tái sinh AppToken |

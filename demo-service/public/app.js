@@ -1,8 +1,9 @@
 /**
- * CLIENT APPLICATION LOGIC
- * Standalone Client Portal: Social Sign In (Google / Facebook) & Developer Sign In (Project 1 Owner)
- * Multi-tenant RBAC: Project 1 App Owner is ADMIN in Project 2, End-users are USER
- * Bilingual: English (EN) and Vietnamese (VI)
+ * CLIENT APPLICATION LOGIC — DEMO SERVICE (PROJECT 2)
+ * Clean, modern customer portal with seamless social authentication (Google & Facebook).
+ * Role-based access control:
+ * - App Owner / Delegated Admin: ADMIN (manages all system orders)
+ * - Regular Customer: USER (manages personal orders)
  */
 
 const API_BASE = window.location.origin; // http://localhost:3001
@@ -11,34 +12,24 @@ const AUTH_SERVICE_URL = 'http://localhost:3000';
 const translations = {
   en: {
     nav: {
-      brand_title: 'Client Portal',
-      brand_tag: 'Online Services',
+      brand_title: 'Customer Portal',
+      brand_tag: 'Order Services',
     },
     auth: {
       title: 'Sign In to Your Account',
-      subtitle: 'Select the sign-in method according to your role',
+      subtitle: 'Fast and secure sign-in with your social account',
       btn_google: 'Sign in with Google',
       btn_facebook: 'Sign in with Facebook',
-    },
-    session: {
-      title: 'Account Information',
-      subtitle: 'Secure active user session',
-      active_badge: 'Active Session',
-      user_id: 'User ID (UID)',
-      provider: 'Sign-in Method',
-      auth_status: 'Account Status',
-      verified_text: '✓ Authenticated & Verified',
-      jwt_label: 'Access Token (JWT Bearer):',
     },
     btn: {
       copy: 'Copy Token',
       sign_out: 'Sign Out',
     },
     toasts: {
-      oauth_redirect: 'Redirecting to login provider...',
-      signed_in: 'Authenticated successfully as',
+      oauth_redirect: 'Redirecting to sign-in provider...',
+      signed_in: 'Welcome back,',
       signed_out: 'Signed out successfully.',
-      copied: 'Copied token to clipboard.',
+      copied: 'Token copied to clipboard.',
       not_enabled: 'This sign-in method is currently disabled. Please contact the administrator.',
     },
     status: {
@@ -51,23 +42,13 @@ const translations = {
   vi: {
     nav: {
       brand_title: 'Cổng Khách Hàng',
-      brand_tag: 'Dịch Vụ Trực Tuyến',
+      brand_tag: 'Dịch Vụ Đơn Hàng',
     },
     auth: {
       title: 'Đăng Nhập Tài Khoản',
-      subtitle: 'Chọn phương thức phù hợp với vai trò của bạn',
+      subtitle: 'Đăng nhập nhanh chóng và bảo mật qua mạng xã hội',
       btn_google: 'Đăng nhập bằng Google',
       btn_facebook: 'Đăng nhập bằng Facebook',
-    },
-    session: {
-      title: 'Thông Tin Tài Khoản',
-      subtitle: 'Phiên đăng nhập đã được xác thực an toàn',
-      active_badge: 'Đang Hoạt Động',
-      user_id: 'Mã Tài Khoản (UID)',
-      provider: 'Phương Thức Đăng Nhập',
-      auth_status: 'Trạng Thái Xác Thực',
-      verified_text: '✓ Đã Xác Thực & Hoạt Động',
-      jwt_label: 'Mã Phiên Đăng Nhập (Access Token JWT):',
     },
     btn: {
       copy: 'Sao Chép Token',
@@ -75,7 +56,7 @@ const translations = {
     },
     toasts: {
       oauth_redirect: 'Đang chuyển hướng sang trang đăng nhập...',
-      signed_in: 'Đăng nhập thành công với tài khoản',
+      signed_in: 'Chào mừng trở lại,',
       signed_out: 'Đã đăng xuất thành công.',
       copied: 'Đã sao chép token vào bộ nhớ tạm.',
       not_enabled: 'Phương thức này hiện chưa được mở. Vui lòng liên hệ quản trị viên.',
@@ -96,6 +77,8 @@ const state = {
   providers: [],
   handshake: null,
   handshakeStatus: null,
+  orders: [],
+  showJsonView: false,
 };
 
 function t(path) {
@@ -166,8 +149,6 @@ function updateAuthUI() {
     const roleEl = document.getElementById('user-role-display');
     const idEl = document.getElementById('user-id-display');
     const providerEl = document.getElementById('user-provider-display');
-    const p1RoleEl = document.getElementById('user-p1-role-display');
-    const p2RoleEl = document.getElementById('user-p2-role-display');
     const avatarEl = document.getElementById('user-avatar');
     const tokenEl = document.getElementById('user-token-display');
     const explanationBox = document.getElementById('role-explanation-box');
@@ -177,11 +158,17 @@ function updateAuthUI() {
     if (idEl) idEl.textContent = state.user.id || state.user.sub || 'N/A';
 
     if (roleEl) {
-      roleEl.textContent = role;
-      roleEl.className = isAdmin ? 'user-role-badge badge-admin' : 'user-role-badge badge-user';
-      roleEl.style.background = isAdmin ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.2)';
-      roleEl.style.color = isAdmin ? '#10b981' : '#818cf8';
-      roleEl.style.borderColor = isAdmin ? 'rgba(16, 185, 129, 0.4)' : 'rgba(99, 102, 241, 0.4)';
+      if (isAdmin) {
+        roleEl.textContent = state.lang === 'vi' ? '👑 Quản Trị Viên' : '👑 Administrator';
+        roleEl.style.background = 'rgba(16, 185, 129, 0.2)';
+        roleEl.style.color = '#10b981';
+        roleEl.style.border = '1px solid rgba(16, 185, 129, 0.4)';
+      } else {
+        roleEl.textContent = state.lang === 'vi' ? '👤 Khách Hàng' : '👤 Customer';
+        roleEl.style.background = 'rgba(99, 102, 241, 0.2)';
+        roleEl.style.color = '#818cf8';
+        roleEl.style.border = '1px solid rgba(99, 102, 241, 0.4)';
+      }
     }
 
     if (providerEl) {
@@ -189,44 +176,27 @@ function updateAuthUI() {
       providerEl.textContent = p;
     }
 
-    if (p1RoleEl) {
-      // In Project 1 (BaaS Platform), developers and users are normal users (or admin if platform superadmin)
-      p1RoleEl.textContent = state.user.p1Role || (state.user.email === 'admin@example.com' ? 'ADMIN' : 'USER');
-    }
-
-    if (p2RoleEl) {
-      if (isAdmin) {
-        p2RoleEl.textContent = state.lang === 'vi' ? 'ADMIN (Chủ sở hữu Ứng dụng)' : 'ADMIN (App Owner)';
-        p2RoleEl.style.background = 'rgba(16, 185, 129, 0.2)';
-        p2RoleEl.style.color = '#10b981';
-      } else {
-        p2RoleEl.textContent = state.lang === 'vi' ? 'USER (Khách hàng vãng lai)' : 'USER (Customer)';
-        p2RoleEl.style.background = 'rgba(99, 102, 241, 0.2)';
-        p2RoleEl.style.color = '#818cf8';
-      }
-    }
-
     if (explanationBox) {
       if (isAdmin) {
         explanationBox.style.background = 'rgba(16, 185, 129, 0.08)';
         explanationBox.style.borderColor = 'rgba(16, 185, 129, 0.3)';
         explanationBox.innerHTML = `
-          <div style="color: #10b981; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-            <span>👑 Quyền Quản Trị Viên (ADMIN) — Chủ Sở Hữu Ứng Dụng</span>
+          <div style="color: #10b981; font-weight: 600; margin-bottom: 2px;">
+            👑 Chế Độ Quản Trị Viên (ADMIN)
           </div>
-          <div style="color: var(--text-muted); font-size: 12px; line-height: 1.5;">
-            Tài khoản này sở hữu Ứng dụng tại Project 1 (Auth Service). Trong phạm vi dịch vụ Project 2, bạn được tự động trao toàn quyền <strong>Quản Trị (ADMIN)</strong>: Có thể xem danh sách toàn bộ đơn hàng của tất cả khách hàng trong hệ thống.
+          <div style="color: var(--text-muted); font-size: 12px;">
+            Tài khoản của bạn được cấp quyền Quản Trị Viên. Bạn có thể xem và quản lý danh sách toàn bộ đơn hàng trong hệ thống.
           </div>
         `;
       } else {
         explanationBox.style.background = 'rgba(99, 102, 241, 0.08)';
         explanationBox.style.borderColor = 'rgba(99, 102, 241, 0.3)';
         explanationBox.innerHTML = `
-          <div style="color: #818cf8; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-            <span>👤 Quyền Khách Hàng (USER) — Người Dùng Vãng Lai</span>
+          <div style="color: #818cf8; font-weight: 600; margin-bottom: 2px;">
+            👤 Chế Độ Khách Hàng (USER)
           </div>
-          <div style="color: var(--text-muted); font-size: 12px; line-height: 1.5;">
-            Bạn đang đăng nhập với tư cách khách hàng của ứng dụng. Bạn chỉ có quyền xem và tạo đơn hàng của riêng tài khoản bạn; không thể xem dữ liệu đơn hàng của người khác.
+          <div style="color: var(--text-muted); font-size: 12px;">
+            Chào mừng bạn! Dưới đây là danh sách các đơn hàng cá nhân của bạn.
           </div>
         `;
       }
@@ -242,6 +212,9 @@ function updateAuthUI() {
     }
 
     if (tokenEl) tokenEl.textContent = state.token;
+
+    // Tự động tải đơn hàng
+    fetchOrders();
   } else {
     if (unauthView) unauthView.style.display = 'block';
     if (authView) authView.style.display = 'none';
@@ -249,7 +222,7 @@ function updateAuthUI() {
 }
 
 /**
- * Synchronize user profile with Project 2 backend (checks if user is App Owner)
+ * Synchronize user profile with Project 2 backend (checks role)
  */
 async function syncUserProfile() {
   if (!state.token) return;
@@ -276,74 +249,6 @@ async function syncUserProfile() {
     }
   } catch (err) {
     console.warn('Failed to sync profile with Project 2:', err.message);
-  }
-}
-
-/**
- * Handle Developer/Admin Sign-In using Project 1 Auth Service Credentials
- */
-async function loginWithDeveloper() {
-  const emailInput = document.getElementById('dev-email');
-  const passwordInput = document.getElementById('dev-password');
-  const btn = document.getElementById('btn-dev-login');
-
-  const email = emailInput?.value.trim();
-  const password = passwordInput?.value.trim();
-
-  if (!email || !password) {
-    showToast(state.lang === 'vi' ? 'Vui lòng nhập email và mật khẩu' : 'Please enter email and password', 'error');
-    return;
-  }
-
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = state.lang === 'vi' ? 'Đang xác thực...' : 'Authenticating...';
-  }
-
-  try {
-    const res = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ email, password })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.message || (state.lang === 'vi' ? 'Đăng nhập thất bại' : 'Authentication failed'));
-    }
-
-    state.token = data.accessToken;
-    state.user = {
-      id: data.user?.id,
-      email: data.user?.email || email,
-      name: data.user?.name || email.split('@')[0],
-      p1Role: data.user?.role || 'USER',
-      role: 'ADMIN', // Will be confirmed by syncUserProfile()
-      provider: 'Password (Project 1)',
-    };
-
-    localStorage.setItem('demo_token', state.token);
-    localStorage.setItem('demo_user', JSON.stringify(state.user));
-
-    await syncUserProfile();
-    updateAuthUI();
-
-    showToast(
-      state.lang === 'vi'
-        ? `Đăng nhập thành công với vai trò Quản Trị Viên (ADMIN): ${state.user.email}`
-        : `Authenticated as App Administrator: ${state.user.email}`,
-      'success'
-    );
-  } catch (err) {
-    showToast(err.message, 'error');
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = state.lang === 'vi' ? 'Đăng Nhập với tư cách Quản Trị Viên (ADMIN)' : 'Sign In as Administrator';
-    }
   }
 }
 
@@ -402,9 +307,8 @@ function handleUrlCallback() {
     window.history.replaceState({}, document.title, window.location.pathname);
     updateAuthUI();
 
-    // Verify app-level role immediately
     syncUserProfile().then(() => {
-      showToast(`${t('toasts.signed_in')} ${state.user?.email || ''}`);
+      showToast(`${t('toasts.signed_in')} ${state.user?.name || state.user?.email || ''}!`);
     });
   }
 }
@@ -412,27 +316,89 @@ function handleUrlCallback() {
 function logout() {
   state.token = null;
   state.user = null;
+  state.orders = [];
   localStorage.removeItem('demo_token');
   localStorage.removeItem('demo_user');
-
-  const resultBox = document.getElementById('orders-result-box');
-  if (resultBox) resultBox.style.display = 'none';
 
   updateAuthUI();
   showToast(t('toasts.signed_out'));
 }
 
-async function fetchOrders() {
-  const btn = document.getElementById('btn-fetch-orders');
-  const resultBox = document.getElementById('orders-result-box');
-  const jsonDisplay = document.getElementById('orders-json-display');
-  const badge = document.getElementById('orders-badge');
-  const statusLabel = document.getElementById('orders-status-label');
+// ─────────────────────────────────────────────────────────────────────────────
+// ORDERS MANAGEMENT & TABLE RENDERING
+// ─────────────────────────────────────────────────────────────────────────────
+function renderOrdersTable(orders, isAdmin) {
+  const tbody = document.getElementById('orders-table-body');
+  const subtitle = document.getElementById('orders-subtitle');
+  if (!tbody) return;
 
-  if (!state.token) {
-    showToast(state.lang === 'vi' ? 'Chưa có token xác thực.' : 'Missing authentication token.', 'error');
+  if (subtitle) {
+    if (isAdmin) {
+      subtitle.textContent = state.lang === 'vi'
+        ? `Đang hiển thị toàn bộ ${orders.length} đơn hàng trên hệ thống (Quyền Quản Trị Viên).`
+        : `Showing all ${orders.length} orders across the system (Administrator view).`;
+    } else {
+      subtitle.textContent = state.lang === 'vi'
+        ? `Bạn có ${orders.length} đơn hàng.`
+        : `You have ${orders.length} orders.`;
+    }
+  }
+
+  if (!orders || orders.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="table-empty" style="text-align: center; padding: 32px 16px; color: var(--text-dim);">
+          <div style="font-size: 24px; margin-bottom: 8px;">📭</div>
+          <div style="font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px;">
+            ${state.lang === 'vi' ? 'Chưa có đơn hàng nào' : 'No orders found'}
+          </div>
+          <div style="font-size: 12px; color: var(--text-dim);">
+            ${state.lang === 'vi' ? 'Bấm nút "+ Đặt Hàng Thử Nghiệm" ở trên để tạo đơn hàng mới.' : 'Click "+ Place Sample Order" to create one.'}
+          </div>
+        </td>
+      </tr>
+    `;
     return;
   }
+
+  tbody.innerHTML = orders.map(o => {
+    let badgeClass = 'badge';
+    let badgeStyle = 'background: rgba(148, 163, 184, 0.15); color: #cbd5e1;';
+    if (o.status === 'CONFIRMED') {
+      badgeStyle = 'background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3);';
+    } else if (o.status === 'SHIPPED') {
+      badgeStyle = 'background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);';
+    } else if (o.status === 'PENDING') {
+      badgeStyle = 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);';
+    }
+
+    const isMine = o.userEmail === state.user?.email;
+    const customerDisplay = isMine
+      ? `<span style="color: #67e8f9; font-weight: 500;">${o.userEmail} <small style="color: var(--text-dim);">(Bạn)</small></span>`
+      : `<span style="color: var(--text-muted);">${o.userEmail}</span>`;
+
+    return `
+      <tr>
+        <td style="font-family: var(--font-mono); font-size: 12px; color: var(--text-dim);">${o.id}</td>
+        <td style="font-weight: 500; color: #fff;">${o.item}</td>
+        <td style="text-align: center; color: var(--text-muted);">${o.quantity}</td>
+        <td style="text-align: right; font-weight: 600; color: #34d399;">$${(o.totalPrice || 0).toLocaleString()}</td>
+        <td style="font-size: 12px;">${customerDisplay}</td>
+        <td style="text-align: center;">
+          <span class="badge" style="${badgeStyle} font-size: 10px; font-weight: 600; padding: 2px 8px;">
+            ${o.status}
+          </span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function fetchOrders() {
+  const btn = document.getElementById('btn-fetch-orders');
+  const jsonDisplay = document.getElementById('orders-json-display');
+
+  if (!state.token) return;
 
   if (btn) btn.disabled = true;
 
@@ -445,42 +411,19 @@ async function fetchOrders() {
 
     const data = await res.json();
 
-    if (resultBox) resultBox.style.display = 'block';
-
     if (res.ok) {
-      if (badge) {
-        badge.className = 'badge badge-success';
-        badge.textContent = `${res.status} OK`;
+      state.orders = Array.isArray(data.orders) ? data.orders : [];
+      const isAdmin = (data.user?.role || state.user?.role) === 'ADMIN';
+      renderOrdersTable(state.orders, isAdmin);
+
+      if (jsonDisplay) {
+        jsonDisplay.textContent = JSON.stringify(data, null, 2);
       }
-      if (statusLabel) {
-        const role = data.user?.role || state.user?.role || 'USER';
-        statusLabel.textContent = role === 'ADMIN'
-          ? (state.lang === 'vi' ? '✓ Xác thực thành công (Quyền ADMIN): Xem toàn bộ đơn hàng của toàn hệ thống Project 2' : '✓ Verified (ADMIN): Viewing all system orders')
-          : (state.lang === 'vi' ? '✓ Xác thực thành công (Quyền USER): Hệ thống tự động lọc chỉ trả về đơn hàng cá nhân' : '✓ Verified (USER): Filtered to personal scoped orders');
-      }
-      showToast(state.lang === 'vi' ? 'Đã gọi API /orders thành công!' : 'API /orders fetched successfully!', 'success');
     } else {
-      if (badge) {
-        badge.className = 'badge badge-danger';
-        badge.textContent = `${res.status} ${res.statusText || 'Error'}`;
-      }
-      if (statusLabel) statusLabel.textContent = state.lang === 'vi' ? 'Lỗi gọi API:' : 'API Error:';
       showToast(`Lỗi: ${data.message || res.statusText}`, 'error');
     }
-
-    if (jsonDisplay) {
-      jsonDisplay.textContent = JSON.stringify(data, null, 2);
-    }
   } catch (err) {
-    if (resultBox) resultBox.style.display = 'block';
-    if (badge) {
-      badge.className = 'badge badge-danger';
-      badge.textContent = 'Network Error';
-    }
-    if (jsonDisplay) {
-      jsonDisplay.textContent = JSON.stringify({ error: err.message }, null, 2);
-    }
-    showToast(state.lang === 'vi' ? 'Không thể kết nối đến API /orders.' : 'Failed to connect to API /orders.', 'error');
+    showToast(`Không thể kết nối đến máy chủ: ${err.message}`, 'error');
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -490,15 +433,16 @@ async function createSampleOrder() {
   const btn = document.getElementById('btn-create-order');
 
   if (!state.token) {
-    showToast(state.lang === 'vi' ? 'Chưa có token xác thực.' : 'Missing authentication token.', 'error');
+    showToast('Vui lòng đăng nhập để tạo đơn hàng', 'error');
     return;
   }
 
   const sampleItems = [
-    { item: 'Tai nghe không dây Sony WH-1000XM5', price: 349, quantity: 1 },
+    { item: 'Tai nghe Sony WH-1000XM5', price: 349, quantity: 1 },
     { item: 'Chuột không dây Logitech MX Master 3S', price: 99, quantity: 1 },
-    { item: 'Bàn phím cơ Keychron Q1 Pro Wireless', price: 219, quantity: 1 },
-    { item: 'Màn hình Dell UltraSharp 27 4K USB-C', price: 620, quantity: 1 },
+    { item: 'Bàn phím cơ Keychron Q1 Pro', price: 219, quantity: 1 },
+    { item: 'Màn hình Dell UltraSharp 27 4K', price: 620, quantity: 1 },
+    { item: 'iPad Pro 11 inch M4 Wi-Fi', price: 999, quantity: 1 },
   ];
 
   const randomItem = sampleItems[Math.floor(Math.random() * sampleItems.length)];
@@ -520,11 +464,10 @@ async function createSampleOrder() {
     if (res.ok) {
       showToast(
         state.lang === 'vi'
-          ? `Đã tạo đơn hàng mới: "${randomItem.item}" ($${randomItem.price})!`
-          : `Created order: "${randomItem.item}" ($${randomItem.price})!`,
+          ? `Đã đặt thành công: "${randomItem.item}" ($${randomItem.price})!`
+          : `Placed order: "${randomItem.item}" ($${randomItem.price})!`,
         'success'
       );
-      // Automatically refresh orders list
       await fetchOrders();
     } else {
       showToast(`Lỗi tạo đơn: ${data.message || res.statusText}`, 'error');
@@ -533,6 +476,21 @@ async function createSampleOrder() {
     showToast(`Lỗi kết nối: ${err.message}`, 'error');
   } finally {
     if (btn) btn.disabled = false;
+  }
+}
+
+function toggleJsonView() {
+  state.showJsonView = !state.showJsonView;
+  const box = document.getElementById('orders-result-box');
+  const btnText = document.getElementById('btn-toggle-json-text');
+
+  if (box) {
+    box.style.display = state.showJsonView ? 'block' : 'none';
+  }
+  if (btnText) {
+    btnText.textContent = state.showJsonView
+      ? '{ } Ẩn Dữ Liệu API (JSON)'
+      : '{ } Xem Dữ Liệu API (JSON)';
   }
 }
 
@@ -601,7 +559,6 @@ function updateHandshakeUI() {
   const text = document.getElementById('handshake-text');
   const bannerAppName = document.getElementById('banner-app-name');
   const bannerAppStatus = document.getElementById('banner-app-status');
-  const bannerOwnerEmail = document.getElementById('banner-owner-email');
 
   const isConnected = state.handshakeStatus === 'CONNECTED';
   const isOffline = state.handshakeStatus === 'OFFLINE';
@@ -618,14 +575,12 @@ function updateHandshakeUI() {
   if (state.handshake) {
     const appName = state.handshake.handshake?.appName || state.handshake.appName || 'Demo Order Service';
     const appStatus = state.handshake.handshake?.applicationStatus || state.handshake.status || 'ACTIVE';
-    const ownerEmail = state.handshake.handshake?.owner?.email || 'user@example.com';
 
     if (bannerAppName) bannerAppName.textContent = appName;
     if (bannerAppStatus) {
       bannerAppStatus.textContent = appStatus;
       bannerAppStatus.className = appStatus === 'ACTIVE' ? 'badge badge-success' : 'badge badge-danger';
     }
-    if (bannerOwnerEmail) bannerOwnerEmail.textContent = ownerEmail;
   }
 }
 

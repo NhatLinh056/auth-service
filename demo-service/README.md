@@ -2,27 +2,26 @@
 
 Dịch vụ khách độc lập (Client Microservice) minh họa mô hình liên thông dịch vụ và ủy quyền xác thực với Auth Service (Project 1).
 
-Dịch vụ cung cấp giao diện Cổng Dịch Vụ Khách Hàng (Customer Portal) phục vụ tại http://localhost:3001, cho phép người dùng đăng nhập bằng tài khoản mạng xã hội hoặc tài khoản lập trình viên và hiển thị hồ sơ cá nhân đã được xác thực an toàn.
+Dịch vụ cung cấp giao diện Cổng Dịch Vụ Khách Hàng (Customer Portal) phục vụ tại http://localhost:3001, cho phép người dùng đăng nhập bằng tài khoản mạng xã hội (Google, Facebook) và hiển thị hồ sơ cá nhân đã được xác thực an toàn.
 
 ---
 
 ## 1. Tính năng cốt lõi
 
 1. **Mô hình Phân quyền Đa tầng (Multi-tenant RBAC — Tương tự Firebase Auth):**
-   - Auth Service (Project 1) đóng vai trò là nền tảng Backend-as-a-Service (BaaS) quản lý tập trung tài khoản và ứng dụng.
-   - Tài khoản đăng ký tại Project 1 là tài khoản Nhà phát triển (vai trò USER trên nền tảng), tạo ứng dụng để nhận AppID và AppToken tích hợp vào Project 2.
-   - **ADMIN tại Project 2**: Là tài khoản tại Project 1 sở hữu ứng dụng đó (App Owner) hoặc các tài khoản được ủy quyền qua danh sách `adminEmails` của ứng dụng.
-   - **Lưu ý quan trọng về Platform Admin (Project 1)**: Tài khoản Admin của Project 1 chỉ có vai trò quản lý nền tảng BaaS. Admin Project 1 **KHÔNG** phải là Admin của Project 2. Khi đăng nhập vào Project 2, họ chỉ có quyền `USER` bình thường trừ khi chính họ là chủ sở hữu hoặc nằm trong `adminEmails` của ứng dụng đó.
-   - **USER tại Project 2**: Là các khách hàng vãng lai đăng nhập qua mạng xã hội (Google, Facebook), dữ liệu được cô lập trong bảng `app_users` của riêng ứng dụng này.
+   - Người dùng đăng nhập nhanh chóng thông qua OAuth 2.0 (Google hoặc Facebook).
+   - **Tự động cấp quyền ADMIN**: Khi tài khoản Google/Facebook đăng nhập có email trùng khớp với Chủ sở hữu ứng dụng (App Owner đã tạo app ở Project 1) hoặc nằm trong danh sách `adminEmails` của ứng dụng $\rightarrow$ Hệ thống tự động trao toàn quyền Quản trị viên (`ADMIN`), cho phép xem và quản lý toàn bộ đơn hàng trong hệ thống.
+   - **Quyền Khách hàng (USER)**: Khách hàng thông thường khi đăng nhập chỉ có quyền xem và tạo các đơn hàng của riêng mình.
+   - **Loại bỏ form mật khẩu**: Project 2 không lưu trữ bất kỳ mật khẩu nào và không cần form nhập user/pass, trải nghiệm người dùng 100% dựa trên OAuth hiện đại.
 
 2. **Giao diện Cổng Khách Hàng (Customer Portal Web UI tại http://localhost:3001):**
-   - Cung cấp 2 khu vực đăng nhập trực quan:
-     + Khu vực 1 (Khách hàng): Đăng nhập nhanh qua Google hoặc Facebook (Vai trò: USER).
-     + Khu vực 2 (Chủ ứng dụng): Đăng nhập bằng tài khoản Project 1 (Email & Mật khẩu) đã tạo ứng dụng (Vai trò: ADMIN).
-   - Hiển thị trực quan bảng thông tin tài khoản: Họ tên, Email, Ảnh đại diện, Vai trò tại Project 1 (BaaS) vs Vai trò tại Project 2 (App), Mã UID và chuỗi Access Token (JWT).
-   - Tích hợp 2 nút thao tác API trực tiếp trên giao diện:
-     + "Gọi Thử API /orders": Kiểm tra phân quyền RBAC (ADMIN xem toàn bộ đơn hàng, USER chỉ xem đơn cá nhân).
-     + "+ Tạo Đơn Hàng Mới": Khách hàng tạo thử đơn hàng và xem kết quả cập nhật lập tức trên màn hình.
+   - Thiết kế tinh gọn, hiện đại theo phong cách Dark Mode chuyên nghiệp.
+   - Đăng nhập 1-click qua Google hoặc Facebook.
+   - Quản lý phiên làm việc: Hiển thị Avatar, Họ tên, Email, Huy hiệu vai trò (`👑 Quản Trị Viên` / `👤 Khách Hàng`) và Access Token JWT.
+   - **Giao diện Quản lý Đơn hàng trực quan (Orders Table)**:
+     + Bảng danh sách đơn hàng với đầy đủ thông tin: Mã đơn, Tên sản phẩm, Số lượng, Đơn giá, Khách hàng đặt mua, Trạng thái đơn (PENDING, CONFIRMED, SHIPPED).
+     + Nút `+ Đặt Hàng Thử Nghiệm`: Giúp khách hàng tạo đơn hàng mẫu tức thì.
+     + Tùy chọn xem phản hồi thô API (`{ } Xem Dữ Liệu API (JSON)`) phục vụ việc kiểm thử kỹ thuật.
 
 3. **Bắt tay dịch vụ (Service-to-Service Handshake) & Bộ nhớ đệm TTL:**
    - Đọc AppID và AppToken từ biến môi trường (`.env`).
