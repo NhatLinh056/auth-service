@@ -42,7 +42,7 @@ export class OrdersService {
       quantity: 1,
       totalPrice: 219,
       userId: 'customer-uuid-002',
-      userEmail: 'lenhatlinh056205@gmail.com',
+      userEmail: 'customer2@gmail.com',
       status: 'PENDING',
       createdAt: new Date(Date.now() - 7200000).toISOString(),
     },

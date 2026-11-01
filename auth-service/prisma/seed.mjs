@@ -48,7 +48,11 @@ async function seed() {
     const sampleAppId = 'app_22c57454b00eb44a55c66bf4';
     const sampleAppToken =
       'apt_926a40eb5a7b8a7341ef0347f4d2fa640b69663ffff2a034197e65e5f030fa51';
-    const sampleAdminEmails = ['developer@example.com', 'lenhatlinh056205@gmail.com'];
+    
+    // Đọc từ biến môi trường SEED_ADMIN_EMAILS nếu có, mặc định dùng email mẫu an toàn
+    const sampleAdminEmails = process.env.SEED_ADMIN_EMAILS
+      ? process.env.SEED_ADMIN_EMAILS.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+      : ['developer@example.com', 'manager@example.com'];
 
     const appRes = await client.query(
       `INSERT INTO applications (id, name, "appId", "appToken", status, "adminEmails", "userId", "createdAt", "updatedAt")
@@ -93,3 +97,4 @@ async function seed() {
 }
 
 seed();
+

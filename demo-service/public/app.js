@@ -159,12 +159,12 @@ function updateAuthUI() {
 
     if (roleEl) {
       if (isAdmin) {
-        roleEl.textContent = state.lang === 'vi' ? '👑 Quản Trị Viên' : '👑 Administrator';
+        roleEl.textContent = state.lang === 'vi' ? 'Quản Trị Viên' : 'Administrator';
         roleEl.style.background = 'rgba(16, 185, 129, 0.2)';
         roleEl.style.color = '#10b981';
         roleEl.style.border = '1px solid rgba(16, 185, 129, 0.4)';
       } else {
-        roleEl.textContent = state.lang === 'vi' ? '👤 Khách Hàng' : '👤 Customer';
+        roleEl.textContent = state.lang === 'vi' ? 'Khách Hàng' : 'Customer';
         roleEl.style.background = 'rgba(99, 102, 241, 0.2)';
         roleEl.style.color = '#818cf8';
         roleEl.style.border = '1px solid rgba(99, 102, 241, 0.4)';
@@ -182,7 +182,7 @@ function updateAuthUI() {
         explanationBox.style.borderColor = 'rgba(16, 185, 129, 0.3)';
         explanationBox.innerHTML = `
           <div style="color: #10b981; font-weight: 600; margin-bottom: 2px;">
-            👑 Chế Độ Quản Trị Viên (ADMIN)
+            Quản Trị Viên (ADMIN)
           </div>
           <div style="color: var(--text-muted); font-size: 12px;">
             Tài khoản của bạn được cấp quyền Quản Trị Viên. Bạn có thể xem và quản lý danh sách toàn bộ đơn hàng trong hệ thống.
@@ -193,7 +193,7 @@ function updateAuthUI() {
         explanationBox.style.borderColor = 'rgba(99, 102, 241, 0.3)';
         explanationBox.innerHTML = `
           <div style="color: #818cf8; font-weight: 600; margin-bottom: 2px;">
-            👤 Chế Độ Khách Hàng (USER)
+            Khách Hàng (USER)
           </div>
           <div style="color: var(--text-muted); font-size: 12px;">
             Chào mừng bạn! Dưới đây là danh sách các đơn hàng cá nhân của bạn.
@@ -348,7 +348,6 @@ function renderOrdersTable(orders, isAdmin) {
     tbody.innerHTML = `
       <tr>
         <td colspan="6" class="table-empty" style="text-align: center; padding: 32px 16px; color: var(--text-dim);">
-          <div style="font-size: 24px; margin-bottom: 8px;">📭</div>
           <div style="font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px;">
             ${state.lang === 'vi' ? 'Chưa có đơn hàng nào' : 'No orders found'}
           </div>

@@ -48,7 +48,7 @@ Hệ thống cung cấp sẵn script nạp dữ liệu mẫu giúp chạy demo n
 | **Platform Admin** | `admin@example.com` / `Admin123!` | Quản trị viên nền tảng (Role: ADMIN) |
 | **App Developer** | `developer@example.com` / `Password123!` | Lập trình viên sở hữu ứng dụng mẫu (Role: USER) |
 | **Ứng dụng mẫu** | `Demo Order Service`<br>AppID: `app_22c57454b00eb44a55c66bf4`<br>AppToken: `apt_926a40eb5a7b8a7341ef0347f4d2fa640b69663ffff2a034197e65e5f030fa51` | Khớp 100% với cấu hình Client Microservice |
-| **Admin Emails** | `["developer@example.com", "lenhatlinh056205@gmail.com"]` | Tự động nhận quyền ADMIN khi đăng nhập Google/FB |
+| **Admin Emails** | `["developer@example.com", "manager@example.com"]` | Tự động nhận quyền ADMIN khi đăng nhập Google/FB |
 
 ---
 

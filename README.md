@@ -73,7 +73,7 @@ Hệ thống cung cấp sẵn script nạp dữ liệu mẫu giúp chạy demo n
 | **Platform Admin** | `admin@example.com` / `Admin123!` | Đăng nhập tại Developer Console (Cổng 3000) |
 | **App Developer** | `developer@example.com` / `Password123!` | Lập trình viên sở hữu ứng dụng mẫu |
 | **Ứng dụng mẫu** | `Demo Order Service`<br>AppID: `app_22c57454b00eb44a55c66bf4`<br>AppToken: `apt_926a40eb5a7b8a7341ef0347f4d2fa640b69663ffff2a034197e65e5f030fa51` | Khớp 100% với file `.env.example` của Demo Service |
-| **Admin Emails** | `["developer@example.com", "lenhatlinh056205@gmail.com"]` | Khi các email này đăng nhập Google/FB sẽ tự nhận **ADMIN** |
+| **Admin Emails** | `["developer@example.com", "manager@example.com"]` | Khi các email này đăng nhập Google/FB sẽ tự nhận **ADMIN** |
 
 ---
 
@@ -114,7 +114,7 @@ npm run start:dev
 ### Bước 3: Trải nghiệm Demo thực tế
 
 1. Mở trình duyệt tại **http://localhost:3001** (Customer Portal).
-2. **Kịch bản Admin**: Đăng nhập bằng Google hoặc Facebook với email nằm trong danh sách Admin (ví dụ: `lenhatlinh056205@gmail.com` hoặc email bạn cấu hình trong Console):
+2. **Kịch bản Admin**: Đăng nhập bằng Google hoặc Facebook với email nằm trong danh sách Admin (ví dụ: email bạn đã thêm vào danh sách `Admin Emails` của ứng dụng trên Developer Console):
    - Nhận huy hiệu **`👑 Quản Trị Viên (ADMIN)`**.
    - Xem được **toàn bộ đơn hàng** của tất cả người dùng trong hệ thống.
 3. **Kịch bản Khách Hàng**: Đăng nhập bằng tài khoản Google/Facebook thông thường khác:
