@@ -23,7 +23,15 @@ import { Public } from '../common/decorators/public.decorator.js';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
+import { ExchangeOAuthDto } from './dto/exchange-oauth.dto.js';
+import { SetPasswordDto } from './dto/set-password.dto.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import type { JwtPayload } from '../common/strategies/jwt.strategy.js';
 import { OAuthService } from './oauth.service.js';
+import { AccountOAuthService } from './account-oauth.service.js';
+import { getAuthPublicUrl } from './oauth-public-url.js';
+import { LoginFlowService } from './login-flow.service.js';
+import { Auth } from '../common/decorators/auth.decorator.js';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -32,6 +40,8 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly oauthService: OAuthService,
     private readonly grants: OAuthGrantsService,
+    private readonly accountOAuth: AccountOAuthService,
+    private readonly loginFlows: LoginFlowService,
   ) {}
 
   @Post('register')
@@ -81,6 +91,13 @@ export class AuthController {
   })
   logout() {
     return this.authService.logout();
+  }
+
+  @Post('account/password')
+  @Auth()
+  @HttpCode(HttpStatus.OK)
+  setPassword(@Body() dto: SetPasswordDto, @CurrentUser() user: JwtPayload) {
+    return this.authService.setPassword(user.sub, dto);
   }
 
   @Get('providers')
@@ -169,6 +186,19 @@ export class AuthController {
     @Res() res: Response,
     @Req() req: Request,
   ) {
+    if (await this.accountOAuth.isAccountState(query.state)) {
+      const accountCookie = (req.headers.cookie || '').split(';').map(value => value.trim())
+        .find(value => value.startsWith('account_oauth_state='))?.slice('account_oauth_state='.length);
+      res.clearCookie('account_oauth_state', { path: '/auth/oauth' });
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Referrer-Policy', 'no-referrer');
+      try {
+        const code = await this.accountOAuth.callback(provider, query, accountCookie);
+        return res.redirect(`${getAuthPublicUrl()}/?account_code=${encodeURIComponent(code)}#account`);
+      } catch {
+        return res.redirect(`${getAuthPublicUrl()}/?account_link_error=${query.error ? 'cancelled' : 'failed'}#account`);
+      }
+    }
     const cookie = (req.headers.cookie || '').split(';').map(v => v.trim())
       .find(v => v.startsWith('oauth_state='))?.slice('oauth_state='.length);
     res.clearCookie('oauth_state', { path: '/auth/oauth' });
@@ -187,6 +217,11 @@ export class AuthController {
       res.setHeader('Referrer-Policy', 'no-referrer');
       return res.redirect(targetUrl.toString());
     }
+    if (result.flowId) {
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Referrer-Policy', 'no-referrer');
+      return res.redirect(await this.loginFlows.acceptOAuth(result));
+    }
     const code = this.grants.issue(result, result.appId, result.codeChallenge);
     const targetUrl = new URL(result.redirectUri);
     targetUrl.searchParams.set('code', code);
@@ -199,7 +234,7 @@ export class AuthController {
   @Post('oauth/exchange')
   @HttpCode(HttpStatus.OK)
   @AppAuth()
-  exchangeOAuthCode(@Body() body: { code?: string; verifier?: string }, @CurrentApp() app: any) {
+  exchangeOAuthCode(@Body() body: ExchangeOAuthDto, @CurrentApp() app: any) {
     return this.grants.exchange(body.code, body.verifier, app.appId);
   }
 

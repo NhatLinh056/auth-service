@@ -2,11 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { Navbar, type TabType } from './components/layout/Navbar';
 import { AuthScreen } from './components/auth/AuthScreen';
+import { ClientSignIn } from './components/auth/ClientSignIn';
 import { ToastContainer } from './components/common/ToastContainer';
 import { OverviewTab } from './components/tabs/OverviewTab';
 import { ApplicationsTab } from './components/tabs/ApplicationsTab';
 import { UsersTab } from './components/tabs/UsersTab';
 import { ProvidersTab } from './components/tabs/ProvidersTab';
+import { AccountTab } from './components/tabs/AccountTab';
+import { TenantsTab } from './components/tabs/TenantsTab';
 import { CreateAppModal } from './components/modals/CreateAppModal';
 import { AppDetailModal } from './components/modals/AppDetailModal';
 import { AssignRoleModal } from './components/modals/AssignRoleModal';
@@ -23,7 +26,7 @@ import type { SanitizedOAuthProvider } from './types/provider.types';
 export const App: React.FC = () => {
   const { isAuthenticated, isAdmin, token } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>(window.location.hash === '#account' ? 'account' : 'overview');
 
   // Application state
   const [applications, setApplications] = useState<Application[]>([]);
@@ -99,7 +102,7 @@ export const App: React.FC = () => {
       setUsers([]);
       setProviders([]);
       setSelectedAppId(null);
-      setActiveTab('overview');
+      setActiveTab(window.location.hash === '#account' ? 'account' : 'overview');
     }
   }, [isAuthenticated, loadApplications]);
 
@@ -149,6 +152,9 @@ export const App: React.FC = () => {
     setProviders(prev => prev.map(p => (p.provider === updated.provider ? updated : p)));
   };
 
+  const flowId = new URLSearchParams(window.location.search).get('signin');
+  if (flowId) return <ClientSignIn flowId={flowId} />;
+
   if (!isAuthenticated) {
     return (
       <>
@@ -163,6 +169,8 @@ export const App: React.FC = () => {
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
 
       <main className="main-content">
+        {activeTab === 'account' && <AccountTab />}
+        {activeTab === 'tenants' && <TenantsTab />}
         {activeTab === 'overview' && (
           <OverviewTab
             applications={applications}

@@ -31,38 +31,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
-  // Handle OAuth callback on initial mount
+  // Restore profile only from the authenticated backend, never from URL token/profile fields.
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const cbToken = urlParams.get('token');
-    const cbError = urlParams.get('error') || urlParams.get('error_description');
-
-    if (cbError) {
-      showToast(`OAuth: ${cbError}`, 'error');
-      window.history.replaceState({}, document.title, window.location.pathname);
-      return;
-    }
-
-    if (cbToken) {
-      const email = urlParams.get('email') || '';
-      const name = urlParams.get('name') || '';
-      const role = (urlParams.get('role') || 'USER') as User['role'];
-      const newUser: User = {
-        id: urlParams.get('id') || '',
-        email,
-        name,
-        role,
-      };
-
-      setToken(cbToken);
-      setUser(newUser);
-      localStorage.setItem('auth_token', cbToken);
-      localStorage.setItem('auth_user', JSON.stringify(newUser));
-
-      window.history.replaceState({}, document.title, window.location.pathname);
-      showToast(`${t('toasts.signed_in')} ${email}`);
-    }
-  }, []);
+    if (!token) return;
+    let active = true;
+    authService.getMe().then(profile => {
+      if (!active) return;
+      setUser(profile);
+      localStorage.setItem('auth_user', JSON.stringify(profile));
+    }).catch(error => {
+      if (active && [401, 403].includes(error.status)) {
+        setToken(null); setUser(null);
+        localStorage.removeItem('auth_token'); localStorage.removeItem('auth_user');
+      }
+    });
+    return () => { active = false; };
+  }, [token]);
 
   const login = async (email: string, password: string) => {
     try {

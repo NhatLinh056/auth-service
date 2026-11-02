@@ -11,9 +11,11 @@ import axios from 'axios';
 import { OAuthProviderType, Role } from '../generated/prisma/enums.js';
 import { OAuthProvidersService } from '../oauth-providers/oauth-providers.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { getOAuthCallbackUrl } from './oauth-public-url.js';
+import { getAuthPublicUrl, getOAuthCallbackUrl } from './oauth-public-url.js';
+import { hasOAuthCredentials, validateOAuthRedirectUri } from './oauth-config-policy.js';
 
 export interface OAuthStatePayload {
+  flowId?: string;
   provider: OAuthProviderType;
   nonce: string;
   redirectUri: string;
@@ -22,15 +24,11 @@ export interface OAuthStatePayload {
 }
 
 export interface OAuthCallbackResult {
-  accessToken: string;
-  user: {
-    id: string;
-    email: string;
-    name: string | null;
-    role: Role;
-    avatarUrl?: string;
-    provider?: OAuthProviderType;
-  };
+  flowId?: string;
+  provider: OAuthProviderType;
+  providerScope: string;
+  profile: NormalizedOAuthProfile;
+  applicationId: string;
   redirectUri: string;
   appId: string;
   codeChallenge: string;
@@ -60,12 +58,8 @@ export class OAuthService {
   private readonly pendingStates = new Map<string, number>();
 
   validateRedirect(uri: string, application: { allowedRedirectUris?: string[] }): string {
-    let parsed: URL;
-    try { parsed = new URL(uri); } catch { throw new BadRequestException('Invalid redirect URI'); }
-    const local = ['localhost', '127.0.0.1'].includes(parsed.hostname);
-    if (parsed.username || parsed.password || parsed.hash || parsed.search ||
-        !(parsed.protocol === 'https:' || (parsed.protocol === 'http:' && local)) ||
-        !application.allowedRedirectUris?.includes(uri)) {
+    validateOAuthRedirectUri(uri);
+    if (!application.allowedRedirectUris?.includes(uri)) {
       throw new BadRequestException('Redirect URI is not registered for this application');
     }
     return uri;
@@ -75,7 +69,7 @@ export class OAuthService {
     const provider = this.oauthProvidersService.normalizeProvider(providerInput);
     const config = await this.oauthProvidersService.getInternalConfig(appId, provider);
     this.validateRedirect(redirectUri, config.application);
-    if (!config.isEnabled || !config.clientId || !config.clientSecret) {
+    if (!config.isEnabled || !hasOAuthCredentials(config)) {
       throw new BadRequestException('OAuth provider is not configured for this application');
     }
   }
@@ -88,7 +82,8 @@ export class OAuthService {
       const app = await this.prisma.application.findUnique({ where: { appId: payload.appId } });
       if (!app || app.status !== 'ACTIVE') return null;
       this.pendingStates.delete(payload.nonce);
-      return this.validateRedirect(payload.redirectUri, app);
+      this.validateRedirect(payload.redirectUri, app);
+      return payload.flowId ? `${getAuthPublicUrl()}/?signin=${encodeURIComponent(payload.flowId)}` : payload.redirectUri;
     } catch {
       return null;
     }
@@ -102,6 +97,7 @@ export class OAuthService {
     clientRedirectUri?: string,
     appId?: string,
     codeChallenge?: string,
+    flowId?: string,
   ): Promise<string> {
     const provider = this.oauthProvidersService.normalizeProvider(providerInput);
 
@@ -120,6 +116,7 @@ export class OAuthService {
       redirectUri,
       codeChallenge,
       appId: targetAppId,
+      ...(flowId ? { flowId } : {}),
     };
 
     const signedState = await this.jwtService.signAsync(statePayload, {
@@ -220,7 +217,7 @@ export class OAuthService {
     this.validateRedirect(statePayload.redirectUri, application);
 
     const config = await this.oauthProvidersService.getInternalConfig(targetAppId, provider);
-    if (!config.isEnabled) {
+    if (!config.isEnabled || !hasOAuthCredentials(config)) {
       throw new ForbiddenException(
         `Phương thức đăng nhập qua ${config.name} đã bị vô hiệu hóa cho ứng dụng này.`,
       );
@@ -244,28 +241,13 @@ export class OAuthService {
       );
     }
 
-    // 6. Xử lý AppUser & OAuth Identity Mapping
-    const user = await this.findOrCreateOAuthUser(provider, profile, application);
-
-    // 7. Ký phát JWT Access Token
-    const accessToken = await this.jwtService.signAsync({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      type: 'app_user' as const,
-      appId: targetAppId,
-    });
-
+    // Identity creation/linking is completed only after the browser proves PKCE possession.
     return {
-      accessToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        avatarUrl: profile.avatarUrl,
-        provider,
-      },
+      provider,
+      providerScope: provider === OAuthProviderType.GOOGLE ? 'google' : config.clientId!,
+      profile,
+      applicationId: application.id,
+      ...(statePayload.flowId ? { flowId: statePayload.flowId } : {}),
       redirectUri: statePayload.redirectUri,
       appId: targetAppId,
       codeChallenge: statePayload.codeChallenge,
@@ -404,103 +386,4 @@ export class OAuthService {
     return adminEmails.some((e: string) => e.trim().toLowerCase() === normalized);
   }
 
-  /**
-   * Kiểm tra email theo whitelist hoặc application (hỗ trợ kiểm thử tương thích)
-   */
-  /**
-   * Tìm kiếm hoặc tạo mới AppUser cho Application và liên kết AppOAuthIdentity an toàn
-   */
-  async findOrCreateOAuthUser(
-    provider: OAuthProviderType,
-    profile: NormalizedOAuthProfile,
-    application?: any,
-  ) {
-    const { providerUserId, email, name } = profile;
-    const normalizedEmail = email.toLowerCase().trim();
-
-    // Xác định vai trò trong ứng dụng này
-    const appRole = this.isApplicationAdmin(normalizedEmail, application) ? Role.ADMIN : Role.USER;
-
-    // Nếu có application (luồng chuẩn vận hành Multi-tenant IAM): Lưu vào bảng AppUser
-    if (application) {
-      // 1. Kiểm tra xem Identity đã được liên kết trong AppOAuthIdentity chưa
-      const existingAppIdentity = await this.prisma.appOAuthIdentity.findUnique({
-        where: {
-          applicationId_provider_providerUserId: {
-            applicationId: application.id,
-            provider,
-            providerUserId,
-          },
-        },
-        include: { appUser: true },
-      });
-
-      if (existingAppIdentity?.appUser && existingAppIdentity.appUser.applicationId === application.id) {
-        let appUser = existingAppIdentity.appUser;
-        if (appUser.role !== appRole) {
-          appUser = await this.prisma.appUser.update({
-            where: { id: appUser.id },
-            data: { role: appRole },
-          });
-          this.logger.log(`Cập nhật vai trò ${appRole} cho AppUser: ${appUser.email} (App: ${application.name})`);
-        }
-        return appUser;
-      }
-
-      // 2. Tìm AppUser theo (applicationId, email)
-      let appUser = await this.prisma.appUser.findUnique({
-        where: {
-          applicationId_email: {
-            applicationId: application.id,
-            email: normalizedEmail,
-          },
-        },
-      });
-
-      if (appUser) {
-        if (appUser.role !== appRole) {
-          appUser = await this.prisma.appUser.update({
-            where: { id: appUser.id },
-            data: { role: appRole },
-          });
-        }
-
-        // Liên kết thêm identity cho AppUser này
-        await this.prisma.appOAuthIdentity.create({
-          data: {
-            appUserId: appUser.id,
-            applicationId: application.id,
-            provider,
-            providerUserId,
-            email: normalizedEmail,
-          },
-        });
-        this.logger.log(`Đã liên kết OAuth ${provider} với AppUser hiện có: ${normalizedEmail}`);
-        return appUser;
-      }
-
-      // 3. Tạo mới AppUser cho Application này
-      appUser = await this.prisma.appUser.create({
-        data: {
-          applicationId: application.id,
-          email: normalizedEmail,
-          name: name || undefined,
-          avatarUrl: profile.avatarUrl,
-          role: appRole,
-          identities: {
-            create: {
-              provider,
-              providerUserId,
-              email: normalizedEmail,
-            },
-          },
-        },
-      });
-
-      this.logger.log(`Đã tạo AppUser mới cho ứng dụng ${application.name} (Role: ${appRole}): ${normalizedEmail}`);
-      return appUser;
-    }
-
-    throw new BadRequestException('Application is required for OAuth');
-  }
 }

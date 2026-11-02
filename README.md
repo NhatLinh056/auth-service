@@ -5,13 +5,15 @@ Hai dịch vụ NestJS dùng chung hệ thống định danh:
 | Dịch vụ | Chức năng | Địa chỉ |
 |---|---|---|
 | [Auth Service](auth-service/README.md) | Quản lý tài khoản, ứng dụng, OAuth; Developer Console | http://localhost:3000 |
-| [Demo Service](demo-service/README.md) | Đăng nhập OAuth và quản lý đơn hàng mẫu | http://localhost:3001 |
+| [Demo Service](demo-service/README.md) | Tích hợp đăng nhập tập trung và quản lý đơn hàng mẫu | http://localhost:3001 |
 
 ## Chức năng chính
 
 - Chủ ứng dụng tạo và quản lý ứng dụng trong Developer Console, nhận AppID/AppToken, đăng ký URL quay về và bật Google/Facebook.
 - Auth Service xác thực ứng dụng, xử lý đăng nhập và xác định quyền USER/ADMIN riêng cho từng ứng dụng.
-- Customer Portal dùng Auth Service để đăng nhập; người dùng tạo, xem đơn hàng theo quyền của mình.
+- Customer Portal chuyển sang màn hình đăng nhập Auth Service, nhận mã dùng một lần và tạo phiên riêng cho ứng dụng; người dùng tạo, xem đơn hàng theo quyền của mình.
+- Liên kết Google/Facebook và đổi mật khẩu được thực hiện tại trang Tài khoản của Auth Service.
+- Người dùng chưa thuộc doanh nghiệp có thể tạo tenant và trở thành chủ. Chủ quản lý thông tin, chuyển quyền sở hữu; Super Admin can thiệp có nhật ký.
 
 ## Chạy trên máy đã cấu hình
 
@@ -51,4 +53,4 @@ Khi deploy lên domain thật, xem cấu hình `AUTH_PUBLIC_URL` trong [Auth Ser
 
 Owner và OAuth user trong `adminEmails` có quyền ADMIN của ứng dụng. Platform Admin không tự có quyền ADMIN ở Demo; USER chỉ xem đơn của mình.
 
-Giới hạn bản demo: đơn hàng và state/mã OAuth lưu trong bộ nhớ; khởi động lại làm mất dữ liệu tạm. JWT phía trình duyệt lưu trong localStorage.
+Giới hạn bản demo: đơn hàng và state/mã OAuth lưu trong bộ nhớ; khởi động lại làm mất dữ liệu tạm. JWT phía trình duyệt lưu trong localStorage. Đơn hàng hiện phân quyền theo app, chưa cô lập theo tenant; luồng xin gia nhập doanh nghiệp chưa được triển khai.

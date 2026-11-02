@@ -24,18 +24,77 @@ enum OAuthProviderType {
   FACEBOOK
 }
 
+enum TenantJoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 model User {
   id           String          @id @default(uuid())
   email        String          @unique
   passwordHash String?
   name         String?
   role         Role            @default(USER)
+  emailVerifiedAt DateTime?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   applications Application[]
   identities   OAuthIdentity[]
+  appMemberships AppUser[]
+  tenantId     String?
+  tenant       Tenant?         @relation("TenantMembers", fields: [tenantId], references: [id], onDelete: SetNull)
+  ownedTenant  Tenant?         @relation("TenantOwner")
+  joinRequests TenantJoinRequest[] @relation("UserJoinRequests")
 
+  @@index([tenantId])
   @@map("users")
+}
+
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  ownerUserId String   @unique
+  owner       User     @relation("TenantOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  users       User[]   @relation("TenantMembers")
+  joinRequests TenantJoinRequest[] @relation("TenantJoinRequests")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("tenants")
+}
+
+model TenantJoinRequest {
+  id        String                  @id @default(uuid())
+  userId    String
+  user      User                    @relation("UserJoinRequests", fields: [userId], references: [id], onDelete: Cascade)
+  tenantId  String
+  tenant    Tenant                  @relation("TenantJoinRequests", fields: [tenantId], references: [id], onDelete: Cascade)
+  status    TenantJoinRequestStatus @default(PENDING)
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+
+  @@unique([userId, tenantId])
+  @@index([tenantId, status])
+  @@index([userId, status])
+  @@map("tenant_join_requests")
+}
+
+model TenantAuditLog {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenantName  String
+  actorUserId String
+  action      String
+  fromOwnerId String?
+  toOwnerId   String?
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@map("tenant_audit_logs")
 }
 
 model OAuthIdentity {
@@ -43,12 +102,13 @@ model OAuthIdentity {
   userId         String
   user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider       OAuthProviderType
+  providerScope  String            @default("legacy")
   providerUserId String
   email          String?
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
-  @@unique([provider, providerUserId])
+  @@unique([provider, providerScope, providerUserId])
   @@index([userId])
   @@map("oauth_identities")
 }
@@ -92,6 +152,8 @@ model Application {
 
 model AppUser {
   id            String             @id @default(uuid())
+  userId        String?
+  user          User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
   applicationId String
   application   Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   email         String
@@ -104,6 +166,8 @@ model AppUser {
 
   @@unique([id, applicationId])
   @@unique([applicationId, email])
+  @@unique([applicationId, userId])
+  @@index([userId])
   @@index([applicationId])
   @@map("app_users")
 }

@@ -107,6 +107,293 @@ h1, h2, h3, h4 {
 /* ─────────────────────────────────────────────────────────────────────────────
    NAVBAR & HEADER
    ───────────────────────────────────────────────────────────────────────────── */
+.account-page { max-width: 850px; margin: 0 auto; }
+.account-section { padding: 24px; margin-bottom: 18px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; }
+.account-section h2 { font-size: 15px; margin: 0 0 8px; color: #fff; }
+.account-section-title { display: flex; gap: 15px; align-items: center; }
+.account-section-title p, .account-help { color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+.account-monogram { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; background: rgba(99,102,241,.15); color: #a5b4fc; font-size: 20px; font-weight: 600; }
+.account-providers { display: grid; gap: 12px; margin-top: 18px; }
+.account-provider { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 10px; }
+.account-provider-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 8px; font-size: 22px; font-weight: 700; flex-shrink: 0; }
+.account-provider-icon.google { color: #4285f4; background: white; }
+.account-provider-icon.facebook { color: white; background: #1877f2; }
+.account-provider-info { flex: 1; min-width: 0; font-size: 13px; }
+.account-provider-info p { color: var(--text-muted); font-size: 12px; margin-top: 5px; overflow-wrap: anywhere; }
+.account-linked { color: #6ee7b7; font-size: 11px; padding: 5px 8px; border-radius: 6px; background: rgba(16,185,129,.1); white-space: nowrap; }
+.account-password-form { display: grid; gap: 15px; margin-top: 18px; max-width: 430px; }
+.account-password-form label { display: grid; gap: 8px; font-size: 12px; color: var(--text-muted); }
+.account-password-form input { padding: 11px 12px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--bg-surface-elevated); color: #fff; font: inherit; }
+.account-password-form input:focus { outline: 2px solid #818cf8; outline-offset: 1px; }
+.account-password-form button { justify-self: start; }
+.account-feedback { padding: 13px 16px; margin-bottom: 18px; border-radius: 9px; color: #6ee7b7; background: rgba(16,185,129,.08); font-size: 13px; line-height: 1.6; }
+.account-feedback.is-error { color: #fca5a5; background: rgba(239,68,68,.08); }
+@media (max-width: 560px) { .account-section { padding: 16px; } .account-provider { flex-wrap: wrap; } }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   TENANTS / MULTI-TENANT MANAGEMENT DESIGN SYSTEM
+   ───────────────────────────────────────────────────────────────────────────── */
+.tenant-page {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.tenant-admin-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 18px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.tenant-admin-bar-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #c7d2fe;
+}
+
+.tenant-admin-bar-select {
+  flex: 1;
+  min-width: 260px;
+  max-width: 480px;
+  height: 36px;
+  padding: 6px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 13px;
+}
+
+.tenant-admin-bar-select:focus {
+  border-color: var(--border-focus);
+  outline: none;
+}
+
+.tenant-hero-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.tenant-hero-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tenant-hero-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tenant-hero-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.tenant-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.tenant-badge-owner {
+  background: rgba(16, 185, 129, 0.14);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.tenant-badge-admin {
+  background: rgba(99, 102, 241, 0.14);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.tenant-badge-member {
+  background: rgba(14, 165, 233, 0.14);
+  color: #7dd3fc;
+  border: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+.tenant-badge-pending {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.tenant-badge-rejected {
+  background: rgba(239, 68, 68, 0.14);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.tenant-hero-desc {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 6px 0 16px;
+  max-width: 680px;
+  line-height: 1.5;
+}
+
+.tenant-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 10px 14px;
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-top: 14px;
+}
+
+.tenant-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tenant-meta-item strong {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.tenant-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tenant-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.tenant-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tenant-panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tenant-subform {
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  margin-top: 16px;
+}
+
+.tenant-empty-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  margin-top: 14px;
+}
+
+.tenant-empty-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tenant-empty-card h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 6px;
+}
+
+.tenant-empty-card p {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.tenant-notice {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tenant-notice.is-error {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.tenant-notice.is-warning {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.tenant-notice.is-success {
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+@media (max-width: 640px) {
+  .tenant-hero-header { flex-direction: column; }
+  .tenant-meta-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .tenant-admin-bar { flex-direction: column; align-items: stretch; }
+  .tenant-admin-bar-select { max-width: 100%; }
+}
+
 .navbar {
   position: sticky;
   top: 0;

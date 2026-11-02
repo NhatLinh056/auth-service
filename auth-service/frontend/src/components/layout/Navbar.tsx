@@ -4,7 +4,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 import { StatusPill } from '../common/StatusPill';
 
-export type TabType = 'overview' | 'apps' | 'users' | 'providers';
+export type TabType = 'overview' | 'apps' | 'users' | 'providers' | 'account' | 'tenants';
 
 interface NavbarProps {
   activeTab: TabType;
@@ -13,7 +13,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
   const { user, isAdmin, logout } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   return (
     <header className="navbar">
@@ -46,6 +46,18 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
 
         {/* Navigation Tabs */}
         <nav className="nav-center">
+          <button type="button" className={`nav-tab ${activeTab === 'account' ? 'active' : ''}`}
+            id="tab-btn-account" onClick={() => onTabChange('account')}>
+            {lang === 'vi' ? 'Tài khoản' : 'Account'}
+          </button>
+          <button
+            type="button"
+            className={`nav-tab ${activeTab === 'tenants' ? 'active' : ''}`}
+            id="tab-btn-tenants"
+            onClick={() => onTabChange('tenants')}
+          >
+            {lang === 'vi' ? 'Doanh nghiệp' : 'Tenants'}
+          </button>
           <button
             type="button"
             className={`nav-tab ${activeTab === 'overview' ? 'active' : ''}`}

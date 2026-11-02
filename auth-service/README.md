@@ -10,7 +10,7 @@ Dịch vụ định danh trung tâm: NestJS, Prisma, PostgreSQL và Developer Co
 
 - Tài khoản nền tảng đăng nhập Developer Console để tạo và quản lý ứng dụng khách.
 - Mỗi ứng dụng có AppID/AppToken, danh sách URL quay về, cấu hình Google/Facebook và danh sách email quản trị (`adminEmails`).
-- Auth Service xử lý đăng nhập OAuth, cấp mã đăng nhập một lần và xác định quyền USER/ADMIN theo ứng dụng.
+- Auth Service cung cấp màn hình đăng nhập tập trung bằng email/mật khẩu hoặc OAuth, cấp mã dùng một lần và xác định quyền USER/ADMIN theo ứng dụng.
 - Demo Service gửi AppID/AppToken để xác thực ứng dụng và kiểm tra JWT, quyền người dùng qua API của Auth Service.
 
 ## Cài đặt lần đầu
@@ -44,9 +44,13 @@ Không cần chạy lại migration khi chỉ khởi động dịch vụ đã c�
 
 ## Dữ liệu demo (tùy chọn, chỉ local)
 
-Trong `.env`, đặt `ENABLE_DEMO_SEED=true` và `SEED_APP_TOKEN=apt_<64 ký tự hex ngẫu nhiên>`, sau đó chạy `npm run seed`. Lệnh tạo tài khoản và ứng dụng mẫu; xem thông tin mẫu trong script seed. Đặt lại `ENABLE_DEMO_SEED=false` sau khi seed. Không seed lại DB có dữ liệu cần giữ cấu hình, vì seed cập nhật tài khoản và ứng dụng mẫu.
+Trong `.env`, đặt `ENABLE_DEMO_SEED=true` và `SEED_APP_TOKEN=apt_<64 ký tự hex ngẫu nhiên>`, sau đó chạy `npm run seed`. Lệnh tạo tài khoản và ứng dụng mẫu; xem thông tin mẫu trong script seed. Provider OAuth mới mặc định tắt; cần cấu hình và bật trong Developer Console. Seed giữ nguyên provider đã có. Đặt lại `ENABLE_DEMO_SEED=false` sau khi seed. Không seed lại DB có dữ liệu cần giữ cấu hình, vì seed cập nhật tài khoản và ứng dụng mẫu.
 
 ## Cấu hình OAuth
+
+Trang **Tài khoản** trên Project 1 quản lý liên kết Google/Facebook và mật khẩu của danh tính chung. Liên kết tài khoản dùng `ACCOUNT_GOOGLE_CLIENT_ID/SECRET`, `ACCOUNT_FACEBOOK_CLIENT_ID/SECRET`; khi để trống cả cặp sẽ dùng `GOOGLE_CLIENT_ID/SECRET` hoặc `FACEBOOK_CLIENT_ID/SECRET` của Auth Service. Không lấy credential từ một ứng dụng khách. Đăng ký callback Auth hiển thị trên Console với nhà cung cấp. Thiếu cấu hình thì nút liên kết được vô hiệu hóa; cấu hình OAuth theo từng app vẫn được quản lý riêng.
+
+Luồng liên kết bắt đầu từ phiên Project 1, dùng state/cookie riêng và mã xác nhận PKCE một lần. Liên kết không phát JWT qua URL, không tự đổi chủ danh tính OAuth đã thuộc tài khoản khác và không tạo thành viên app. Không cần thay đổi database cho trang Tài khoản này.
 
 Khi triển khai bằng domain thật, đặt `AUTH_PUBLIC_URL=https://auth.example.com` trong `.env` của Auth Service và khởi động lại. Console sẽ hiển thị callback tương ứng; đăng ký URL đó tại Google/Meta. URL này là đường về **Auth Service**, dùng chung cho các ứng dụng trên cùng domain Auth; người dùng cuối không tự nhập URL này.
 
@@ -63,9 +67,25 @@ Redirect phải khớp chính xác. Luồng đăng nhập dùng state gắn vớ
 
 ## API chính
 
+Tenant đại diện doanh nghiệp. Mỗi user thuộc tối đa một tenant; người tạo tự trở thành chủ. Chủ được cập nhật thông tin, chuyển quyền cho thành viên hiện tại và xóa doanh nghiệp khi không còn thành viên khác. Super Admin được chuyển quyền cho thành viên hoặc user chưa thuộc doanh nghiệp, phải ghi lý do nếu can thiệp doanh nghiệp của người khác. Chủ cũ vẫn là thành viên sau khi chuyển quyền. Không thể xóa tài khoản còn sở hữu doanh nghiệp.
+
+API tenant chấp nhận phiên nền tảng hoặc phiên ứng dụng hợp lệ; quyền Super Admin luôn lấy từ danh tính chung trong database. `GET /tenants/me` trả doanh nghiệp và quyền hiện tại; `/tenants` hỗ trợ tạo/danh sách, `/tenants/:id` hỗ trợ xem/sửa/xóa, `POST /tenants/:id/transfer` chuyển chủ. Nhật ký nằm tại `/tenants/:id/audit`; chỉ Super Admin được xem `/tenants/audit` toàn hệ thống. Nhật ký được giữ sau khi xóa tenant.
+
+Danh tính người dùng được lưu chung trong `User`; `AppUser` là quan hệ thành viên và quyền riêng trong từng ứng dụng. Trong phiên ứng dụng, `userId` là ID danh tính chung; `id` và JWT `sub` vẫn là ID thành viên để giữ tương thích dữ liệu nghiệp vụ.
+
+Google dùng định danh provider chung; Facebook được phân biệt thêm theo Client ID. Hệ thống không tự liên kết tài khoản chỉ vì trùng email. Trang đăng nhập Auth yêu cầu mật khẩu hiện tại hoặc phiên Auth của tài khoản đích để xác nhận (`ACCOUNT_LINK_REQUIRED`). Xác nhận OAuth có hiệu lực tối đa 5 phút, giới hạn 5 lần; mã cuối cùng trả về ứng dụng có hiệu lực 60 giây và dùng một lần. Ứng dụng khách chỉ gửi code/verifier, không tiếp nhận mật khẩu hoặc token nền tảng để liên kết.
+
+Migration `20261102010000_shared_user_identity` giữ nguyên user, thành viên và OAuth identity cũ. Thành viên cũ được gắn vào danh tính chung sau lần đăng nhập và xác minh tiếp theo; phiên OAuth cũ chưa được gắn user cần đăng nhập lại. Trường hợp dữ liệu cũ mâu thuẫn được giữ lại để đối chiếu, không tự gộp hoặc xóa.
+
+- `POST /auth/flows`: backend ứng dụng tạo yêu cầu đăng nhập bằng AppID/AppToken, URL quay về đã đăng ký, PKCE và state.
+- `GET /auth/flows/:id`: thông tin ứng dụng hiển thị tại màn hình đăng nhập Auth.
+- `POST /auth/oauth/exchange`: backend ứng dụng đổi code/verifier lấy JWT riêng của app.
 - `/auth/login`: đăng nhập tài khoản nền tảng.
 - `/auth/verify-service`: xác thực AppID/AppToken.
 - `/users/verify-app-user`: xác thực JWT cùng credential dịch vụ, kiểm tra tenant và trả `appRole` mới nhất.
 - `/applications`: quản lý ứng dụng bằng tài khoản nền tảng.
+- `POST /auth/account/password`: tạo mật khẩu cho tài khoản OAuth đã xác minh hoặc đổi mật khẩu với `currentPassword`.
 
 Frontend đã được build vào `public`. Sau khi sửa React, chạy trong `frontend`: `npm run build -- --outDir ../public`.
+
+Yêu cầu đăng nhập và mã tạm được lưu trong bộ nhớ của một tiến trình. Restart làm hết hiệu lực yêu cầu đang chờ; triển khai nhiều instance cần kho dùng chung có TTL và thao tác tiêu thụ mã nguyên tử.

@@ -11,6 +11,7 @@ import type { JwtPayload } from '../common/strategies/jwt.strategy.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { UpdateOAuthProviderDto } from './dto/update-oauth-provider.dto.js';
 import { getOAuthCallbackUrl } from '../auth/oauth-public-url.js';
+import { hasOAuthCredentials } from '../auth/oauth-config-policy.js';
 
 export interface SanitizedOAuthProvider {
   id: string;
@@ -159,6 +160,7 @@ export class OAuthProvidersService implements OnModuleInit {
     const { clientSecret, ...rest } = provider;
     return {
       ...rest,
+      isEnabled: provider.isEnabled && hasOAuthCredentials(provider),
       callbackUrl: getOAuthCallbackUrl(provider.provider),
       hasSecret: Boolean(clientSecret && clientSecret.length > 0),
     };
@@ -250,6 +252,10 @@ export class OAuthProvidersService implements OnModuleInit {
       dataToUpdate.clientSecret = dto.clientSecret.trim();
     }
 
+    if ((dto.isEnabled ?? existing.isEnabled) && !hasOAuthCredentials({ ...existing, ...dataToUpdate })) {
+      throw new BadRequestException('Cần Client ID và Client Secret đầy đủ, không dùng giá trị mẫu, trước khi bật OAuth');
+    }
+
     const updated = await this.prisma.oAuthProvider.update({
       where: {
         applicationId_provider: {
@@ -290,8 +296,8 @@ export class OAuthProvidersService implements OnModuleInit {
       throw new NotFoundException(`Không tìm thấy cấu hình OAuth Provider: ${provider}`);
     }
 
-    const newStatus = !existing.isEnabled;
-    if (newStatus && (!existing.clientId || !existing.clientSecret)) {
+    const newStatus = !(existing.isEnabled && hasOAuthCredentials(existing));
+    if (newStatus && !hasOAuthCredentials(existing)) {
       throw new BadRequestException(
         `Không thể bật "${existing.name}" khi chưa cấu hình đầy đủ Client ID và Client Secret.`,
       );
@@ -390,7 +396,7 @@ export class OAuthProvidersService implements OnModuleInit {
     return list.map((p) => ({
       provider: p.provider.toLowerCase(),
       name: p.name,
-      enabled: p.isEnabled,
+      enabled: p.isEnabled && hasOAuthCredentials(p),
     }));
   }
 }

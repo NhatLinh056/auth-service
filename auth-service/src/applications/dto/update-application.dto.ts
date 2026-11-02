@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsEmail, ArrayMaxSize, IsUrl, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsEmail, ArrayMaxSize, IsUrl, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 import { AppStatus } from '../../generated/prisma/enums.js';
 
 export class UpdateApplicationDto {
@@ -32,7 +32,7 @@ export class UpdateApplicationDto {
   @ArrayMaxSize(100)
   adminEmails?: string[];
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsArray()
   @ArrayMaxSize(20)
   @IsUrl({ require_tld: false, protocols: ["http", "https"], require_protocol: true }, { each: true })

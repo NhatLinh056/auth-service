@@ -12,6 +12,7 @@ import { CreateApplicationDto } from './dto/create-application.dto.js';
 import { UpdateApplicationDto } from './dto/update-application.dto.js';
 
 import { OAuthProvidersService } from '../oauth-providers/oauth-providers.service.js';
+import { validateOAuthRedirectUri } from '../auth/oauth-config-policy.js';
 
 @Injectable()
 export class ApplicationsService {
@@ -179,10 +180,14 @@ export class ApplicationsService {
       throw new ForbiddenException('Bạn không có quyền cập nhật ứng dụng của người khác');
     }
 
+    if (updateAppDto.allowedRedirectUris !== undefined) {
+      updateAppDto.allowedRedirectUris.forEach(validateOAuthRedirectUri);
+    }
+
     return this.prisma.application.update({
       where: { id },
       data: {
-        ...(updateAppDto.allowedRedirectUris !== undefined && { allowedRedirectUris: updateAppDto.allowedRedirectUris }),
+        ...(updateAppDto.allowedRedirectUris !== undefined && { allowedRedirectUris: [...new Set(updateAppDto.allowedRedirectUris)] }),
         ...(updateAppDto.name !== undefined && { name: updateAppDto.name }),
         ...(updateAppDto.status !== undefined && { status: updateAppDto.status }),
         ...(updateAppDto.adminEmails !== undefined && { adminEmails: [...new Set(updateAppDto.adminEmails.map(e => e.trim().toLowerCase()))] }),

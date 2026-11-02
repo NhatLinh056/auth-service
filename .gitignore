@@ -35,10 +35,17 @@ Thumbs.db
 skills-lock.json
 HANDOFF.md
 **/HANDOFF.md
+AGENTS.md
+**/AGENTS.md
 ROADMAP.md
 **/ROADMAP.md
 *.local
 *.secret
+*.rar
+*.zip
+*.7z
+env.rar
+.local-backups/
 
 # NestJS / TypeScript cache
 **/*.tsbuildinfo

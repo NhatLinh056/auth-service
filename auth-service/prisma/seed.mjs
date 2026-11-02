@@ -76,25 +76,20 @@ async function seed() {
     console.log(`   Admin Emails: ${appRes.rows[0].adminEmails.join(', ')}`);
 
     // 4. Cấu hình sẵn các OAuth Provider cho ứng dụng mẫu (Google & Facebook)
-    const googleClientId = process.env.GOOGLE_CLIENT_ID || 'sample-google-client-id.apps.googleusercontent.com';
-    const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET || 'sample-google-client-secret';
-    const fbClientId = process.env.FACEBOOK_CLIENT_ID || 'sample-facebook-app-id';
-    const fbClientSecret = process.env.FACEBOOK_CLIENT_SECRET || 'sample-facebook-client-secret';
+    const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim() || null;
+    const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() || null;
+    const fbClientId = process.env.FACEBOOK_CLIENT_ID?.trim() || null;
+    const fbClientSecret = process.env.FACEBOOK_CLIENT_SECRET?.trim() || null;
 
     await client.query(
       `INSERT INTO oauth_providers (id, "applicationId", provider, name, "isEnabled", "clientId", "clientSecret", "callbackUrl", "createdAt", "updatedAt")
        VALUES 
-       (gen_random_uuid(), $1, 'GOOGLE', 'Google', true, $2, $3, 'http://localhost:3000/auth/oauth/google/callback', NOW(), NOW()),
-       (gen_random_uuid(), $1, 'FACEBOOK', 'Facebook', true, $4, $5, 'http://localhost:3000/auth/oauth/facebook/callback', NOW(), NOW())
-       ON CONFLICT ("applicationId", provider) DO UPDATE 
-       SET "isEnabled" = true,
-           "clientId" = COALESCE(oauth_providers."clientId", EXCLUDED."clientId"),
-           "clientSecret" = COALESCE(oauth_providers."clientSecret", EXCLUDED."clientSecret"),
-           "callbackUrl" = EXCLUDED."callbackUrl",
-           "updatedAt" = NOW();`,
+       (gen_random_uuid(), $1, 'GOOGLE', 'Google', false, $2, $3, 'http://localhost:3000/auth/oauth/google/callback', NOW(), NOW()),
+       (gen_random_uuid(), $1, 'FACEBOOK', 'Facebook', false, $4, $5, 'http://localhost:3000/auth/oauth/facebook/callback', NOW(), NOW())
+       ON CONFLICT ("applicationId", provider) DO NOTHING;`,
       [appIdInternal, googleClientId, googleClientSecret, fbClientId, fbClientSecret]
     );
-    console.log(' OAuth Providers: Bật sẵn Google & Facebook cho ứng dụng mẫu');
+    console.log(' OAuth Providers: Provider mới mặc định tắt; cấu hình và bật tại Developer Console. Giữ nguyên provider đã có.');
 
     console.log('\n Nạp dữ liệu mẫu hoàn tất! Hệ thống đã sẵn sàng để demo.');
   } catch (err) {

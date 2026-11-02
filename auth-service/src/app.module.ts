@@ -8,6 +8,7 @@ import { OAuthProvidersModule } from './oauth-providers/oauth-providers.module.j
 import { PrismaModule } from './prisma/prisma.module.js';
 import { RolesModule } from './roles/roles.module.js';
 import { UsersModule } from './users/users.module.js';
+import { TenantsModule } from './tenants/tenants.module.js';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { UsersModule } from './users/users.module.js';
     RolesModule,
     ApplicationsModule,
     OAuthProvidersModule,
+    TenantsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

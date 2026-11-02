@@ -45,6 +45,14 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('Bạn không có quyền truy cập tài nguyên này');
     }
 
+    // Bảo vệ ranh giới Multi-tenant: Tài nguyên Platform chỉ dành riêng cho Platform User.
+    // Tuyệt đối không cho phép AppUser (dù mang vai trò ADMIN trong app con) vượt guard nền tảng.
+    if (user.type === 'app_user') {
+      throw new ForbiddenException(
+        'Tài khoản người dùng ứng dụng con (AppUser) không có quyền truy cập tài nguyên quản trị nền tảng',
+      );
+    }
+
     const hasRole = requiredRoles.includes(user.role as Role);
     if (!hasRole) {
       throw new ForbiddenException('Bạn không có quyền truy cập tài nguyên này');

@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   BadGatewayException,
   Logger,
+  HttpException,
 } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
 import { appConfig } from '../config/app.config.js';
@@ -155,11 +156,15 @@ export class AuthClientService {
     }
   }
 
-  async checkOAuthProvider(provider: string, redirectUri: string): Promise<void> {
-    await this.http.get(`/auth/oauth/preflight/${encodeURIComponent(provider)}`, {
-      headers: this.getServiceHeaders(),
-      params: { redirect_uri: redirectUri },
-    });
+  async createLoginFlow(redirectUri: string, codeChallenge: string, state: string) {
+    try {
+      const response = await this.http.post('/auth/flows', { redirectUri, codeChallenge, state }, { headers: this.getServiceHeaders() });
+      return response.data;
+    } catch (error: any) {
+      const status = error.response?.status;
+      if ([400, 401, 403].includes(status)) throw new HttpException({ message: error.response.data?.message || 'Sign-in unavailable' }, status);
+      throw new BadGatewayException('Cannot start sign-in with Auth Service');
+    }
   }
 
   /**
@@ -176,7 +181,14 @@ export class AuthClientService {
         headers: this.getServiceHeaders(),
       });
       return response.data;
-    } catch {
+    } catch (error: any) {
+      if ([400, 401, 409].includes(error.response?.status)) {
+        const data = error.response.data;
+        throw new HttpException({
+          message: typeof data?.message === 'string' ? data.message : 'Account confirmation failed',
+          ...(data?.code === 'ACCOUNT_LINK_REQUIRED' ? { code: data.code } : {}),
+        }, error.response.status);
+      }
       throw new UnauthorizedException('Invalid or expired login exchange');
     }
   }
@@ -215,6 +227,20 @@ export class AuthClientService {
         throw new UnauthorizedException(`Invalid or expired user session: ${message}`);
       }
       throw new BadGatewayException(`Auth verification failed: ${message}`);
+    }
+  }
+
+  async tenantRequest(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, token: string, data?: unknown) {
+    try {
+      const response = await this.http.request({ method, url: `/tenants${path}`, data,
+        headers: { Authorization: token, ...this.getServiceHeaders() } });
+      return response.data;
+    } catch (error: any) {
+      const status = error.response?.status;
+      if ([400, 401, 403, 404, 409].includes(status)) {
+        throw new HttpException({ message: error.response.data?.message || 'Không thể thực hiện thao tác doanh nghiệp' }, status);
+      }
+      throw new BadGatewayException('Không thể kết nối dịch vụ quản lý doanh nghiệp');
     }
   }
 }

@@ -6,6 +6,7 @@ import { OAuthProvidersService } from '../oauth-providers/oauth-providers.servic
 import { UsersService } from '../users/users.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
+import { SetPasswordDto } from './dto/set-password.dto.js';
 
 @Injectable()
 export class AuthService {
@@ -23,8 +24,9 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto): Promise<Omit<User, 'passwordHash'>> {
+    const email = registerDto.email.trim().toLowerCase();
     // 1. Kiểm tra xem email đã tồn tại hay chưa
-    const existingUser = await this.usersService.findByEmail(registerDto.email);
+    const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
       throw new ConflictException('Email đã được đăng ký trong hệ thống');
     }
@@ -35,7 +37,7 @@ export class AuthService {
 
     // 3. Lưu thông tin người dùng vào database
     const newUser = await this.usersService.create({
-      email: registerDto.email,
+      email,
       passwordHash,
       name: registerDto.name,
     });
@@ -51,7 +53,7 @@ export class AuthService {
     user: Omit<User, 'passwordHash'>;
   }> {
     // 1. Tìm người dùng theo email
-    const user = await this.usersService.findByEmail(loginDto.email);
+    const user = await this.usersService.findByEmail(loginDto.email.trim().toLowerCase());
     if (!user) {
       throw new UnauthorizedException('Email hoặc mật khẩu không chính xác');
     }
@@ -91,5 +93,19 @@ export class AuthService {
     // Cơ chế logout chuẩn cho stateless JWT: server xác nhận thành công,
     // client có trách nhiệm xóa token khỏi bộ nhớ/localStorage.
     return { message: 'Đăng xuất thành công. Vui lòng xóa token khỏi client.' };
+  }
+
+  async setPassword(userId: string, dto: SetPasswordDto) {
+    const user = await this.usersService.findById(userId, 'platform');
+    if (!user) throw new UnauthorizedException('Account no longer exists');
+    if (user.passwordHash) {
+      if (!dto.currentPassword || !await bcrypt.compare(dto.currentPassword, user.passwordHash)) {
+        throw new UnauthorizedException('Mật khẩu hiện tại không chính xác');
+      }
+    } else if (!user.emailVerifiedAt) {
+      throw new UnauthorizedException('Cần xác minh tài khoản OAuth trước khi đặt mật khẩu');
+    }
+    await this.usersService.update(user.id, { passwordHash: await bcrypt.hash(dto.password, 10) });
+    return { message: 'Đã cập nhật mật khẩu cho tài khoản chung' };
   }
 }

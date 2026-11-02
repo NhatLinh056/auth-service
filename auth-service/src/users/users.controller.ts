@@ -65,16 +65,25 @@ export class UsersController {
       throw new ForbiddenException('User belongs to another application');
     }
     const email = (user.email || '').trim().toLowerCase();
+    void email;
     // Password registration does not verify email ownership.
     const isOwner = identity.type === 'platform'
       ? user.id === app.userId
-      : Boolean(email && email === app.user?.email?.trim().toLowerCase());
-    const delegated = identity.type === 'app_user' && Boolean(email) &&
-      (app.adminEmails || []).some((e: string) => e.trim().toLowerCase() === email);
+      : user.userId === app.userId;
     const { passwordHash, ...profile } = user;
     void passwordHash;
-    const appRole = isOwner || delegated ? 'ADMIN' : 'USER';
-    return { ...profile, role: appRole, appRole, appId: app.appId, isAppOwner: isOwner };
+    // AppUser role is scoped; do NOT auto-grant ADMIN from App Owner or adminEmails
+    const appRole = 'USER';
+    return {
+      ...profile,
+      role: appRole,
+      appRole,
+      appId: app.appId,
+      isAppOwner: isOwner,
+      tenantId: profile.tenantId || null,
+      tenantName: profile.tenantName || null,
+      isTenantOwner: Boolean(profile.isTenantOwner),
+    };
   }
 
   @Get()
@@ -89,12 +98,12 @@ export class UsersController {
 
   // GET /users/:id — Lấy thông tin user theo ID
   @Get(':id')
-  @Auth()
-  @ApiOperation({ summary: 'Xem thông tin người dùng theo ID' })
+  @AuthOwnerOrAdmin()
+  @ApiOperation({ summary: 'Xem thông tin người dùng theo ID (chính chủ hoặc Platform Admin)' })
   @ApiResponse({ status: 200, description: 'Trả về thông tin người dùng' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng với ID này' })
   async getUserById(@Param('id') id: string) {
-    const user = await this.usersService.findById(id);
+    const user = await this.usersService.findById(id, 'platform');
     if (!user) {
       throw new NotFoundException(`Không tìm thấy người dùng với ID: ${id}`);
     }
@@ -116,7 +125,7 @@ export class UsersController {
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
   ) {
-    const existingUser = await this.usersService.findById(id);
+    const existingUser = await this.usersService.findById(id, 'platform');
     if (!existingUser) {
       throw new NotFoundException(`Không tìm thấy người dùng với ID: ${id}`);
     }
@@ -144,7 +153,7 @@ export class UsersController {
   @ApiResponse({ status: 403, description: 'Không có quyền thao tác trên tài khoản của người khác' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng với ID này' })
   async deleteUser(@Param('id') id: string) {
-    const existingUser = await this.usersService.findById(id);
+    const existingUser = await this.usersService.findById(id, 'platform');
     if (!existingUser) {
       throw new NotFoundException(`Không tìm thấy người dùng với ID: ${id}`);
     }

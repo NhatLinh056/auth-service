@@ -82,6 +82,7 @@ const state = {
   handshakeStatus: null,
   orders: [],
   showJsonView: false,
+  oauthBusy: false,
 };
 
 function t(path) {
@@ -257,6 +258,7 @@ async function syncUserProfile() {
         };
         localStorage.setItem('demo_user', JSON.stringify(state.user));
         updateAuthUI();
+        if (typeof loadTenant === 'function') void loadTenant();
       }
     }
   } catch (err) {
@@ -267,28 +269,23 @@ async function syncUserProfile() {
 async function handleUrlCallback() {
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
-  const oauthError = params.get('error');
+  if (!code && !params.has('error')) return;
+  const expectedState = sessionStorage.getItem('login_state');
+  const verifier = sessionStorage.getItem('oauth_verifier');
+  sessionStorage.removeItem('login_state');
+  sessionStorage.removeItem('oauth_verifier');
   window.history.replaceState({}, document.title, window.location.pathname);
-  if (oauthError) {
-    sessionStorage.removeItem('oauth_verifier');
-    showToast(oauthError === 'oauth_not_ready'
-      ? (state.lang === 'vi'
-        ? 'Đăng nhập chưa sẵn sàng. Kiểm tra OAuth redirect URI, Client ID/Secret và trạng thái provider trong Developer Console.'
-        : 'Sign-in is not ready. Check the OAuth redirect URI, Client ID/Secret and provider status in Developer Console.')
-      : (state.lang === 'vi' ? 'Đăng nhập chưa hoàn tất. Vui lòng thử lại.' : 'Sign-in did not complete. Please try again.'), 'error');
+  if (!code || !expectedState || params.get('state') !== expectedState || !verifier) {
+    showToast('Phiên đăng nhập không hợp lệ. Vui lòng thử lại.', 'error');
     return;
   }
-  if (!code) return;
-  const verifier = sessionStorage.getItem('oauth_verifier');
-  sessionStorage.removeItem('oauth_verifier');
   try {
-    if (!verifier) throw new Error('Sign-in session expired. Please sign in again.');
     const response = await fetch(`${API_BASE}/auth/exchange`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, verifier }),
     });
-    if (!response.ok) throw new Error('Sign-in exchange failed. Please sign in again.');
     const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'Không thể hoàn tất đăng nhập.');
     state.token = result.accessToken;
     state.user = result.user;
     localStorage.setItem('demo_token', state.token);
@@ -296,10 +293,11 @@ async function handleUrlCallback() {
     await syncUserProfile();
     updateAuthUI();
     showToast(t('toasts.signed_in'));
-  } catch (error) { showToast(error.message, 'error'); }
+  } catch (error) { showToast(error.message || 'Không thể kết nối máy chủ.', 'error'); }
 }
 
 function logout() {
+  if (typeof resetTenant === 'function') resetTenant();
   state.token = null;
   state.user = null;
   state.orders = [];
@@ -489,26 +487,35 @@ function copyToken() {
 // ─────────────────────────────────────────────────────────────────────────────
 // OAUTH INITIATION
 // ─────────────────────────────────────────────────────────────────────────────
-async function loginWithOAuth(provider) {
-  const provConfig = state.providers.find(p => (p.provider || '').toLowerCase() === provider.toLowerCase());
-
-  if (provConfig && !provConfig.enabled) {
-    showToast(t('toasts.not_enabled'), 'error');
-    return;
+async function loginWithAuth() {
+  if (state.oauthBusy) return;
+  state.oauthBusy = true;
+  const button = document.getElementById('btn-auth-login');
+  if (button) button.disabled = true;
+  try {
+    if (!crypto?.subtle) throw new Error('Cần sử dụng HTTPS hoặc localhost để đăng nhập.');
+    const random = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
+    const verifier = random();
+    const clientState = random();
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+    const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    sessionStorage.setItem('oauth_verifier', verifier);
+    sessionStorage.setItem('login_state', clientState);
+    const response = await fetch(`${API_BASE}/auth/start`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codeChallenge, state: clientState }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.authorizeUrl) throw new Error(result.message || 'Không thể mở trang đăng nhập.');
+    window.location.assign(result.authorizeUrl);
+  } catch (error) {
+    sessionStorage.removeItem('oauth_verifier'); sessionStorage.removeItem('login_state');
+    state.oauthBusy = false;
+    if (button) button.disabled = false;
+    showToast(error.message || 'Không thể mở trang đăng nhập.', 'error');
   }
-
-  showToast(t('toasts.oauth_redirect'));
-  const verifier = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
-  sessionStorage.setItem('oauth_verifier', verifier);
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
-  const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  const targetUrl = `${API_BASE}/auth/start/${provider}?code_challenge=${encodeURIComponent(challenge)}`;
-  window.location.href = targetUrl;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PROVIDERS DISCOVERY & SERVICE HANDSHAKE
-// ─────────────────────────────────────────────────────────────────────────────
 async function refreshProviders() {
   try {
     const res = await fetch(`${API_BASE}/auth/providers`);

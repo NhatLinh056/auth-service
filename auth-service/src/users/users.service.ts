@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import bcrypt from 'bcrypt';
 import { Prisma, User } from '../generated/prisma/client.js';
 import { Role } from '../generated/prisma/enums.js';
@@ -62,72 +62,71 @@ export class UsersService implements OnModuleInit {
       const appUser = await (this.prisma as any).appUser.findUnique({
         where: { id },
         include: {
+          user: {
+            include: {
+              tenant: { select: { id: true, name: true, ownerUserId: true } },
+              identities: { select: { provider: true, providerScope: true, email: true } },
+            },
+          },
           application: {
             select: {
               appId: true,
               name: true,
+              oauthProviders: { select: { provider: true, clientId: true } },
             },
           },
         },
       });
-      if (!appUser) return null;
+      if (!appUser?.user) return null;
       return {
         id: appUser.id,
-        email: appUser.email,
-        name: appUser.name,
+        userId: appUser.user.id,
+        email: appUser.user.email,
+        emailVerifiedAt: appUser.user.emailVerifiedAt,
+        name: appUser.user.name,
+        linkedAccounts: appUser.user.identities.filter((identity: any) =>
+          identity.provider === 'GOOGLE' ? identity.providerScope === 'google' :
+            appUser.application.oauthProviders.some((config: any) =>
+              config.provider === identity.provider && config.clientId === identity.providerScope),
+        ).map((identity: any) => ({ provider: identity.provider.toLowerCase(), email: identity.email })),
         role: appUser.role,
         avatarUrl: appUser.avatarUrl,
         appId: appUser.application?.appId,
         appName: appUser.application?.name,
         isAppUser: true,
+        tenantId: appUser.user.tenantId || null,
+        tenantName: appUser.user.tenant?.name || null,
+        isTenantOwner: appUser.user.tenant ? appUser.user.tenant.ownerUserId === appUser.user.id : false,
         createdAt: appUser.createdAt,
         updatedAt: appUser.updatedAt,
       };
     }
 
     // type='platform' hoặc không có type (backwards-compat token cũ) → tìm trong users trước
-    const user = await this.prisma.user.findUnique({
+    const user = await (this.prisma as any).user.findUnique({
       where: { id },
+      include: {
+        tenant: { select: { id: true, name: true, ownerUserId: true } },
+      },
     });
-    if (user) return user;
-
-    // Fallback: token cũ (không có type) có thể là AppUser → thử lookup
-    if (type === undefined) {
-      const appUser = await (this.prisma as any).appUser.findUnique({
-        where: { id },
-        include: {
-          application: {
-            select: {
-              appId: true,
-              name: true,
-            },
-          },
-        },
-      });
-
-      if (appUser) {
-        return {
-          id: appUser.id,
-          email: appUser.email,
-          name: appUser.name,
-          role: appUser.role,
-          avatarUrl: appUser.avatarUrl,
-          appId: appUser.application?.appId,
-          appName: appUser.application?.name,
-          isAppUser: true,
-          createdAt: appUser.createdAt,
-          updatedAt: appUser.updatedAt,
-        };
-      }
+    if (user) {
+      return {
+        ...user,
+        tenantId: user.tenantId || null,
+        tenantName: user.tenant?.name || null,
+        isTenantOwner: user.tenant ? user.tenant.ownerUserId === user.id : false,
+      };
     }
 
     return null;
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
-      where: { email },
+    const matches = await this.prisma.user.findMany({
+      where: { email: { equals: email.trim().toLowerCase(), mode: 'insensitive' } },
+      take: 2,
     });
+    return matches.length === 1 ? matches[0] : null;
   }
 
   async update(id: string, data: Prisma.UserUpdateInput): Promise<User> {
@@ -138,8 +137,13 @@ export class UsersService implements OnModuleInit {
   }
 
   async delete(id: string): Promise<User> {
-    return this.prisma.user.delete({
-      where: { id },
-    });
+    try {
+      return await this.prisma.user.delete({ where: { id } });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+        throw new ConflictException('Cần chuyển quyền sở hữu doanh nghiệp trước khi xóa tài khoản');
+      }
+      throw error;
+    }
   }
 }

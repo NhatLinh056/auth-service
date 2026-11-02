@@ -9,6 +9,11 @@ import { UsersModule } from '../users/users.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { OAuthService } from './oauth.service.js';
+import { SharedIdentityService } from './shared-identity.service.js';
+import { AccountController } from './account.controller.js';
+import { AccountOAuthService } from './account-oauth.service.js';
+import { LoginFlowService } from './login-flow.service.js';
+import { LoginFlowController } from './login-flow.controller.js';
 
 @Module({
   imports: [
@@ -26,8 +31,8 @@ import { OAuthService } from './oauth.service.js';
       },
     }),
   ],
-  controllers: [AuthController],
-  providers: [OAuthGrantsService, AuthService, OAuthService, JwtStrategy],
+  controllers: [AuthController, AccountController, LoginFlowController],
+  providers: [LoginFlowService, AccountOAuthService, SharedIdentityService, OAuthGrantsService, AuthService, OAuthService, JwtStrategy],
   exports: [AuthService, OAuthService, JwtModule, PassportModule, JwtStrategy],
 })
 export class AuthModule {}

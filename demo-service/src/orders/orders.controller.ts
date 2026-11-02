@@ -5,8 +5,6 @@ import {
   Post,
   Param,
   Body,
-  Query,
-  Res,
   Header,
   UseGuards,
   HttpCode,
@@ -16,7 +14,6 @@ import { OrdersService, type Order } from './orders.service.js';
 import { AuthClientService, type AuthUserProfile } from '../auth-client/auth-client.service.js';
 import { UserAuthGuard } from '../auth-client/guards/user-auth.guard.js';
 import { CurrentUser } from '../auth-client/decorators/current-user.decorator.js';
-import type { Response } from 'express';
 import { appConfig } from '../config/app.config.js';
 
 @Controller()
@@ -68,28 +65,15 @@ export class OrdersController {
     return this.authClientService.getAvailableProviders();
   }
 
-  @Get('auth/start/:provider')
-  async startOAuth(
-    @Param('provider') provider: string,
-    @Query('code_challenge') challenge: string,
-    @Res() res: Response,
-  ) {
-    if (!['google', 'facebook'].includes(provider) ||
-        !/^[A-Za-z0-9_-]{43}$/.test(challenge || '')) {
-      return res.redirect('/?error=oauth_not_ready');
+  @Post('auth/start')
+  @Header('Cache-Control', 'no-store')
+  @HttpCode(HttpStatus.OK)
+  startLogin(@Body() body: { codeChallenge?: string; state?: string }) {
+    if (!/^[A-Za-z0-9_-]{43}$/.test(body?.codeChallenge || '') ||
+        !/^[A-Za-z0-9_-]{32,128}$/.test(body?.state || '')) {
+      throw new BadRequestException('Invalid login request');
     }
-    const redirectUri = `${appConfig.publicUrl}/`;
-    try {
-      await this.authClientService.checkOAuthProvider(provider, redirectUri);
-    } catch {
-      return res.redirect('/?error=oauth_not_ready');
-    }
-    const query = new URLSearchParams({
-      code_challenge: challenge,
-      redirect_uri: redirectUri,
-      app_id: appConfig.appId,
-    });
-    return res.redirect(`${appConfig.authServiceUrl}/auth/oauth/${provider}?${query}`);
+    return this.authClientService.createLoginFlow(`${appConfig.publicUrl}/`, body.codeChallenge!, body.state!);
   }
 
   /**
@@ -100,8 +84,9 @@ export class OrdersController {
   @Post('auth/exchange')
   @HttpCode(HttpStatus.OK)
   exchange(@Body() body: { code?: string; verifier?: string }) {
-    if (typeof body?.code !== 'string' || body.code.length > 128 ||
-        typeof body.verifier !== 'string' || !/^[A-Za-z0-9._~-]{43,128}$/.test(body.verifier)) {
+    if (typeof body?.code !== 'string' || !body.code || body.code.length > 128 ||
+        typeof body.verifier !== 'string' || !/^[A-Za-z0-9._~-]{43,128}$/.test(body.verifier) ||
+        Object.keys(body).some(key => !['code', 'verifier'].includes(key))) {
       throw new BadRequestException('Invalid login exchange');
     }
     return this.authClientService.exchangeOAuthCode(body.code, body.verifier);
