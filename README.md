@@ -13,7 +13,7 @@ Hai dịch vụ NestJS dùng chung hệ thống định danh:
 - Auth Service xác thực ứng dụng, xử lý đăng nhập và xác định quyền USER/ADMIN riêng cho từng ứng dụng.
 - Customer Portal dùng Auth Service để đăng nhập; người dùng tạo, xem đơn hàng theo quyền của mình.
 
-## Chạy dịch vụ
+## Chạy trên máy đã cấu hình
 
 Mở hai terminal tại thư mục dự án:
 
@@ -50,6 +50,5 @@ Khi deploy lên domain thật, xem cấu hình `AUTH_PUBLIC_URL` trong [Auth Ser
 - Nếu dùng dữ liệu demo, xem thông tin tài khoản mẫu trong script seed của Auth Service. Chỉ dùng dữ liệu này khi chạy local.
 
 Owner và OAuth user trong `adminEmails` có quyền ADMIN của ứng dụng. Platform Admin không tự có quyền ADMIN ở Demo; USER chỉ xem đơn của mình.
-
 
 Giới hạn bản demo: đơn hàng và state/mã OAuth lưu trong bộ nhớ; khởi động lại làm mất dữ liệu tạm. JWT phía trình duyệt lưu trong localStorage.
