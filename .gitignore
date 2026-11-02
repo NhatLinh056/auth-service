@@ -47,6 +47,15 @@ ROADMAP.md
 # Test coverage
 **/coverage/
 
+# Local tests and test utilities
+**/*.spec.ts
+**/test/
+**/vitest.config*.ts
+auth-service/scripts/security-check.mjs
+auth-service/scripts/phase2-phase3-full-test.mjs
+auth-service/scripts/check-secrets.mjs
+.github/workflows/secret-check.yml
+
 # Generated Prisma Client
 **/src/generated/prisma/
 

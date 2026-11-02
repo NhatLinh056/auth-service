@@ -51,17 +51,5 @@ Khi deploy lên domain thật, xem cấu hình `AUTH_PUBLIC_URL` trong [Auth Ser
 
 Owner và OAuth user trong `adminEmails` có quyền ADMIN của ứng dụng. Platform Admin không tự có quyền ADMIN ở Demo; USER chỉ xem đơn của mình.
 
-## Kiểm thử dành cho phát triển
-
-```powershell
-# Chạy trong thư mục Auth Service.
-cd auth-service
-# Chạy kiểm thử Auth Service.
-npm test
-# Chạy kiểm thử tích hợp trên database tạm.
-npm run test:security
-```
-
-`test:security` cần quyền tạo database và cổng 3300/3301 trống. Kiểm thử Demo Service chạy bằng `npm test` trong `demo-service`.
 
 Giới hạn bản demo: đơn hàng và state/mã OAuth lưu trong bộ nhớ; khởi động lại làm mất dữ liệu tạm. JWT phía trình duyệt lưu trong localStorage.

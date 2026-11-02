@@ -68,15 +68,4 @@ Redirect phải khớp chính xác. Luồng đăng nhập dùng state gắn vớ
 - `/users/verify-app-user`: xác thực JWT cùng credential dịch vụ, kiểm tra tenant và trả `appRole` mới nhất.
 - `/applications`: quản lý ứng dụng bằng tài khoản nền tảng.
 
-## Kiểm thử dành cho phát triển
-
-```powershell
-# Chạy kiểm thử đơn vị.
-npm test
-# Chạy kiểm thử tích hợp trên database tạm.
-npm run test:security
-```
-
-`test:security` cần quyền tạo database và cổng 3300/3301 trống.
-
 Frontend đã được build vào `public`. Sau khi sửa React, chạy trong `frontend`: `npm run build -- --outDir ../public`.

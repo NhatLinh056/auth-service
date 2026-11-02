@@ -52,12 +52,3 @@ Khi chạy trên domain thật, dùng `AUTH_SERVICE_URL=https://auth.example.com
 4. Bỏ token khi gọi `/orders`: phải nhận 401. Platform Admin không tự được quyền ADMIN của ứng dụng.
 
 Mỗi request nghiệp vụ được Auth Service xác thực lại bằng JWT và AppID/AppToken. Không dùng cache handshake để cấp quyền. Đơn hàng lưu trong bộ nhớ và mất khi restart.
-
-## Kiểm thử dành cho phát triển
-
-```powershell
-# Chạy unit test của Demo Service.
-npm test
-```
-
-Kiểm thử tích hợp hai dịch vụ chạy bằng `npm run test:security` trong `auth-service`.
