@@ -1,104 +1,82 @@
-# Auth Service — Nền Tảng Quản Lý Định Danh & Xác Thực Tập Trung (Project 1)
+﻿# Auth Service
 
-Dịch vụ IAM (Identity & Access Management) trung tâm cung cấp giải pháp xác thực, phân quyền và quản lý ứng dụng thành viên trong kiến trúc Microservices.
+Dịch vụ định danh trung tâm: NestJS, Prisma, PostgreSQL và Developer Console React.
 
----
+- Console: http://localhost:3000
+- Swagger: http://localhost:3000/api
+- Health: http://localhost:3000/health
 
-## 1. Tính năng cốt lõi
+## Chức năng chính
 
-1. **Quản lý tài khoản và định danh:**
-   - Đăng ký, đăng nhập tài khoản người dùng nền tảng (Platform Users) bằng email và mật khẩu.
-   - Băm mật khẩu bảo mật bằng bcrypt (10 salt rounds).
-   - Cấp phát JWT Access Token không lưu trạng thái với trường `type` phân biệt rõ nguồn gốc:
-     - `type: "platform"` — Platform User (Developer/Admin đăng nhập bằng mật khẩu).
-     - `type: "app_user"` — AppUser (khách hàng đăng nhập qua OAuth).
-   - Xác thực đa phương thức thông qua OAuth 2.0 (Google, Facebook).
+- Tài khoản nền tảng đăng nhập Developer Console để tạo và quản lý ứng dụng khách.
+- Mỗi ứng dụng có AppID/AppToken, danh sách URL quay về, cấu hình Google/Facebook và danh sách email quản trị (`adminEmails`).
+- Auth Service xử lý đăng nhập OAuth, cấp mã đăng nhập một lần và xác định quyền USER/ADMIN theo ứng dụng.
+- Demo Service gửi AppID/AppToken để xác thực ứng dụng và kiểm tra JWT, quyền người dùng qua API của Auth Service.
 
-2. **Phân quyền truy cập đa tầng (Multi-tenant RBAC):**
-   - Tách biệt rõ ràng 2 tầng người dùng, mỗi tầng lưu ở bảng riêng:
-     - Bảng `users`: Platform Users (lập trình viên vai trò `USER`, quản trị viên nền tảng vai trò `ADMIN`).
-     - Bảng `app_users`: AppUsers (khách hàng của từng ứng dụng — cô lập theo `applicationId`).
-   - **Phạm vi quyền của Platform Admin**: Tài khoản `ADMIN` tại bảng `users` chỉ có thẩm quyền quản trị hạ tầng nền tảng (quản lý lập trình viên, xem tất cả applications, cấu hình hệ thống). Platform Admin **KHÔNG** phải là Admin của Project 2 hay các ứng dụng con.
-   - `GET /users/me` tự động định tuyến sang đúng bảng dựa trên trường `type` trong JWT.
-   - Cấu hình `adminEmails` động theo từng ứng dụng: Chủ sở hữu (App Owner) và các email trong danh sách `adminEmails` được cấp quyền ADMIN tại ứng dụng của họ. Không cần cấu hình tĩnh trong biến môi trường.
-   - Bảo vệ endpoint bằng Custom Decorator (`@Auth()`, `@AppAuth()`) và RolesGuard.
-   - Cơ chế phòng thủ IDOR với OwnerOrAdminGuard.
+## Cài đặt lần đầu
 
-3. **Quản lý ứng dụng thành viên (Application Management):**
-   - Cấp phát cặp khóa định danh AppID và AppToken (CSPRNG 256-bit).
-   - Quản lý danh sách AppUser của từng ứng dụng qua `GET /applications/:id/users` (tương tự Firebase Console).
-   - Hỗ trợ cập nhật `adminEmails` qua `PATCH /applications/:id`.
-   - Thu hồi (Revoke) và tái sinh (Regenerate) AppToken tức thì.
-   - Xác thực danh tính liên dịch vụ (Service Handshake) qua header `X-App-Id` và `X-App-Token`.
+Chạy trong `auth-service`:
 
-4. **Cấu hình đăng nhập đa dự án (Multi-Tenancy Sign-in Methods):**
-   - Cho phép từng ứng dụng thành viên bật hoặc tắt các phương thức đăng nhập OAuth (Google, Facebook) độc lập.
-
-5. **Developer Console:**
-   - Giao diện quản trị Single Page Application (React 19 + TypeScript + Vite) phục vụ trực tiếp tại cổng 3000.
-
----
-
-## 2. Dữ liệu mẫu khởi tạo (Seed Data)
-
-Hệ thống cung cấp sẵn script nạp dữ liệu mẫu giúp chạy demo ngay lập tức:
-
-| Mục | Dữ liệu mẫu | Ghi chú |
-| :--- | :--- | :--- |
-| **Platform Admin** | `admin@example.com` / `Admin123!` | Quản trị viên nền tảng (Role: ADMIN) |
-| **App Developer** | `developer@example.com` / `Password123!` | Lập trình viên sở hữu ứng dụng mẫu (Role: USER) |
-| **Ứng dụng mẫu** | `Demo Order Service`<br>AppID: `app_22c57454b00eb44a55c66bf4`<br>AppToken: `apt_926a40eb5a7b8a7341ef0347f4d2fa640b69663ffff2a034197e65e5f030fa51` | Khớp 100% với cấu hình Client Microservice |
-
-> **Cơ chế phân quyền OAuth:**
-> - Mọi tài khoản Google/Facebook đăng nhập vào Client App mặc định nhận vai trò `USER`.
-> - Hệ thống tự động cấp vai trò `ADMIN` cho Chủ sở hữu ứng dụng (App Owner) hoặc các tài khoản nằm trong danh sách quản trị viên ủy quyền (`adminEmails`).
-
----
-
-## 3. Cấu trúc JWT
-
-| Trường | Loại | Mô tả |
-| :--- | :--- | :--- |
-| `sub` | string | ID người dùng (trong bảng `users` hoặc `app_users` tùy `type`) |
-| `email` | string | Địa chỉ email |
-| `role` | `ADMIN` / `USER` | Vai trò của người dùng |
-| `type` | `platform` / `app_user` | Phân biệt nguồn gốc token |
-| `appId` | string? | Chỉ có khi `type = "app_user"` — ứng dụng mà AppUser thuộc về |
-
----
-
-## 4. Hướng dẫn khởi chạy
-
-### Bước 1: Cấu hình biến môi trường
-Tạo file `.env` từ `.env.example`:
-```env
-PORT=3000
-DATABASE_URL=postgresql://user:password@localhost:5432/auth_service_db
-JWT_SECRET=your_jwt_secret_key
-JWT_EXPIRES_IN=7d
-```
-
-### Bước 2: Tạo bảng và nạp dữ liệu mẫu
-```bash
-# Cài đặt dependencies
+```powershell
+# Cài các gói phụ thuộc.
 npm install
-
-# Đồng bộ schema Prisma với PostgreSQL
-npx prisma db push
-
-# Nạp dữ liệu mẫu tự động
-npm run seed
-
-# Chạy máy chủ ở chế độ phát triển
-npm run start:dev
-
-# Chạy kiểm thử tự động
-npm test
-npm run test:e2e
+# Tạo file cấu hình từ mẫu nếu chưa có .env.
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-### Bước 3: Truy cập hệ thống
-- Developer Console: http://localhost:3000 (hoặc http://localhost:3000/dashboard/)
-- Tài khoản quản trị mặc định: `admin@example.com` / `Admin123!`
-- Tài liệu API Swagger: http://localhost:3000/api
-- Kiểm tra sức khỏe hệ thống: http://localhost:3000/health
+Điền `DATABASE_URL`, `JWT_SECRET` ngẫu nhiên và thông tin OAuth nếu sử dụng. Sinh giá trị ngẫu nhiên bằng:
+
+```powershell
+# Tạo chuỗi hex ngẫu nhiên để dùng làm JWT_SECRET.
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+
+```powershell
+# Tạo Prisma Client từ schema.
+npx prisma generate --config prisma7.config.ts
+# Áp dụng các migration vào database đã cấu hình.
+npx prisma migrate deploy --config prisma7.config.ts
+# Chạy API và Developer Console ở chế độ phát triển.
+npm run start:dev
+```
+
+Không cần chạy lại migration khi chỉ khởi động dịch vụ đã cài đặt.
+
+## Dữ liệu demo (tùy chọn, chỉ local)
+
+Trong `.env`, đặt `ENABLE_DEMO_SEED=true` và `SEED_APP_TOKEN=apt_<64 ký tự hex ngẫu nhiên>`, sau đó chạy `npm run seed`. Lệnh tạo tài khoản và ứng dụng mẫu; xem thông tin mẫu trong script seed. Đặt lại `ENABLE_DEMO_SEED=false` sau khi seed. Không seed lại DB có dữ liệu cần giữ cấu hình, vì seed cập nhật tài khoản và ứng dụng mẫu.
+
+## Cấu hình OAuth
+
+Khi triển khai bằng domain thật, đặt `AUTH_PUBLIC_URL=https://auth.example.com` trong `.env` của Auth Service và khởi động lại. Console sẽ hiển thị callback tương ứng; đăng ký URL đó tại Google/Meta. URL này là đường về **Auth Service**, dùng chung cho các ứng dụng trên cùng domain Auth; người dùng cuối không tự nhập URL này.
+
+Ví dụ Google: `https://auth.example.com/auth/oauth/google/callback`; Facebook: `https://auth.example.com/auth/oauth/facebook/callback`. `AUTH_PUBLIC_URL` phải là origin HTTPS công khai, không có đường dẫn con, query hay fragment. HTTP chỉ dùng cho localhost khi phát triển.
+
+Trong chi tiết ứng dụng trên Console:
+
+1. Điền Client ID/Secret và bật Google hoặc Facebook.
+2. Đăng ký callback hiển thị trong Console tại nhà cung cấp. Khi chạy local, dùng `http://localhost:3000/auth/oauth/google/callback` hoặc `http://localhost:3000/auth/oauth/facebook/callback`.
+3. Thêm URL Portal chính xác, chẳng hạn `https://shop.example.com/`, vào **URL quay về ứng dụng sau đăng nhập** trong chi tiết app. Có thể đăng ký thêm URL staging hoặc localhost cho các môi trường khác.
+4. Điền `adminEmails` nếu muốn ủy quyền quản trị cho tài khoản OAuth.
+
+Redirect phải khớp chính xác. Luồng đăng nhập dùng state gắn với trình duyệt, PKCE và mã dùng một lần; không truyền JWT qua URL.
+
+## API chính
+
+- `/auth/login`: đăng nhập tài khoản nền tảng.
+- `/auth/verify-service`: xác thực AppID/AppToken.
+- `/users/verify-app-user`: xác thực JWT cùng credential dịch vụ, kiểm tra tenant và trả `appRole` mới nhất.
+- `/applications`: quản lý ứng dụng bằng tài khoản nền tảng.
+
+## Kiểm thử dành cho phát triển
+
+```powershell
+# Chạy kiểm thử đơn vị.
+npm test
+# Chạy kiểm thử tích hợp trên database tạm.
+npm run test:security
+```
+
+`test:security` cần quyền tạo database và cổng 3300/3301 trống.
+
+Frontend đã được build vào `public`. Sau khi sửa React, chạy trong `frontend`: `npm run build -- --outDir ../public`.

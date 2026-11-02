@@ -1,79 +1,63 @@
-# Demo Service — Client Microservice (Project 2)
+﻿# Demo Service
 
-Dịch vụ khách độc lập (Client Microservice) minh họa mô hình liên thông dịch vụ và ủy quyền xác thực với Auth Service (Project 1).
+Customer Portal minh họa đăng nhập Google/Facebook và quản lý đơn hàng. Dịch vụ không lưu mật khẩu hoặc bảng người dùng riêng.
 
-Dịch vụ cung cấp giao diện Cổng Dịch Vụ Khách Hàng (Customer Portal) phục vụ tại http://localhost:3001, cho phép người dùng đăng nhập bằng tài khoản mạng xã hội (Google, Facebook) và hiển thị hồ sơ cá nhân đã được xác thực an toàn.
+- Portal: http://localhost:3001
+- Kiểm tra kết nối Auth: http://localhost:3001/status
 
----
+## Chức năng chính
 
-## 1. Tính năng cốt lõi
+- Hiển thị các cách đăng nhập Google/Facebook đã được bật cho ứng dụng; chuyển người dùng đến Auth Service để đăng nhập.
+- Đổi mã đăng nhập một lần lấy phiên người dùng và kiểm tra JWT qua Auth Service khi truy cập API đơn hàng.
+- Tạo và xem đơn hàng mẫu: USER chỉ xem đơn của mình; ADMIN xem toàn bộ đơn của ứng dụng.
+- Hiển thị trạng thái kết nối và thông tin ứng dụng tại `/status`.
 
-1. **Mô hình Phân quyền Đa tầng (Multi-tenant RBAC — Tương tự Firebase Auth):**
-   - Người dùng đăng nhập nhanh chóng thông qua OAuth 2.0 (Google hoặc Facebook).
-   - **Tự động cấp quyền ADMIN**: Khi tài khoản Google/Facebook đăng nhập có email trùng khớp với Chủ sở hữu ứng dụng (App Owner đã tạo app ở Project 1) hoặc nằm trong danh sách `adminEmails` của ứng dụng $\rightarrow$ Hệ thống tự động trao toàn quyền Quản trị viên (`ADMIN`), cho phép xem và quản lý toàn bộ đơn hàng trong hệ thống.
-   - **Quyền Khách hàng (USER)**: Khách hàng thông thường khi đăng nhập chỉ có quyền xem và tạo các đơn hàng của riêng mình.
-   - **Loại bỏ form mật khẩu**: Project 2 không lưu trữ bất kỳ mật khẩu nào và không cần form nhập user/pass, trải nghiệm người dùng 100% dựa trên OAuth hiện đại.
+## Cài đặt và chạy
 
-2. **Giao diện Cổng Khách Hàng (Customer Portal Web UI tại http://localhost:3001):**
-   - Thiết kế tinh gọn, hiện đại theo phong cách Dark Mode chuyên nghiệp.
-   - Đăng nhập 1-click qua Google hoặc Facebook.
-   - Quản lý phiên làm việc: Hiển thị Avatar, Họ tên, Email, Huy hiệu vai trò (`Quản Trị Viên (ADMIN)` / `Khách Hàng (USER)`) và Access Token JWT.
-   - **Giao diện Quản lý Đơn hàng trực quan (Orders Table)**:
-     + Bảng danh sách đơn hàng với đầy đủ thông tin: Mã đơn, Tên sản phẩm, Số lượng, Đơn giá, Khách hàng đặt mua, Trạng thái đơn (PENDING, CONFIRMED, SHIPPED).
-     + Nút `+ Đặt Hàng Thử Nghiệm`: Giúp khách hàng tạo đơn hàng mẫu tức thì.
-     + Tùy chọn xem phản hồi thô API (`{ } Xem Dữ Liệu API (JSON)`) phục vụ việc kiểm thử kỹ thuật.
+Chạy trong `demo-service`:
 
-3. **Bắt tay dịch vụ (Service-to-Service Handshake) & Bộ nhớ đệm TTL:**
-   - Đọc AppID và AppToken từ biến môi trường (`.env`).
-   - Gửi yêu cầu bắt tay tới endpoint `GET /auth/verify-service` trên Auth Service (http://localhost:3000).
-   - Xác nhận quyền hạn hoạt động hợp lệ, trạng thái ACTIVE và trích xuất thông tin Chủ sở hữu ứng dụng (App Owner) cùng danh sách `adminEmails`.
-   - Kết quả bắt tay được lưu cache trong bộ nhớ với thời gian sống (TTL) 5 phút, tự động làm mới khi hết hạn.
+```powershell
+# Cài các gói phụ thuộc.
+npm install
+# Tạo file cấu hình từ mẫu nếu chưa có .env.
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+```
 
-4. **Ủy quyền xác thực người dùng (Delegated User JWT Verification):**
-   - Không chứa bất kỳ bảng cơ sở dữ liệu User hay mật khẩu nào.
-   - Nhận Bearer JWT từ người dùng và ủy quyền thẩm định qua Auth Service (`GET /users/me`).
-   - So khớp định danh người dùng với Chủ sở hữu ứng dụng hoặc danh sách `adminEmails` để phân quyền ADMIN hoặc USER cho phiên làm việc.
+Cấu hình:
 
-5. **REST API mẫu nội bộ (/orders):**
-   - Cung cấp các endpoint `GET /orders`, `POST /orders`, `GET /orders/:id` được bảo vệ bởi `UserAuthGuard`.
-   - Dữ liệu được cô lập chặt chẽ theo phân quyền RBAC.
-
----
-
-## 2. Hướng dẫn khởi chạy
-
-### Bước 1: Cấu hình biến môi trường
-Tạo file `.env` từ `.env.example`:
 ```env
 PORT=3001
 AUTH_SERVICE_URL=http://localhost:3000
-APP_ID=app_your_app_id_here
-APP_TOKEN=apt_your_app_token_here
+PUBLIC_URL=http://localhost:3001
+APP_ID=<AppID từ Developer Console>
+APP_TOKEN=<AppToken từ Developer Console>
 ```
 
-### Bước 2: Cài đặt và khởi chạy
-```bash
-# Cài đặt dependencies
-npm install
+Khởi động Auth Service trước, rồi chạy:
 
-# Chạy ở chế độ phát triển
+```powershell
+# Chạy Customer Portal ở chế độ phát triển.
 npm run start:dev
+```
 
-# Chạy kiểm thử tự động
+Để đăng nhập OAuth, bật provider trong Console, điền credential hợp lệ và khai báo `http://localhost:3001/` trong danh sách URL quay về của ứng dụng.
+
+Khi chạy trên domain thật, dùng `AUTH_SERVICE_URL=https://auth.example.com` và `PUBLIC_URL=https://shop.example.com`; thêm **chính xác** `https://shop.example.com/` vào danh sách URL quay về của ứng dụng trong Developer Console. Cấu hình `AUTH_PUBLIC_URL=https://auth.example.com` bên Auth Service và đăng ký callback Auth tại Google/Meta. Cả hai domain cần HTTPS. Sau khi đổi `.env`, khởi động lại dịch vụ.
+
+## Kiểm thử thủ công
+
+1. Mở `/status`: cần `handshakeStatus=SUCCESS`, `handshake.applicationStatus=ACTIVE`.
+2. Mở Portal và đăng nhập Google/Facebook.
+3. USER chỉ xem đơn của mình; owner hoặc OAuth user thuộc `adminEmails` nhận ADMIN và xem toàn bộ đơn.
+4. Bỏ token khi gọi `/orders`: phải nhận 401. Platform Admin không tự được quyền ADMIN của ứng dụng.
+
+Mỗi request nghiệp vụ được Auth Service xác thực lại bằng JWT và AppID/AppToken. Không dùng cache handshake để cấp quyền. Đơn hàng lưu trong bộ nhớ và mất khi restart.
+
+## Kiểm thử dành cho phát triển
+
+```powershell
+# Chạy unit test của Demo Service.
 npm test
 ```
-Dịch vụ sẽ khởi động tại: http://localhost:3001
 
----
-
-## 3. Danh sách Endpoints
-
-| Phương thức | Endpoint | Cơ chế bảo vệ | Mô tả chức năng |
-| :--- | :--- | :--- | :--- |
-| GET | / | Public | Giao diện Cổng Khách Hàng (Customer Portal) |
-| GET | /status | Public | Bắt tay kiểm tra kết nối với Auth Service qua AppID / AppToken |
-| GET | /auth/providers | Public | Truy vấn danh sách nhà cung cấp OAuth khả dụng từ Auth Service |
-| GET | /auth/me | UserAuthGuard | Lấy hồ sơ tài khoản và vai trò trong ngữ cảnh Project 2 (ADMIN / USER) |
-| GET | /orders | UserAuthGuard | REST API mẫu: Lấy danh sách tài nguyên (kiểm tra phân quyền RBAC) |
-| POST | /orders | UserAuthGuard | REST API mẫu: Tạo tài nguyên mới gắn với định danh người dùng |
-| GET | /orders/:id | UserAuthGuard | REST API mẫu: Lấy chi tiết tài nguyên theo ID |
+Kiểm thử tích hợp hai dịch vụ chạy bằng `npm run test:security` trong `auth-service`.

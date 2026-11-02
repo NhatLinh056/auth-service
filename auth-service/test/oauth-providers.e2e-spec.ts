@@ -383,8 +383,9 @@ describe('Project-Scoped Sign-in Methods Management (e2e)', () => {
     });
 
     it('GET /auth/oauth/facebook?app_id=:appBAppId&redirect_uri=... -> 302 Redirect sang Facebook OAuth', async () => {
+      await prisma.application.update({ where: { id: appBId }, data: { allowedRedirectUris: ['http://localhost:3001/'] } });
       const res = await request(app.getHttpServer())
-        .get(`/auth/oauth/facebook?app_id=${appBAppId}&redirect_uri=http://localhost:3001/`)
+        .get(`/auth/oauth/facebook?app_id=${appBAppId}&redirect_uri=http://localhost:3001/&code_challenge=${"a".repeat(43)}`)
         .expect(302);
 
       const location = res.headers.location;
@@ -395,10 +396,10 @@ describe('Project-Scoped Sign-in Methods Management (e2e)', () => {
 
     it('GET /auth/oauth/google?app_id=:appBAppId khi Google ở App B đang disabled -> 400 Bad Request', async () => {
       const res = await request(app.getHttpServer())
-        .get(`/auth/oauth/google?app_id=${appBAppId}&redirect_uri=http://localhost:3001/`)
+        .get(`/auth/oauth/google?app_id=${appBAppId}&redirect_uri=http://localhost:3001/&code_challenge=${"a".repeat(43)}`)
         .expect(400);
 
-      expect(res.body.message).toContain('vô hiệu hóa');
+      expect(res.body.message).toBe('OAuth provider is not configured for this application');
     });
   });
 });

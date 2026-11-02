@@ -12,16 +12,16 @@ function assertTest(category, name, passed, detail = '') {
   testResults.push({ category, name, passed, detail });
   if (passed) {
     passCount++;
-    console.log(`✅ [${category}] ${name} ${detail ? '— ' + detail : ''}`);
+    console.log(` [${category}] ${name} ${detail ? '— ' + detail : ''}`);
   } else {
     failCount++;
-    console.error(`❌ [${category}] ${name} — FAILED: ${detail}`);
+    console.error(` [${category}] ${name} — FAILED: ${detail}`);
   }
 }
 
 async function runFullAuditSuite() {
   console.log('========================================================================');
-  console.log('🚀 EXECUTING PHASE 2 & PHASE 3 COMPREHENSIVE END-TO-END AUDIT SUITE');
+  console.log(' EXECUTING PHASE 2 & PHASE 3 COMPREHENSIVE END-TO-END AUDIT SUITE');
   console.log('========================================================================\n');
 
   const ts = Date.now();
@@ -822,7 +822,7 @@ async function runFullAuditSuite() {
   console.log('\n========================================================================');
   const total = passCount + failCount;
   const pct = ((passCount / total) * 100).toFixed(1);
-  console.log(`📊 AUDIT TEST SUITE RESULTS: ${passCount} / ${total} PASSED (${pct}%) | FAILED: ${failCount}`);
+  console.log(` AUDIT TEST SUITE RESULTS: ${passCount} / ${total} PASSED (${pct}%) | FAILED: ${failCount}`);
   console.log('========================================================================');
 
   if (failCount > 0) {

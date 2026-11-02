@@ -27,6 +27,7 @@ describe('UsersService', () => {
   };
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
@@ -109,16 +110,17 @@ describe('UsersService', () => {
       expect(mockPrismaService.user.create).toHaveBeenCalled();
     });
 
-    it('should update admin user if already exists', async () => {
+    it('should preserve an existing admin account', async () => {
       mockPrismaService.user.findUnique.mockResolvedValueOnce(mockUser);
       await service.ensureDefaultAdmin();
-      expect(mockPrismaService.user.update).toHaveBeenCalled();
+      expect(mockPrismaService.user.update).not.toHaveBeenCalled();
+      expect(mockPrismaService.user.create).not.toHaveBeenCalled();
     });
 
     it('should execute onModuleInit gracefully', async () => {
       const spy = vi.spyOn(service, 'ensureDefaultAdmin').mockResolvedValueOnce();
       await service.onModuleInit();
-      expect(spy).toHaveBeenCalled();
+      expect(spy).not.toHaveBeenCalled();
     });
   });
 });

@@ -182,9 +182,10 @@ export class ApplicationsService {
     return this.prisma.application.update({
       where: { id },
       data: {
+        ...(updateAppDto.allowedRedirectUris !== undefined && { allowedRedirectUris: updateAppDto.allowedRedirectUris }),
         ...(updateAppDto.name !== undefined && { name: updateAppDto.name }),
         ...(updateAppDto.status !== undefined && { status: updateAppDto.status }),
-        ...(updateAppDto.adminEmails !== undefined && { adminEmails: updateAppDto.adminEmails }),
+        ...(updateAppDto.adminEmails !== undefined && { adminEmails: [...new Set(updateAppDto.adminEmails.map(e => e.trim().toLowerCase()))] }),
       },
       include: {
         user: {

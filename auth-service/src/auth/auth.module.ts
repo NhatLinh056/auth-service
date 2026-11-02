@@ -1,3 +1,5 @@
+import { getJwtSecret } from './jwt-secret.js';
+import { OAuthGrantsService } from './oauth-grants.service.js';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
@@ -15,12 +17,8 @@ import { OAuthService } from './oauth.service.js';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       useFactory: () => {
-        const secret = process.env.JWT_SECRET;
-        if (process.env.NODE_ENV === 'production' && (!secret || secret === 'super-secret-jwt-key-for-project-3')) {
-          throw new Error('FATAL: JWT_SECRET must be configured with a secure private key in production!');
-        }
         return {
-          secret: secret || 'super-secret-jwt-key-for-project-3',
+          secret: getJwtSecret(),
           signOptions: {
             expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any,
           },
@@ -29,7 +27,7 @@ import { OAuthService } from './oauth.service.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, OAuthService, JwtStrategy],
+  providers: [OAuthGrantsService, AuthService, OAuthService, JwtStrategy],
   exports: [AuthService, OAuthService, JwtModule, PassportModule, JwtStrategy],
 })
 export class AuthModule {}

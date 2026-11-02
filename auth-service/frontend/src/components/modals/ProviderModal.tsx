@@ -158,11 +158,11 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({
             >
               {isGoogle
                 ? lang === 'vi'
-                  ? '📋 4 bước lấy Google Client ID & Secret:'
-                  : '📋 4 Steps to get Google Client ID & Secret:'
+                  ? ' 4 bước lấy Google Client ID & Secret:'
+                  : ' 4 Steps to get Google Client ID & Secret:'
                 : lang === 'vi'
-                ? '📋 4 bước lấy Facebook App ID & Secret:'
-                : '📋 4 Steps to get Facebook App ID & Secret:'}
+                ? ' 4 bước lấy Facebook App ID & Secret:'
+                : ' 4 Steps to get Facebook App ID & Secret:'}
             </span>
             <a
               href={portalHref}

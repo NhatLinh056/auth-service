@@ -1,3 +1,4 @@
+import { OAuthGrantsService } from './oauth-grants.service.js';
 import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,14 +21,18 @@ describe('AuthController', () => {
   const mockOAuthService = {
     getAuthorizationUrl: vi.fn(),
     handleCallback: vi.fn(),
+    getErrorRedirectUri: vi.fn(),
+    checkOAuthAvailability: vi.fn(),
     extractRedirectUriFromState: vi.fn(),
   };
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    mockOAuthService.getErrorRedirectUri.mockResolvedValue(null);
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [
+        OAuthGrantsService,
         {
           provide: AuthService,
           useValue: mockAuthService,
@@ -132,111 +137,45 @@ describe('AuthController', () => {
     });
   });
 
-  describe('initiateOAuth', () => {
-    it('nên gọi oauthService.getAuthorizationUrl và redirect', async () => {
-      mockOAuthService.getAuthorizationUrl.mockResolvedValue('https://accounts.google.com/o/oauth2/auth');
-      const mockRes = {
-        redirect: vi.fn(),
-      } as any;
-
-      await controller.initiateOAuth('google', 'http://localhost:3001/auth/callback', mockRes);
-
-      expect(mockOAuthService.getAuthorizationUrl).toHaveBeenCalledWith(
-        'google',
-        'http://localhost:3001/auth/callback',
-      );
-      expect(mockRes.redirect).toHaveBeenCalledWith('https://accounts.google.com/o/oauth2/auth');
+  describe('OAuth browser boundary', () => {
+    const response = () => ({ redirect: vi.fn(), cookie: vi.fn(), clearCookie: vi.fn(), setHeader: vi.fn() }) as any;
+    it('binds OAuth state to an HttpOnly browser cookie', async () => {
+      mockOAuthService.getAuthorizationUrl.mockResolvedValue('https://accounts.google.com/auth?state=s123');
+      const res = response();
+      await controller.initiateOAuth('google', 'http://localhost:3001/', res, 'app1', 'a'.repeat(43));
+      expect(res.cookie).toHaveBeenCalledWith('oauth_state', 's123', expect.objectContaining({ httpOnly: true, sameSite: 'lax' }));
     });
-  });
-
-  describe('handleOAuthCallback', () => {
-    it('nên redirect về redirectUri của client kèm token và thông tin người dùng', async () => {
-      mockOAuthService.handleCallback.mockResolvedValue({
-        accessToken: 'mock_jwt_token',
-        user: { id: 'u1', email: 'test@gmail.com', name: 'Test Google', role: 'USER' },
-        redirectUri: 'http://localhost:3001/auth/callback',
-      });
-
-      const mockRes = {
-        redirect: vi.fn(),
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as any;
-
-      await controller.handleOAuthCallback('google', { code: 'c123', state: 's123' }, mockRes);
-
-      expect(mockRes.redirect).toHaveBeenCalled();
-      const redirectedUrl = mockRes.redirect.mock.calls[0][0];
-      expect(redirectedUrl).toContain('token=mock_jwt_token');
-      expect(redirectedUrl).toContain('email=test%40gmail.com');
+    it('redirects with a one-time code and never a token or profile', async () => {
+      mockOAuthService.handleCallback.mockResolvedValue({ accessToken: 'secret-jwt', user: { id: 'u1' }, redirectUri: 'http://localhost:3001/', appId: 'app1', codeChallenge: 'a'.repeat(43) });
+      const res = response();
+      await controller.handleOAuthCallback('google', { code: 'provider-code', state: 's123' }, res, { headers: { cookie: 'oauth_state=s123' } } as any);
+      const url = new URL(res.redirect.mock.calls[0][0]);
+      expect(url.searchParams.get('code')).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(url.searchParams.has('token')).toBe(false);
+      expect(url.searchParams.has('email')).toBe(false);
     });
-
-    it('nên trả về JSON nếu format=json được truyền', async () => {
-      const mockResult = {
-        accessToken: 'mock_jwt_token',
-        user: { id: 'u1', email: 'test@gmail.com', name: 'Test Google', role: 'USER' },
-        redirectUri: 'http://localhost:3001/auth/callback',
-      };
-      mockOAuthService.handleCallback.mockResolvedValue(mockResult);
-
-      const mockRes = {
-        redirect: vi.fn(),
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as any;
-
-      await controller.handleOAuthCallback(
-        'google',
-        { code: 'c123', state: 's123', format: 'json' },
-        mockRes,
-      );
-
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        accessToken: mockResult.accessToken,
-        user: mockResult.user,
-        redirectUri: mockResult.redirectUri,
-      });
+    it('rejects callbacks without a browser cookie', async () => {
+      await expect(controller.handleOAuthCallback('google', { state: 's123' }, response(), { headers: {} } as any)).rejects.toThrow(UnauthorizedException);
+      expect(mockOAuthService.handleCallback).not.toHaveBeenCalled();
     });
-
-    it('nên redirect về client kèm query error khi OAuth bị từ chối hoặc người dùng hủy', async () => {
-      mockOAuthService.handleCallback.mockRejectedValue(
-        new UnauthorizedException('Nhà cung cấp OAuth từ chối xác thực: Permissions error'),
-      );
-      mockOAuthService.extractRedirectUriFromState.mockReturnValue('http://localhost:3001/');
-
-      const mockRes = {
-        redirect: vi.fn(),
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as any;
-
-      await controller.handleOAuthCallback(
-        'facebook',
-        { error: 'access_denied', error_description: 'Permissions error', state: 's123' },
-        mockRes,
-      );
-
-      expect(mockRes.redirect).toHaveBeenCalled();
-      const redirectUrl = mockRes.redirect.mock.calls[0][0];
-      expect(redirectUrl).toContain('http://localhost:3001/');
-      expect(redirectUrl).toContain('error=');
+    it('rejects a mismatched browser state', async () => {
+      await expect(controller.handleOAuthCallback('google', { state: 's123' }, response(), { headers: { cookie: 'oauth_state=other' } } as any)).rejects.toThrow(UnauthorizedException);
     });
-
-    it('nên ném lỗi nếu format=json được truyền và xảy ra lỗi OAuth', async () => {
-      mockOAuthService.handleCallback.mockRejectedValue(
-        new UnauthorizedException('OAuth failed'),
-      );
-
-      const mockRes = {
-        redirect: vi.fn(),
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as any;
-
-      await expect(
-        controller.handleOAuthCallback('google', { error: 'access_denied', format: 'json' }, mockRes),
-      ).rejects.toThrow(UnauthorizedException);
+    it('does not redirect to unverified state on provider failure', async () => {
+      mockOAuthService.handleCallback.mockRejectedValue(new UnauthorizedException('Denied'));
+      const res = response();
+      await expect(controller.handleOAuthCallback('google', { state: 's123', error: 'denied' }, res, { headers: { cookie: 'oauth_state=s123' } } as any)).rejects.toThrow(UnauthorizedException);
+      expect(res.redirect).not.toHaveBeenCalled();
+    });
+    it('returns to a verified portal URL when the provider cancels sign-in', async () => {
+      mockOAuthService.handleCallback.mockRejectedValue(new UnauthorizedException('Denied'));
+      mockOAuthService.getErrorRedirectUri.mockResolvedValue('http://localhost:3001/');
+      const res = response();
+      await controller.handleOAuthCallback('google', { state: 's123', error: 'access_denied' }, res,
+        { headers: { cookie: 'oauth_state=s123' } } as any);
+      const location = new URL(res.redirect.mock.calls[0][0]);
+      expect(location.origin).toBe('http://localhost:3001');
+      expect(location.searchParams.get('error')).toBe('oauth_cancelled');
     });
   });
 

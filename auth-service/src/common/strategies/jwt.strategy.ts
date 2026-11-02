@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { getJwtSecret } from '../../auth/jwt-secret.js';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
@@ -18,11 +19,6 @@ export interface JwtPayload {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
-    const jwtSecret = process.env['JWT_SECRET'];
-    if (process.env.NODE_ENV === 'production' && (!jwtSecret || jwtSecret === 'super-secret-jwt-key-for-project-3')) {
-      throw new Error('FATAL: JWT_SECRET must be configured with a secure private key in production!');
-    }
-
     super({
       // Cách lấy token: đọc từ header "Authorization: Bearer <token>"
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -31,18 +27,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ignoreExpiration: false,
 
       // Secret key phải khớp với key đã dùng để ký token trong AuthService.login()
-      secretOrKey: jwtSecret || 'super-secret-jwt-key-for-project-3',
+      secretOrKey: getJwtSecret(),
     });
   }
 
   // validate() được gọi tự động sau khi Passport verify token thành công.
   // Giá trị trả về sẽ được gán vào request.user
   validate(payload: JwtPayload): JwtPayload {
+    if (!payload.sub || !['platform', 'app_user'].includes(payload.type) || (payload.type === 'app_user' && !payload.appId)) {
+      throw new UnauthorizedException('Invalid token identity scope');
+    }
     return {
       sub: payload.sub,
       email: payload.email,
       role: payload.role,
-      type: payload.type ?? 'platform', // Backwards-compat: token cũ không có type → coi là platform
+      type: payload.type,
       appId: payload.appId,
     };
   }

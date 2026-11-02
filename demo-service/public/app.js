@@ -1,3 +1,7 @@
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
 /**
  * CLIENT APPLICATION LOGIC — DEMO SERVICE (PROJECT 2)
  * Clean, modern customer portal with seamless social authentication (Google & Facebook).
@@ -7,7 +11,6 @@
  */
 
 const API_BASE = window.location.origin; // http://localhost:3001
-const AUTH_SERVICE_URL = 'http://localhost:3000';
 
 const translations = {
   en: {
@@ -204,7 +207,16 @@ function updateAuthUI() {
 
     if (avatarEl) {
       if (state.user.avatar) {
-        avatarEl.innerHTML = `<img src="${state.user.avatar}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+        avatarEl.replaceChildren();
+        try {
+          const url = new URL(state.user.avatar);
+          if (url.protocol === 'https:') {
+            const img = document.createElement('img');
+            img.src = url.href; img.alt = 'Avatar';
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%';
+            avatarEl.appendChild(img);
+          }
+        } catch { avatarEl.textContent = '?'; }
       } else {
         const initial = (state.user.name || state.user.email || 'U').charAt(0).toUpperCase();
         avatarEl.textContent = initial;
@@ -252,65 +264,39 @@ async function syncUserProfile() {
   }
 }
 
-function handleUrlCallback() {
+async function handleUrlCallback() {
   const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
-  const error = params.get('error') || params.get('error_description');
-
-  if (error) {
-    let msg = `Error: ${error}`;
-    const lower = error.toLowerCase();
-    if (
-      lower.includes('denied') ||
-      lower.includes('cancel') ||
-      lower.includes('permission') ||
-      lower.includes('từ chối') ||
-      lower.includes('permissions error')
-    ) {
-      msg = state.lang === 'vi' ? 'Bạn đã hủy yêu cầu đăng nhập.' : 'Sign-in request was cancelled.';
-    }
-    showToast(msg, 'error');
-    window.history.replaceState({}, document.title, window.location.pathname);
+  const code = params.get('code');
+  const oauthError = params.get('error');
+  window.history.replaceState({}, document.title, window.location.pathname);
+  if (oauthError) {
+    sessionStorage.removeItem('oauth_verifier');
+    showToast(oauthError === 'oauth_not_ready'
+      ? (state.lang === 'vi'
+        ? 'Đăng nhập chưa sẵn sàng. Kiểm tra OAuth redirect URI, Client ID/Secret và trạng thái provider trong Developer Console.'
+        : 'Sign-in is not ready. Check the OAuth redirect URI, Client ID/Secret and provider status in Developer Console.')
+      : (state.lang === 'vi' ? 'Đăng nhập chưa hoàn tất. Vui lòng thử lại.' : 'Sign-in did not complete. Please try again.'), 'error');
     return;
   }
-
-  if (token) {
-    let user = null;
-    const email = params.get('email');
-    const name = params.get('name');
-    const role = params.get('role');
-    const provider = params.get('provider');
-    const avatar = params.get('avatar');
-
-    try {
-      const parts = token.split('.');
-      if (parts.length === 3) {
-        const payload = JSON.parse(atob(parts[1]));
-        user = {
-          id: payload.sub,
-          email: email || payload.email,
-          role: role || payload.role || 'USER',
-          name: name || undefined,
-          provider: provider || payload.provider || 'OAuth',
-          avatar: avatar || undefined,
-        };
-      }
-    } catch {
-      user = { email, name, role, provider, avatar };
-    }
-
-    state.token = token;
-    state.user = user;
-    localStorage.setItem('demo_token', token);
-    localStorage.setItem('demo_user', JSON.stringify(user));
-
-    window.history.replaceState({}, document.title, window.location.pathname);
-    updateAuthUI();
-
-    syncUserProfile().then(() => {
-      showToast(`${t('toasts.signed_in')} ${state.user?.name || state.user?.email || ''}!`);
+  if (!code) return;
+  const verifier = sessionStorage.getItem('oauth_verifier');
+  sessionStorage.removeItem('oauth_verifier');
+  try {
+    if (!verifier) throw new Error('Sign-in session expired. Please sign in again.');
+    const response = await fetch(`${API_BASE}/auth/exchange`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, verifier }),
     });
-  }
+    if (!response.ok) throw new Error('Sign-in exchange failed. Please sign in again.');
+    const result = await response.json();
+    state.token = result.accessToken;
+    state.user = result.user;
+    localStorage.setItem('demo_token', state.token);
+    localStorage.setItem('demo_user', JSON.stringify(state.user));
+    await syncUserProfile();
+    updateAuthUI();
+    showToast(t('toasts.signed_in'));
+  } catch (error) { showToast(error.message, 'error'); }
 }
 
 function logout() {
@@ -373,19 +359,19 @@ function renderOrdersTable(orders, isAdmin) {
 
     const isMine = o.userEmail === state.user?.email;
     const customerDisplay = isMine
-      ? `<span style="color: #67e8f9; font-weight: 500;">${o.userEmail} <small style="color: var(--text-dim);">(Bạn)</small></span>`
-      : `<span style="color: var(--text-muted);">${o.userEmail}</span>`;
+      ? `<span style="color: #67e8f9; font-weight: 500;">${escapeHtml(o.userEmail)} <small style="color: var(--text-dim);">(Bạn)</small></span>`
+      : `<span style="color: var(--text-muted);">${escapeHtml(o.userEmail)}</span>`;
 
     return `
       <tr>
-        <td style="font-family: var(--font-mono); font-size: 12px; color: var(--text-dim);">${o.id}</td>
-        <td style="font-weight: 500; color: #fff;">${o.item}</td>
-        <td style="text-align: center; color: var(--text-muted);">${o.quantity}</td>
+        <td style="font-family: var(--font-mono); font-size: 12px; color: var(--text-dim);">${escapeHtml(o.id)}</td>
+        <td style="font-weight: 500; color: #fff;">${escapeHtml(o.item)}</td>
+        <td style="text-align: center; color: var(--text-muted);">${escapeHtml(o.quantity)}</td>
         <td style="text-align: right; font-weight: 600; color: #34d399;">$${(o.totalPrice || 0).toLocaleString()}</td>
         <td style="font-size: 12px;">${customerDisplay}</td>
         <td style="text-align: center;">
           <span class="badge" style="${badgeStyle} font-size: 10px; font-weight: 600; padding: 2px 8px;">
-            ${o.status}
+            ${escapeHtml(o.status)}
           </span>
         </td>
       </tr>
@@ -503,7 +489,7 @@ function copyToken() {
 // ─────────────────────────────────────────────────────────────────────────────
 // OAUTH INITIATION
 // ─────────────────────────────────────────────────────────────────────────────
-function loginWithOAuth(provider) {
+async function loginWithOAuth(provider) {
   const provConfig = state.providers.find(p => (p.provider || '').toLowerCase() === provider.toLowerCase());
 
   if (provConfig && !provConfig.enabled) {
@@ -512,9 +498,11 @@ function loginWithOAuth(provider) {
   }
 
   showToast(t('toasts.oauth_redirect'));
-  const redirectUri = window.location.origin + '/';
-  const appId = state.handshake?.handshake?.appId || state.handshake?.appId || '';
-  const targetUrl = `${AUTH_SERVICE_URL}/auth/oauth/${provider}?redirect_uri=${encodeURIComponent(redirectUri)}${appId ? `&app_id=${encodeURIComponent(appId)}` : ''}`;
+  const verifier = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
+  sessionStorage.setItem('oauth_verifier', verifier);
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const targetUrl = `${API_BASE}/auth/start/${provider}?code_challenge=${encodeURIComponent(challenge)}`;
   window.location.href = targetUrl;
 }
 
@@ -611,7 +599,7 @@ async function checkHandshake() {
 // ─────────────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
   setLanguage(state.lang);
-  handleUrlCallback();
+  await handleUrlCallback();
   updateAuthUI();
   await checkHandshake();
   await refreshProviders();

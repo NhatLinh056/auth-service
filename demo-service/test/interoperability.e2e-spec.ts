@@ -7,9 +7,10 @@ import { appConfig } from '../src/config/app.config.js';
 
 describe('Interoperability E2E Test Suite (Project 2 <-> Project 1)', () => {
   let app: INestApplication;
-  const authServiceUrl = 'http://localhost:3000';
+  const authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:3000';
 
   let testUserToken: string;
+  let testUserId: string;
   let testUserEmail: string;
   let testAppId: string;
   let testAppToken: string;
@@ -47,6 +48,7 @@ describe('Interoperability E2E Test Suite (Project 2 <-> Project 1)', () => {
     });
     const loginData = await loginRes.json();
     testUserToken = loginData.accessToken;
+    testUserId = loginData.user.id;
 
     // 3. Register client application on Auth Service
     const appRes = await fetch(`${authServiceUrl}/applications`, {
@@ -69,6 +71,12 @@ describe('Interoperability E2E Test Suite (Project 2 <-> Project 1)', () => {
   }, 30000);
 
   afterAll(async () => {
+    if (testUserId && testUserToken) {
+      const response = await fetch(`${authServiceUrl}/users/${testUserId}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${testUserToken}` },
+      });
+      if (!response.ok && response.status !== 404) throw new Error('Failed to clean up interoperability fixture');
+    }
     if (app) {
       await app.close();
     }
@@ -182,7 +190,7 @@ describe('Interoperability E2E Test Suite (Project 2 <-> Project 1)', () => {
 
       expect(response.body.user).toBeDefined();
       expect(response.body.user.email).toBe(testUserEmail);
-      expect(response.body.user.role).toBe('USER');
+      expect(response.body.user.role).toBe('ADMIN'); // This user owns the application.
       expect(Array.isArray(response.body.orders)).toBe(true);
     });
 

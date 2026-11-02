@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsEmail, ArrayMaxSize, IsUrl, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { AppStatus } from '../../generated/prisma/enums.js';
 
 export class UpdateApplicationDto {
@@ -28,5 +28,13 @@ export class UpdateApplicationDto {
   @IsOptional()
   @IsArray({ message: 'adminEmails phải là mảng các địa chỉ email' })
   @IsString({ each: true, message: 'Mỗi email trong adminEmails phải là chuỗi' })
+  @IsEmail({}, { each: true })
+  @ArrayMaxSize(100)
   adminEmails?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsUrl({ require_tld: false, protocols: ["http", "https"], require_protocol: true }, { each: true })
+  allowedRedirectUris?: string[];
 }

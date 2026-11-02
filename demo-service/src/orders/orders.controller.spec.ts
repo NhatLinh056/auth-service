@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { OrdersController } from './orders.controller.js';
 import { OrdersService } from './orders.service.js';
 import { AuthClientService } from '../auth-client/auth-client.service.js';
+import { appConfig } from '../config/app.config.js';
 
 describe('OrdersController', () => {
   let controller: OrdersController;
@@ -13,6 +14,7 @@ describe('OrdersController', () => {
     authClientService = {
       verifyService: vi.fn(),
       verifyUserToken: vi.fn(),
+      checkOAuthProvider: vi.fn(),
       getAvailableProviders: vi.fn().mockResolvedValue([
         { provider: 'google', name: 'Google', enabled: true },
       ]),
@@ -51,6 +53,37 @@ describe('OrdersController', () => {
       const res = await controller.getAuthProviders();
       expect(Array.isArray(res)).toBe(true);
       expect(res[0].provider).toBe('google');
+    });
+  });
+
+  describe('startOAuth', () => {
+    const challenge = 'a'.repeat(43);
+    const response = () => ({ redirect: vi.fn() }) as any;
+    it('returns to the portal if app OAuth configuration is incomplete', async () => {
+      vi.spyOn(authClientService, 'checkOAuthProvider').mockRejectedValue(new Error('Redirect URI not registered'));
+      const res = response();
+      await controller.startOAuth('google', challenge, res);
+      expect(res.redirect).toHaveBeenCalledWith('/?error=oauth_not_ready');
+    });
+    it('redirects to Auth only after preflight succeeds', async () => {
+      vi.spyOn(authClientService, 'checkOAuthProvider').mockResolvedValue();
+      const res = response();
+      await controller.startOAuth('google', challenge, res);
+      expect(res.redirect.mock.calls[0][0]).toContain('/auth/oauth/google?');
+    });
+    it('sends the configured public Portal URL to Auth in production', async () => {
+      const previous = appConfig.publicUrl;
+      appConfig.publicUrl = 'https://shop.example.com';
+      try {
+        vi.spyOn(authClientService, 'checkOAuthProvider').mockResolvedValue();
+        const res = response();
+        await controller.startOAuth('google', challenge, res);
+        expect(authClientService.checkOAuthProvider).toHaveBeenCalledWith('google', 'https://shop.example.com/');
+        expect(new URL(res.redirect.mock.calls[0][0]).searchParams.get('redirect_uri'))
+          .toBe('https://shop.example.com/');
+      } finally {
+        appConfig.publicUrl = previous;
+      }
     });
   });
 

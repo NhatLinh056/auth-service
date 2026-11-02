@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { BadRequestException } from '@nestjs/common';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuthUserProfile } from '../auth-client/auth-client.service.js';
 
@@ -32,7 +34,7 @@ export class OrdersService {
       quantity: 2,
       totalPrice: 1998,
       userId: 'customer-uuid-001',
-      userEmail: 'customer@gmail.com',
+      userEmail: 'customer@example.com',
       status: 'SHIPPED',
       createdAt: new Date(Date.now() - 43200000).toISOString(),
     },
@@ -42,7 +44,7 @@ export class OrdersService {
       quantity: 1,
       totalPrice: 219,
       userId: 'customer-uuid-002',
-      userEmail: 'customer2@gmail.com',
+      userEmail: 'customer2@example.com',
       status: 'PENDING',
       createdAt: new Date(Date.now() - 7200000).toISOString(),
     },
@@ -53,7 +55,7 @@ export class OrdersService {
     if (user.role === 'ADMIN') {
       return this.orders;
     }
-    return this.orders.filter(o => o.userEmail === user.email || o.userId === user.id);
+    return this.orders.filter(o => o.userId === user.id);
   }
 
   findById(id: string, user: AuthUserProfile): Order {
@@ -61,18 +63,23 @@ export class OrdersService {
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
-    if (user.role !== 'ADMIN' && order.userEmail !== user.email && order.userId !== user.id) {
+    if (user.role !== 'ADMIN' && order.userId !== user.id) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
     return order;
   }
 
   create(data: { item: string; quantity: number; price: number }, user: AuthUserProfile): Order {
+    if (!data || typeof data.item !== 'string' || !data.item.trim() || data.item.length > 200 ||
+        !Number.isSafeInteger(data.quantity) || data.quantity < 1 || data.quantity > 10000 ||
+        typeof data.price !== 'number' || !Number.isFinite(data.price) || data.price < 0 || data.price > 100000000) {
+      throw new BadRequestException('Invalid order: item, positive integer quantity and non-negative price required');
+    }
     const newOrder: Order = {
-      id: `ord_${Date.now().toString(36)}`,
-      item: data.item || 'Generic Item',
-      quantity: data.quantity || 1,
-      totalPrice: (data.price || 100) * (data.quantity || 1),
+      id: `ord_${randomUUID()}`,
+      item: data.item.trim(),
+      quantity: data.quantity,
+      totalPrice: data.price * data.quantity,
       userId: user.id,
       userEmail: user.email,
       status: 'PENDING',

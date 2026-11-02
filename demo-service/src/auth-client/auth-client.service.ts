@@ -38,6 +38,8 @@ export interface AuthUserProfile {
   name?: string;
   role: string;
   isAppOwner?: boolean;
+  appId?: string;
+  appRole?: string;
   provider?: string;
   avatar?: string;
 }
@@ -67,7 +69,7 @@ export class AuthClientService {
   }
 
   /**
-   * Kiểm tra cache còn hiệu lực không (chưa hết TTL 5 phút)
+   * Kiểm tra cache còn hiệu lực không (chưa hết TTL 30 giây)
    */
   private isCacheValid(): boolean {
     return (
@@ -106,7 +108,7 @@ export class AuthClientService {
 
   /**
    * Handshake with Auth Service to verify credentials and ACTIVE status.
-   * Kết quả được cache trong APPLICATION_CACHE_TTL_MS (5 phút).
+   * Kết quả được cache trong APPLICATION_CACHE_TTL_MS (30 giây).
    * Gọi lại tự động khi cache hết hạn hoặc bị invalidate.
    */
   async verifyService(): Promise<VerifyServiceResult> {
@@ -121,6 +123,7 @@ export class AuthClientService {
       }
       return response.data;
     } catch (err: any) {
+      this.invalidateCache();
       const status = err.response?.status;
       const message = err.response?.data?.message || err.message;
 
@@ -152,6 +155,13 @@ export class AuthClientService {
     }
   }
 
+  async checkOAuthProvider(provider: string, redirectUri: string): Promise<void> {
+    await this.http.get(`/auth/oauth/preflight/${encodeURIComponent(provider)}`, {
+      headers: this.getServiceHeaders(),
+      params: { redirect_uri: redirectUri },
+    });
+  }
+
   /**
    * Delegated verification of End-User JWT with Auth Service
    * Maps RBAC:
@@ -160,13 +170,24 @@ export class AuthClientService {
    * - Otherwise (e.g. End-user / Customer signing in via Google/Facebook)
    *   -> Assigned role 'USER' in Project 2 context
    */
+  async exchangeOAuthCode(code: string, verifier: string) {
+    try {
+      const response = await this.http.post('/auth/oauth/exchange', { code, verifier }, {
+        headers: this.getServiceHeaders(),
+      });
+      return response.data;
+    } catch {
+      throw new UnauthorizedException('Invalid or expired login exchange');
+    }
+  }
+
   async verifyUserToken(token: string): Promise<AuthUserProfile> {
     if (!token) {
       throw new UnauthorizedException('Missing user Bearer token');
     }
 
     try {
-      const response = await this.http.get<AuthUserProfile>('/users/me', {
+      const response = await this.http.get<AuthUserProfile>('/users/verify-app-user', {
         baseURL: appConfig.authServiceUrl,
         headers: {
           Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
@@ -176,37 +197,10 @@ export class AuthClientService {
 
       const user = response.data;
 
-      // Lazy load / refresh application info nếu cache hết hạn hoặc chưa có
-      if (!this.isCacheValid()) {
-        try {
-          await this.verifyService();
-        } catch {
-          // Nếu handshake thất bại, tiếp tục với role gốc của user
-        }
+      if (user.appId !== appConfig.appId || !['ADMIN', 'USER'].includes(user.appRole || '')) {
+        throw new ForbiddenException('Invalid application-scoped verification response');
       }
-
-      // Check if user is the Owner of this Application
-      if (this.cachedApplication) {
-        const ownerUserId = this.cachedApplication.userId || this.cachedApplication.user?.id;
-        const ownerEmail = this.cachedApplication.user?.email;
-        const adminEmails: string[] = (this.cachedApplication as any).adminEmails || [];
-
-        const isOwner =
-          (Boolean(ownerUserId) && user.id === ownerUserId) ||
-          (Boolean(ownerEmail) && Boolean(user.email) && user.email.toLowerCase() === ownerEmail!.toLowerCase());
-
-        const isDelegatedAdmin =
-          Boolean(user.email) &&
-          adminEmails.some((e: string) => e.toLowerCase() === user.email.toLowerCase());
-
-        // Phân quyền tại Project 2:
-        // - ADMIN: Phải là Chủ sở hữu ứng dụng (App Owner) hoặc nằm trong danh sách adminEmails được ủy quyền.
-        // - Lưu ý: Platform Admin (Project 1) không mặc định là Admin của Project 2 (chỉ quản lý platform).
-        const isAdmin = isOwner || isDelegatedAdmin;
-
-        user.isAppOwner = Boolean(isOwner);
-        user.role = isAdmin ? 'ADMIN' : 'USER';
-      }
+      user.role = user.appRole!;
 
       return user;
     } catch (err: any) {
@@ -216,6 +210,7 @@ export class AuthClientService {
       const status = err.response?.status;
       const message = err.response?.data?.message || err.message;
 
+      if (status === 403) throw new ForbiddenException('Application access denied');
       if (status === 401) {
         throw new UnauthorizedException(`Invalid or expired user session: ${message}`);
       }

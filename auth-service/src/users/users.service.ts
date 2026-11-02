@@ -14,6 +14,7 @@ export class UsersService implements OnModuleInit {
    * Tự động khởi tạo hoặc đồng bộ tài khoản quản trị mẫu (admin@example.com / Admin123!)
    */
   async onModuleInit() {
+    if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEMO_SEED !== 'true') return;
     try {
       await this.ensureDefaultAdmin();
     } catch (err: any) {
@@ -22,6 +23,7 @@ export class UsersService implements OnModuleInit {
   }
 
   async ensureDefaultAdmin(): Promise<void> {
+    if (process.env.NODE_ENV === 'production') throw new Error('Demo admin creation is disabled in production');
     const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || 'admin@example.com';
     const existing = await this.prisma.user.findUnique({
       where: { email: adminEmail },

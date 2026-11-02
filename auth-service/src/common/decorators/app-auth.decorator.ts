@@ -21,7 +21,7 @@ export function AppAuth() {
       name: 'X-App-Token',
       description: 'Khóa bí mật của ứng dụng / Microservice (AppToken)',
       required: true,
-      example: 'apt_1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+      example: 'apt_replace_with_your_generated_token',
     }),
     ApiResponse({
       status: 401,

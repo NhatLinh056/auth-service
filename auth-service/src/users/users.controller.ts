@@ -1,5 +1,7 @@
 import {
   Body,
+  ForbiddenException,
+  UseGuards,
   Controller,
   Delete,
   Get,
@@ -19,6 +21,8 @@ import { Auth, AuthOwnerOrAdmin } from '../common/decorators/auth.decorator.js';
 import { JwtPayload } from '../common/strategies/jwt.strategy.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { UsersService } from './users.service.js';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
+import { AppAuthGuard } from '../common/guards/app-auth.guard.js';
 
 // request.user được Passport inject sau khi JwtStrategy.validate() chạy thành công
 interface RequestWithUser extends Request {
@@ -47,6 +51,32 @@ export class UsersController {
   }
 
   // GET /users — Lấy danh sách tất cả người dùng (dành riêng cho ADMIN)
+  @Get('verify-app-user')
+  @UseGuards(JwtAuthGuard, AppAuthGuard)
+  async verifyAppUser(@Request() req: RequestWithUser & { application: any }) {
+    const app = req.application;
+    const identity = req.user;
+    if (identity.type === 'app_user' && identity.appId !== app.appId) {
+      throw new ForbiddenException('Token belongs to another application');
+    }
+    const user = await this.usersService.findById(identity.sub, identity.type);
+    if (!user) throw new NotFoundException('User not found');
+    if (identity.type === 'app_user' && user.appId !== app.appId) {
+      throw new ForbiddenException('User belongs to another application');
+    }
+    const email = (user.email || '').trim().toLowerCase();
+    // Password registration does not verify email ownership.
+    const isOwner = identity.type === 'platform'
+      ? user.id === app.userId
+      : Boolean(email && email === app.user?.email?.trim().toLowerCase());
+    const delegated = identity.type === 'app_user' && Boolean(email) &&
+      (app.adminEmails || []).some((e: string) => e.trim().toLowerCase() === email);
+    const { passwordHash, ...profile } = user;
+    void passwordHash;
+    const appRole = isOwner || delegated ? 'ADMIN' : 'USER';
+    return { ...profile, role: appRole, appRole, appId: app.appId, isAppOwner: isOwner };
+  }
+
   @Get()
   @Auth(Role.ADMIN)
   @ApiOperation({ summary: 'Lấy danh sách tất cả người dùng (chỉ dành cho ADMIN)' })

@@ -78,6 +78,7 @@ model Application {
   appToken       String
   status         AppStatus       @default(ACTIVE)
   adminEmails    String[]        @default([])
+  allowedRedirectUris String[]    @default([])
   userId         String
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   oauthProviders OAuthProvider[]
@@ -101,6 +102,7 @@ model AppUser {
   updatedAt     DateTime           @updatedAt
   identities    AppOAuthIdentity[]
 
+  @@unique([id, applicationId])
   @@unique([applicationId, email])
   @@index([applicationId])
   @@map("app_users")
@@ -109,14 +111,15 @@ model AppUser {
 model AppOAuthIdentity {
   id             String            @id @default(uuid())
   appUserId      String
-  appUser        AppUser           @relation(fields: [appUserId], references: [id], onDelete: Cascade)
+  applicationId String
+  appUser        AppUser           @relation(fields: [appUserId, applicationId], references: [id, applicationId], onDelete: Cascade)
   provider       OAuthProviderType
   providerUserId String
   email          String?
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
-  @@unique([provider, providerUserId])
+  @@unique([applicationId, provider, providerUserId])
   @@index([appUserId])
   @@map("app_oauth_identities")
 }

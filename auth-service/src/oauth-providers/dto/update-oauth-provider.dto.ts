@@ -26,11 +26,4 @@ export class UpdateOAuthProviderDto {
   @IsString()
   clientSecret?: string;
 
-  @ApiPropertyOptional({
-    description: 'Callback URL redirect về sau khi đăng nhập thành công',
-    example: 'http://localhost:3000/auth/oauth/google/callback',
-  })
-  @IsOptional()
-  @IsString()
-  callbackUrl?: string;
 }

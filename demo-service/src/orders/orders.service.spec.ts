@@ -35,4 +35,26 @@ describe('OrdersService', () => {
     const userOrders = service.findAll(user);
     expect(userOrders.length).toBe(1);
   });
+  it('does not grant ownership by matching email alone', () => {
+    const user = { id: 'owner', email: 'same@example.com', role: 'USER' };
+    const order = service.create({ item: 'Book', quantity: 1, price: 10 }, user);
+    const impostor = { ...user, id: 'different-subject' };
+    expect(service.findAll(impostor)).toEqual([]);
+    expect(() => service.findById(order.id, impostor)).toThrow();
+  });
+  it.each([
+    { item: '', quantity: 1, price: 10 },
+    { item: 'Book', quantity: -1, price: 10 },
+    { item: 'Book', quantity: 1.5, price: 10 },
+    { item: 'Book', quantity: 1, price: -10 },
+    { item: 'Book', quantity: 1, price: Infinity },
+  ])('rejects invalid order input %j', data => {
+    expect(() => service.create(data, { id: 'u', email: 'u@example.com', role: 'USER' })).toThrow();
+  });
+  it('preserves zero prices and generates distinct IDs in a rapid batch', () => {
+    const orders = Array.from({ length: 100 }, () => service.create({ item: 'Free', quantity: 1, price: 0 }, { id: 'u', email: 'u@example.com', role: 'USER' }));
+    expect(new Set(orders.map(o => o.id)).size).toBe(100);
+    expect(orders.every(o => o.totalPrice === 0)).toBe(true);
+  });
+
 });

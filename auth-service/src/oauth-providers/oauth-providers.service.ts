@@ -10,6 +10,7 @@ import { OAuthProviderType, Role } from '../generated/prisma/enums.js';
 import type { JwtPayload } from '../common/strategies/jwt.strategy.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { UpdateOAuthProviderDto } from './dto/update-oauth-provider.dto.js';
+import { getOAuthCallbackUrl } from '../auth/oauth-public-url.js';
 
 export interface SanitizedOAuthProvider {
   id: string;
@@ -77,13 +78,13 @@ export class OAuthProvidersService implements OnModuleInit {
         provider: OAuthProviderType.GOOGLE,
         name: 'Google',
         isEnabled: false,
-        callbackUrl: 'http://localhost:3000/auth/oauth/google/callback',
+      callbackUrl: getOAuthCallbackUrl(OAuthProviderType.GOOGLE),
       },
       {
         provider: OAuthProviderType.FACEBOOK,
         name: 'Facebook',
         isEnabled: false,
-        callbackUrl: 'http://localhost:3000/auth/oauth/facebook/callback',
+      callbackUrl: getOAuthCallbackUrl(OAuthProviderType.FACEBOOK),
       },
     ];
 
@@ -158,6 +159,7 @@ export class OAuthProvidersService implements OnModuleInit {
     const { clientSecret, ...rest } = provider;
     return {
       ...rest,
+      callbackUrl: getOAuthCallbackUrl(provider.provider),
       hasSecret: Boolean(clientSecret && clientSecret.length > 0),
     };
   }
@@ -243,7 +245,6 @@ export class OAuthProvidersService implements OnModuleInit {
     const dataToUpdate: any = {};
     if (dto.isEnabled !== undefined) dataToUpdate.isEnabled = dto.isEnabled;
     if (dto.clientId !== undefined) dataToUpdate.clientId = dto.clientId.trim() || null;
-    if (dto.callbackUrl !== undefined) dataToUpdate.callbackUrl = dto.callbackUrl.trim() || null;
 
     if (dto.clientSecret !== undefined && dto.clientSecret.trim().length > 0) {
       dataToUpdate.clientSecret = dto.clientSecret.trim();

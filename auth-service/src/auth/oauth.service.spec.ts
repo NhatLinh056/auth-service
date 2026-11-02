@@ -1,284 +1,104 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { OAuthProviderType, Role } from '../generated/prisma/enums.js';
-import { OAuthProvidersService } from '../oauth-providers/oauth-providers.service.js';
-import { PrismaService } from '../prisma/prisma.service.js';
 import { OAuthService } from './oauth.service.js';
 
-describe('OAuthService', () => {
+const redirect = 'http://localhost:3001/';
+const challenge = 'a'.repeat(43);
+describe('OAuthService tenant security', () => {
   let service: OAuthService;
-  let mockPrisma: any;
-  let mockOAuthProvidersService: any;
-  let mockJwtService: any;
-
-  const sampleGoogleConfig = {
-    id: 'prov-1',
-    provider: OAuthProviderType.GOOGLE,
-    name: 'Google',
-    isEnabled: true,
-    clientId: 'google-client-id-123',
-    clientSecret: 'google-client-secret-xyz',
-    callbackUrl: 'http://localhost:3000/auth/oauth/google/callback',
-  };
-
-  const sampleFacebookConfig = {
-    id: 'prov-2',
-    provider: OAuthProviderType.FACEBOOK,
-    name: 'Facebook',
-    isEnabled: true,
-    clientId: 'facebook-app-id-456',
-    clientSecret: 'facebook-app-secret-abc',
-    callbackUrl: 'http://localhost:3000/auth/oauth/facebook/callback',
-  };
-
+  let prisma: any;
+  let config: any;
+  let providers: any;
+  let jwt: JwtService;
   beforeEach(() => {
-    vi.clearAllMocks();
-
-    mockPrisma = {
-      application: {
-        findFirst: vi.fn().mockResolvedValue({
-          id: 'app-uuid-1',
-          name: 'Demo App',
-          appId: 'app_123',
-          status: 'ACTIVE',
-        }),
-        findUnique: vi.fn().mockResolvedValue({
-          id: 'app-uuid-1',
-          name: 'Demo App',
-          appId: 'app_123',
-          status: 'ACTIVE',
-        }),
-      },
-      oAuthIdentity: {
-        findUnique: vi.fn(),
-        create: vi.fn(),
-      },
-      user: {
-        findUnique: vi.fn(),
-        create: vi.fn(),
-      },
+    const application = { id: 'app-db', appId: 'app-public', status: 'ACTIVE', allowedRedirectUris: [redirect], adminEmails: [], user: { email: 'owner@example.com' } };
+    prisma = {
+      application: { findUnique: vi.fn().mockResolvedValue(application) },
+      appUser: { findUnique: vi.fn(), create: vi.fn().mockResolvedValue({ id: 'u1', email: 'user@example.com', name: 'User', role: 'USER' }), update: vi.fn() },
+      appOAuthIdentity: { findUnique: vi.fn(), create: vi.fn() },
     };
-
-    mockOAuthProvidersService = {
-      normalizeProvider: vi.fn().mockImplementation((input: string) => {
-        const u = input.toUpperCase();
-        if (u === 'GOOGLE') return OAuthProviderType.GOOGLE;
-        if (u === 'FACEBOOK') return OAuthProviderType.FACEBOOK;
-        throw new BadRequestException('Unsupported');
-      }),
-      getInternalConfig: vi.fn(),
-    };
-
-    mockJwtService = {
-      signAsync: vi.fn().mockResolvedValue('signed_state_or_jwt_token'),
-      verifyAsync: vi.fn(),
-    };
-
-    service = new OAuthService(
-      mockPrisma as unknown as PrismaService,
-      mockOAuthProvidersService as unknown as OAuthProvidersService,
-      mockJwtService as unknown as JwtService,
-    );
+    config = { application, isEnabled: true, name: 'Google', clientId: 'test-id', clientSecret: 'test-secret', callbackUrl: 'http://localhost:3000/auth/oauth/google/callback' };
+    providers = { normalizeProvider: vi.fn((p: string) => p.toUpperCase()), getInternalConfig: vi.fn().mockResolvedValue(config) };
+    jwt = new JwtService({ secret: 'unit-test-secret-only', signOptions: { expiresIn: '1h' } });
+    service = new OAuthService(prisma, providers, jwt);
+    vi.spyOn(service, 'exchangeCodeForProfile').mockResolvedValue({ providerUserId: 'provider-user', email: 'user@example.com', name: 'User', isEmailVerified: true });
   });
-
-  it('nên được khởi tạo thành công', () => {
-    expect(service).toBeDefined();
+  async function state() {
+    return new URL(await service.getAuthorizationUrl('google', redirect, 'app-public', challenge)).searchParams.get('state')!;
+  }
+  it('constructs Google authorization with signed app-scoped state', async () => {
+    const payload = await jwt.verifyAsync(await state());
+    expect(payload).toMatchObject({ appId: 'app-public', redirectUri: redirect, codeChallenge: challenge });
   });
-
-  describe('getAuthorizationUrl', () => {
-    it('nên ném BadRequestException nếu provider bị vô hiệu hóa (disabled)', async () => {
-      mockOAuthProvidersService.getInternalConfig.mockResolvedValueOnce({
-        ...sampleGoogleConfig,
-        isEnabled: false,
-      });
-
-      await expect(service.getAuthorizationUrl('google')).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
-    it('nên ném BadRequestException nếu provider chưa cấu hình clientId hoặc clientSecret', async () => {
-      mockOAuthProvidersService.getInternalConfig.mockResolvedValueOnce({
-        ...sampleGoogleConfig,
-        clientId: null,
-      });
-
-      await expect(service.getAuthorizationUrl('google')).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
-    it('nên sinh authorization URL hợp lệ cho Google kèm state đã ký', async () => {
-      mockOAuthProvidersService.getInternalConfig.mockResolvedValueOnce(sampleGoogleConfig);
-
-      const url = await service.getAuthorizationUrl('google', 'http://localhost:3001/auth/callback');
-
-      expect(url).toContain('accounts.google.com/o/oauth2/v2/auth');
-      expect(url).toContain('client_id=google-client-id-123');
-      expect(url).toContain('redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fauth%2Foauth%2Fgoogle%2Fcallback');
-      expect(url).toContain('state=signed_state_or_jwt_token');
-      expect(mockJwtService.signAsync).toHaveBeenCalled();
-    });
-
-    it('nên sinh authorization URL hợp lệ cho Facebook kèm state đã ký', async () => {
-      mockOAuthProvidersService.getInternalConfig.mockResolvedValueOnce(sampleFacebookConfig);
-
-      const url = await service.getAuthorizationUrl('facebook', 'http://localhost:3001/auth/callback');
-
-      expect(url).toContain('facebook.com/v19.0/dialog/oauth');
-      expect(url).toContain('client_id=facebook-app-id-456');
-      expect(url).toContain('state=signed_state_or_jwt_token');
-    });
+  it('only returns an error redirect when signed state points to a registered application URL', async () => {
+    const signed = await state();
+    expect(await service.getErrorRedirectUri(signed, 'google')).toBe(redirect);
+    expect(await service.getErrorRedirectUri('forged', 'google')).toBeNull();
+    prisma.application.findUnique.mockResolvedValue({ status: 'ACTIVE', allowedRedirectUris: [] });
+    expect(await service.getErrorRedirectUri(signed, 'google')).toBeNull();
   });
-
-  describe('handleCallback', () => {
-    it('nên ném UnauthorizedException nếu Provider trả về tham số error', async () => {
-      await expect(
-        service.handleCallback('google', {
-          error: 'access_denied',
-          error_description: 'User denied consent',
-        }),
-      ).rejects.toThrow(UnauthorizedException);
-    });
-
-    it('nên ném BadRequestException nếu thiếu code hoặc state', async () => {
-      await expect(service.handleCallback('google', {})).rejects.toThrow(BadRequestException);
-      await expect(service.handleCallback('google', { code: 'code123' })).rejects.toThrow(BadRequestException);
-    });
-
-    it('nên ném UnauthorizedException nếu state không hợp lệ hoặc đã hết hạn', async () => {
-      mockJwtService.verifyAsync.mockRejectedValueOnce(new Error('jwt expired'));
-
-      await expect(
-        service.handleCallback('google', { code: 'code123', state: 'bad_state' }),
-      ).rejects.toThrow(UnauthorizedException);
-    });
-
-    it('nên ném ForbiddenException nếu provider bị vô hiệu hóa khi callback gọi về', async () => {
-      mockJwtService.verifyAsync.mockResolvedValueOnce({
-        provider: OAuthProviderType.GOOGLE,
-        nonce: 'n1',
-        redirectUri: 'http://localhost:3001/auth/callback',
-      });
-      mockOAuthProvidersService.getInternalConfig.mockResolvedValueOnce({
-        ...sampleGoogleConfig,
-        isEnabled: false,
-      });
-
-      await expect(
-        service.handleCallback('google', { code: 'code123', state: 'valid_state' }),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('nên ném UnauthorizedException nếu email từ Provider chưa được xác thực', async () => {
-      mockJwtService.verifyAsync.mockResolvedValueOnce({
-        provider: OAuthProviderType.GOOGLE,
-        nonce: 'n1',
-        redirectUri: 'http://localhost:3001/auth/callback',
-      });
-      mockOAuthProvidersService.getInternalConfig.mockResolvedValueOnce(sampleGoogleConfig);
-
-      // Mock exchangeCodeForProfile
-      vi.spyOn(service, 'exchangeCodeForProfile').mockResolvedValueOnce({
-        providerUserId: 'sub-123',
-        email: 'unverified@test.com',
-        name: 'Unverified User',
-        isEmailVerified: false,
-      });
-
-      await expect(
-        service.handleCallback('google', { code: 'code123', state: 'valid_state' }),
-      ).rejects.toThrow(UnauthorizedException);
-    });
-
-    it('nên tạo User mới và liên kết Identity nếu user chưa từng tồn tại', async () => {
-      mockJwtService.verifyAsync.mockResolvedValueOnce({
-        provider: OAuthProviderType.GOOGLE,
-        nonce: 'n1',
-        redirectUri: 'http://localhost:3001/auth/callback',
-      });
-      mockOAuthProvidersService.getInternalConfig.mockResolvedValueOnce(sampleGoogleConfig);
-
-      vi.spyOn(service, 'exchangeCodeForProfile').mockResolvedValueOnce({
-        providerUserId: 'sub-new-user',
-        email: 'newuser@google.com',
-        name: 'New Google User',
-        isEmailVerified: true,
-      });
-
-      mockPrisma.oAuthIdentity.findUnique.mockResolvedValueOnce(null);
-      mockPrisma.user.findUnique.mockResolvedValueOnce(null);
-
-      const createdUser = {
-        id: 'new-user-uuid',
-        email: 'newuser@google.com',
-        name: 'New Google User',
-        role: Role.USER,
-      };
-      mockPrisma.user.create.mockResolvedValueOnce(createdUser);
-
-      const result = await service.handleCallback('google', {
-        code: 'code123',
-        state: 'valid_state',
-      });
-
-      expect(mockPrisma.user.create).toHaveBeenCalled();
-      expect(result.user.email).toBe('newuser@google.com');
-      expect(result.accessToken).toBe('signed_state_or_jwt_token');
-      expect(result.redirectUri).toBe('http://localhost:3001/auth/callback');
-    });
-
-    it('nên liên kết Identity vào User hiện có nếu email đã tồn tại trong DB', async () => {
-      mockJwtService.verifyAsync.mockResolvedValueOnce({
-        provider: OAuthProviderType.GOOGLE,
-        nonce: 'n1',
-        redirectUri: 'http://localhost:3001/auth/callback',
-      });
-      mockOAuthProvidersService.getInternalConfig.mockResolvedValueOnce(sampleGoogleConfig);
-
-      vi.spyOn(service, 'exchangeCodeForProfile').mockResolvedValueOnce({
-        providerUserId: 'sub-existing-user',
-        email: 'existing@example.com',
-        name: 'Existing User',
-        isEmailVerified: true,
-      });
-
-      mockPrisma.oAuthIdentity.findUnique.mockResolvedValueOnce(null);
-      const existingUser = {
-        id: 'existing-uuid',
-        email: 'existing@example.com',
-        name: 'Existing User',
-        role: Role.USER,
-      };
-      mockPrisma.user.findUnique.mockResolvedValueOnce(existingUser);
-      mockPrisma.oAuthIdentity.create.mockResolvedValueOnce({});
-
-      const result = await service.handleCallback('google', {
-        code: 'code123',
-        state: 'valid_state',
-      });
-
-      expect(mockPrisma.oAuthIdentity.create).toHaveBeenCalledWith({
-        data: {
-          userId: 'existing-uuid',
-          provider: OAuthProviderType.GOOGLE,
-          providerUserId: 'sub-existing-user',
-          email: 'existing@example.com',
-        },
-      });
-      expect(result.user.id).toBe('existing-uuid');
-    });
-
-    it('nên tự động nhận diện và gán role ADMIN nếu email nằm trong whitelist ADMIN_EMAILS', () => {
-      process.env.ADMIN_EMAILS = 'vipadmin@google.com,another@admin.com';
-      expect(service.isAdminEmail('vipadmin@google.com')).toBe(true);
-      expect(service.isAdminEmail('VIPADMIN@GOOGLE.COM')).toBe(true);
-      expect(service.isAdminEmail('normal@google.com')).toBe(false);
-    });
+  it('constructs Facebook authorization', async () => {
+    expect(await service.getAuthorizationUrl('facebook', redirect, 'app-public', challenge)).toContain('facebook.com');
+  });
+  it('requires explicit app ID and PKCE', async () => {
+    await expect(service.getAuthorizationUrl('google', redirect)).rejects.toThrow(BadRequestException);
+  });
+  it.each(['https://attacker.example/', 'http://localhost:3001/other', 'javascript:alert(1)', 'http://localhost:3001/?next=evil'])('rejects unregistered redirect %s', async uri => {
+    await expect(service.getAuthorizationUrl('google', uri, 'app-public', challenge)).rejects.toThrow(BadRequestException);
+  });
+  it('rejects a disabled provider at initiation', async () => {
+    config.isEnabled = false;
+    await expect(state()).rejects.toThrow(BadRequestException);
+  });
+  it('rejects missing credentials', async () => {
+    config.clientSecret = null;
+    await expect(state()).rejects.toThrow(BadRequestException);
+  });
+  it('rejects provider errors and missing code/state', async () => {
+    await expect(service.handleCallback('google', { error: 'denied' })).rejects.toThrow(UnauthorizedException);
+    await expect(service.handleCallback('google', {})).rejects.toThrow(BadRequestException);
+    await expect(service.handleCallback('google', { code: 'x' })).rejects.toThrow(BadRequestException);
+  });
+  it('rejects forged state', async () => {
+    await expect(service.handleCallback('google', { code: 'x', state: 'invalid' })).rejects.toThrow(UnauthorizedException);
+  });
+  it('rejects provider mismatch', async () => {
+    await expect(service.handleCallback('facebook', { code: 'x', state: await state() })).rejects.toThrow(UnauthorizedException);
+  });
+  it('rejects disabled provider at callback', async () => {
+    const signed = await state(); config.isEnabled = false;
+    await expect(service.handleCallback('google', { code: 'x', state: signed })).rejects.toThrow(ForbiddenException);
+  });
+  it('rejects deleted or inactive application', async () => {
+    const signed = await state(); prisma.application.findUnique.mockResolvedValue(null);
+    await expect(service.handleCallback('google', { code: 'x', state: signed })).rejects.toThrow(ForbiddenException);
+  });
+  it('rejects unverified provider email', async () => {
+    vi.mocked(service.exchangeCodeForProfile).mockResolvedValue({ providerUserId: 'p', email: 'owner@example.com', name: '', isEmailVerified: false });
+    await expect(service.handleCallback('google', { code: 'x', state: await state() })).rejects.toThrow(UnauthorizedException);
+    expect(prisma.appUser.create).not.toHaveBeenCalled();
+  });
+  it('creates AppUser, issues scoped JWT and consumes state once', async () => {
+    const signed = await state();
+    const result = await service.handleCallback('google', { code: 'x', state: signed });
+    expect(await jwt.verifyAsync(result.accessToken)).toMatchObject({ sub: 'u1', type: 'app_user', appId: 'app-public' });
+    expect(prisma.appUser.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ applicationId: 'app-db' }) }));
+    await expect(service.handleCallback('google', { code: 'x', state: signed })).rejects.toThrow(UnauthorizedException);
+  });
+  it('links identity to an existing AppUser within its tenant', async () => {
+    prisma.appUser.findUnique.mockResolvedValue({ id: 'existing', role: 'USER', email: 'user@example.com' });
+    await service.handleCallback('google', { code: 'x', state: await state() });
+    expect(prisma.appOAuthIdentity.create).toHaveBeenCalledWith({ data: { appUserId: 'existing', applicationId: 'app-db', provider: 'GOOGLE', providerUserId: 'provider-user', email: 'user@example.com' } });
+  });
+  it('looks up provider identity using tenant as part of unique key', async () => {
+    await service.handleCallback('google', { code: 'x', state: await state() });
+    expect(prisma.appOAuthIdentity.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { applicationId_provider_providerUserId: { applicationId: 'app-db', provider: 'GOOGLE', providerUserId: 'provider-user' } } }));
+  });
+  it('calculates admins only from the target application', () => {
+    expect(service.isApplicationAdmin('OWNER@example.com', config.application)).toBe(true);
+    expect(service.isApplicationAdmin('other@example.com', config.application)).toBe(false);
+    config.application.adminEmails = ['manager@example.com'];
+    expect(service.isApplicationAdmin('Manager@example.com', config.application)).toBe(true);
   });
 });

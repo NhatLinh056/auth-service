@@ -18,11 +18,11 @@ async function bootstrap() {
   await app.listen(appConfig.port);
 
   logger.log(`=======================================================`);
-  logger.log(`🚀 [PROJECT 2] Demo Service running on Port ${appConfig.port}`);
-  logger.log(`🔗 Target Auth Service: ${appConfig.authServiceUrl}`);
-  logger.log(`🔑 AppID: ${appConfig.appId || '(NOT SET)'}`);
-  logger.log(`📡 Handshake status: http://localhost:${appConfig.port}/status`);
-  logger.log(`📦 Protected business orders: http://localhost:${appConfig.port}/orders`);
+  logger.log(` [PROJECT 2] Demo Service running on Port ${appConfig.port}`);
+  logger.log(` Target Auth Service: ${appConfig.authServiceUrl}`);
+  logger.log(` AppID: ${appConfig.appId || '(NOT SET)'}`);
+  logger.log(` Handshake status: http://localhost:${appConfig.port}/status`);
+  logger.log(` Protected business orders: http://localhost:${appConfig.port}/orders`);
   logger.log(`=======================================================`);
 }
 

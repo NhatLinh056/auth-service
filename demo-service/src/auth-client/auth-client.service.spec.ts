@@ -85,7 +85,7 @@ describe('AuthClientService', () => {
         id: 'usr-1',
         email: 'user@example.com',
         role: 'USER',
-        name: 'Test User',
+        name: 'Test User', appId: appConfig.appId, appRole: 'USER',
       };
 
       vi.spyOn((service as any).http, 'get').mockResolvedValueOnce({
@@ -124,7 +124,7 @@ describe('AuthClientService', () => {
         id: 'developer-user-id',
         email: 'developer@example.com',
         role: 'USER', // Platform role
-        name: 'App Developer',
+        name: 'App Developer', appId: appConfig.appId, appRole: 'ADMIN', isAppOwner: true,
       };
 
       vi.spyOn((service as any).http, 'get').mockResolvedValueOnce({
@@ -154,9 +154,9 @@ describe('AuthClientService', () => {
 
       const mockCustomer = {
         id: 'customer-123',
-        email: 'customer@gmail.com',
+        email: 'customer@example.com',
         role: 'USER',
-        name: 'Regular Customer',
+        name: 'Regular Customer', appId: appConfig.appId, appRole: 'USER', isAppOwner: false,
       };
 
       vi.spyOn((service as any).http, 'get').mockResolvedValueOnce({
@@ -189,7 +189,7 @@ describe('AuthClientService', () => {
         id: 'platform-admin-id',
         email: 'admin@example.com',
         role: 'ADMIN', // ADMIN of Project 1 (Platform)
-        name: 'Platform Administrator',
+        name: 'Platform Administrator', appId: appConfig.appId, appRole: 'USER', isAppOwner: false,
       };
 
       vi.spyOn((service as any).http, 'get').mockResolvedValueOnce({
@@ -250,4 +250,28 @@ describe('AuthClientService', () => {
       expect(res).toEqual([]);
     });
   });
+  it('rejects cross-tenant verification responses even when cache is populated', async () => {
+    (service as any).cachedApplication = { appId: appConfig.appId, status: 'ACTIVE' };
+    (service as any).cachedAt = Date.now();
+    vi.spyOn((service as any).http, 'get').mockResolvedValue({ data: { id: 'u', appId: 'other', appRole: 'ADMIN', role: 'ADMIN' } });
+    await expect(service.verifyUserToken('token')).rejects.toThrow(ForbiddenException);
+  });
+  it('does not use cached ADMIN permissions when verification fails', async () => {
+    (service as any).cachedApplication = { appId: appConfig.appId, adminEmails: ['admin@example.com'] };
+    (service as any).cachedAt = Date.now();
+    vi.spyOn((service as any).http, 'get').mockRejectedValue({ response: { status: 403 } });
+    await expect(service.verifyUserToken('token')).rejects.toThrow(ForbiddenException);
+  });
+  it('rejects legacy profiles without explicit application role', async () => {
+    vi.spyOn((service as any).http, 'get').mockResolvedValue({ data: { role: 'ADMIN', appId: appConfig.appId } });
+    await expect(service.verifyUserToken('token')).rejects.toThrow(ForbiddenException);
+  });
+  it('clears cached handshake after a rejected refresh', async () => {
+    (service as any).cachedApplication = { appId: appConfig.appId };
+    (service as any).cachedAt = Date.now();
+    vi.spyOn((service as any).http, 'get').mockRejectedValue({ response: { status: 401 } });
+    await expect(service.verifyService()).rejects.toThrow(UnauthorizedException);
+    expect(service.getCachedApplication()).toBeNull();
+  });
+
 });

@@ -7,6 +7,7 @@ export interface Application {
   appToken?: string;
   status: ApplicationStatus;
   adminEmails?: string[];
+  allowedRedirectUris?: string[];
   userId: string;
   user?: {
     id: string;
@@ -26,4 +27,5 @@ export interface UpdateAppPayload {
   name?: string;
   status?: ApplicationStatus;
   adminEmails?: string[];
+  allowedRedirectUris?: string[];
 }

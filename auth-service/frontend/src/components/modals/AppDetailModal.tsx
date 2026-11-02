@@ -27,10 +27,12 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [adminEmailsInput, setAdminEmailsInput] = useState<string>('');
+  const [redirectUris, setRedirectUris] = useState('');
   const [isSavingEmails, setIsSavingEmails] = useState(false);
 
   React.useEffect(() => {
     if (app) {
+      setRedirectUris((app.allowedRedirectUris || []).join('\n'));
       setAdminEmailsInput((app.adminEmails || []).join(', '));
     }
   }, [app]);
@@ -87,7 +89,7 @@ async function verifyServiceCredentials() {
 
 // B. Validate User Bearer JWT Token (User Identity Delegation)
 async function validateUserToken(userBearerJwt) {
-  const { data: userProfile } = await authClient.get('/users/me', {
+  const { data: userProfile } = await authClient.get('/users/verify-app-user', {
     headers: {
       Authorization: \`Bearer \${userBearerJwt}\`,
     },
@@ -104,7 +106,7 @@ curl -X GET "${origin}/auth/verify-service" \\
   -H "X-App-Token: ${rawToken}"
 
 # 2. Validate Delegated User Bearer JWT
-curl -X GET "${origin}/users/me" \\
+curl -X GET "${origin}/users/verify-app-user" \\
   -H "X-App-Id: ${app.appId}" \\
   -H "X-App-Token: ${rawToken}" \\
   -H "Authorization: Bearer <USER_JWT_TOKEN>"`;
@@ -336,8 +338,8 @@ curl -X GET "${origin}/users/me" \\
               className="form-control"
               placeholder={
                 lang === 'vi'
-                  ? 'Ví dụ: admin@gmail.com, manager@gmail.com'
-                  : 'e.g. admin@gmail.com, manager@gmail.com'
+                  ? 'Ví dụ: admin@example.com, manager@example.com'
+                  : 'e.g. admin@example.com, manager@example.com'
               }
               value={adminEmailsInput}
               onChange={(e) => setAdminEmailsInput(e.target.value)}
@@ -382,6 +384,25 @@ curl -X GET "${origin}/users/me" \\
               ? 'Tài khoản Google/Facebook có email trong danh sách này sẽ tự động nhận quyền ADMIN tại Client Microservice.'
               : 'Google/Facebook accounts with these emails will automatically receive ADMIN role in Client Microservices.'}
           </div>
+        </div>
+
+        <div className="detail-field" style={{ marginBottom: 16 }}>
+          <label htmlFor="redirect-uris">{lang === 'vi' ? 'URL quay về ứng dụng sau đăng nhập' : 'Application return URLs after sign-in'}</label>
+          <textarea id="redirect-uris" className="form-control" rows={3}
+            placeholder="http://localhost:3001/" value={redirectUris}
+            onChange={e => setRedirectUris(e.target.value)} />
+          <p className="form-hint">{lang === 'vi' ? 'Mỗi dòng một URL chính xác, ví dụ https://shop.example.com/. HTTPS, hoặc HTTP localhost khi phát triển.' : 'One exact URL per line, such as https://shop.example.com/. Use HTTPS, or HTTP localhost for development.'}</p>
+          <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading}
+            onClick={async () => {
+              setActionLoading(true);
+              try {
+                const updated = await applicationsService.update(app.id, {
+                  allowedRedirectUris: redirectUris.split('\n').map(v => v.trim()).filter(Boolean),
+                });
+                onUpdateApp(updated); showToast(lang === 'vi' ? 'Đã lưu' : 'Saved');
+              } catch (err: any) { showToast(err.message, 'error'); }
+              finally { setActionLoading(false); }
+            }}>{lang === 'vi' ? 'Lưu redirect URIs' : 'Save redirect URIs'}</button>
         </div>
 
         {/* Microservice SDK Setup & Configuration */}

@@ -1,5 +1,8 @@
 import {
   Body,
+  Header,
+  Req,
+  UnauthorizedException,
   Controller,
   Get,
   Headers,
@@ -11,6 +14,8 @@ import {
   Res,
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { OAuthGrantsService } from './oauth-grants.service.js';
+import type { Request } from 'express';
 import type { Response } from 'express';
 import { AppAuth } from '../common/decorators/app-auth.decorator.js';
 import { CurrentApp } from '../common/decorators/current-app.decorator.js';
@@ -26,6 +31,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly oauthService: OAuthService,
+    private readonly grants: OAuthGrantsService,
   ) {}
 
   @Post('register')
@@ -94,6 +100,17 @@ export class AuthController {
     return this.authService.getPublicProviders(targetAppId);
   }
 
+  @Get('oauth/preflight/:provider')
+  @AppAuth()
+  async preflightOAuth(
+    @Param('provider') provider: string,
+    @Query('redirect_uri') redirectUri: string,
+    @CurrentApp() app: any,
+  ) {
+    await this.oauthService.checkOAuthAvailability(provider, app.appId, redirectUri);
+    return { ready: true };
+  }
+
   @Get('oauth/:provider')
   @Public()
   @ApiOperation({
@@ -117,10 +134,14 @@ export class AuthController {
     @Query('redirect_uri') redirectUri: string,
     @Res() res: Response,
     @Query('app_id') appId?: string,
+    @Query('code_challenge') codeChallenge?: string,
   ) {
-    const authUrl = appId
-      ? await this.oauthService.getAuthorizationUrl(provider, redirectUri, appId)
-      : await this.oauthService.getAuthorizationUrl(provider, redirectUri);
+    const authUrl = await this.oauthService.getAuthorizationUrl(provider, redirectUri, appId, codeChallenge);
+    const state = new URL(authUrl).searchParams.get('state')!;
+    res.cookie('oauth_state', state, {
+      httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production',
+      path: '/auth/oauth', maxAge: 600000,
+    });
     return res.redirect(authUrl);
   }
 
@@ -144,62 +165,42 @@ export class AuthController {
   })
   async handleOAuthCallback(
     @Param('provider') provider: string,
-    @Query()
-    query: {
-      code?: string;
-      state?: string;
-      error?: string;
-      error_description?: string;
-      format?: string;
-    },
+    @Query() query: { code?: string; state?: string; error?: string; error_description?: string },
     @Res() res: Response,
+    @Req() req: Request,
   ) {
+    const cookie = (req.headers.cookie || '').split(';').map(v => v.trim())
+      .find(v => v.startsWith('oauth_state='))?.slice('oauth_state='.length);
+    res.clearCookie('oauth_state', { path: '/auth/oauth' });
+    if (!query.state || !cookie || encodeURIComponent(query.state) !== cookie) {
+      throw new UnauthorizedException('OAuth browser session mismatch');
+    }
+    let result;
     try {
-      const result = await this.oauthService.handleCallback(provider, query);
-
-      // Hỗ trợ trả JSON trực tiếp cho API test / E2E test
-      if (query.format === 'json') {
-        return res.status(HttpStatus.OK).json({
-          accessToken: result.accessToken,
-          user: result.user,
-          redirectUri: result.redirectUri,
-        });
-      }
-
-      // Luồng mặc định: Redirect về redirectUri của Client (Project 2 / Web UI) kèm token
-      const targetUrl = new URL(result.redirectUri);
-      targetUrl.searchParams.set('token', result.accessToken);
-      targetUrl.searchParams.set('email', result.user.email);
-      if (result.user.name) {
-        targetUrl.searchParams.set('name', result.user.name);
-      }
-      targetUrl.searchParams.set('role', result.user.role);
-      targetUrl.searchParams.set('provider', (result.user.provider || provider).toLowerCase());
-      if (result.user.avatarUrl) {
-        targetUrl.searchParams.set('avatar', result.user.avatarUrl);
-      }
-
-      return res.redirect(targetUrl.toString());
-    } catch (err: any) {
-      // Nếu API client yêu cầu format JSON (như trong các bài test) thì ném lỗi bình thường
-      if (query.format === 'json') {
-        throw err;
-      }
-
-      // Trích xuất client redirect URI từ OAuth state token
-      const clientRedirectUri = this.oauthService.extractRedirectUriFromState(query.state);
-      const targetUrl = new URL(clientRedirectUri);
-
-      // Truyền thông điệp lỗi về Frontend để hiển thị Toast thông báo thân thiện
-      const errorMessage =
-        query.error_description ||
-        query.error ||
-        err?.message ||
-        'OAuth authentication was cancelled';
-      targetUrl.searchParams.set('error', errorMessage);
-
+      result = await this.oauthService.handleCallback(provider, query);
+    } catch (error) {
+      const redirectUri = await this.oauthService.getErrorRedirectUri(query.state, provider);
+      if (!redirectUri) throw error;
+      const targetUrl = new URL(redirectUri);
+      targetUrl.searchParams.set('error', query.error ? 'oauth_cancelled' : 'oauth_failed');
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Referrer-Policy', 'no-referrer');
       return res.redirect(targetUrl.toString());
     }
+    const code = this.grants.issue(result, result.appId, result.codeChallenge);
+    const targetUrl = new URL(result.redirectUri);
+    targetUrl.searchParams.set('code', code);
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    return res.redirect(targetUrl.toString());
+  }
+
+  @Header('Cache-Control', 'no-store')
+  @Post('oauth/exchange')
+  @HttpCode(HttpStatus.OK)
+  @AppAuth()
+  exchangeOAuthCode(@Body() body: { code?: string; verifier?: string }, @CurrentApp() app: any) {
+    return this.grants.exchange(body.code, body.verifier, app.appId);
   }
 
   @Get('verify-service')

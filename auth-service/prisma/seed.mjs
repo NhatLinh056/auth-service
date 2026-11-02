@@ -2,14 +2,16 @@ import bcrypt from 'bcrypt';
 import 'dotenv/config';
 import pg from 'pg';
 
-const connectionString =
-  process.env.DATABASE_URL ||
-  'postgresql://postgres:Bim0562055@localhost:5432/auth_service_db';
+if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEMO_SEED !== 'true') {
+  throw new Error('Seed requires ENABLE_DEMO_SEED=true and a non-production environment');
+}
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) throw new Error('DATABASE_URL is required');
 
 const client = new pg.Client({ connectionString });
 
 async function seed() {
-  console.log('🌱 Bắt đầu nạp dữ liệu mẫu vào cơ sở dữ liệu (Database Seeding)...');
+  console.log(' Bắt đầu nạp dữ liệu mẫu vào cơ sở dữ liệu (Database Seeding)...');
   await client.connect();
 
   try {
@@ -26,7 +28,7 @@ async function seed() {
        RETURNING id, email, role;`,
       [adminEmail, adminPasswordHash, 'Administrator']
     );
-    console.log(`✅ Platform Admin: ${adminRes.rows[0].email} (Mật khẩu: ${adminPassword})`);
+    console.log(` Platform Admin: ${adminRes.rows[0].email}`);
 
     // 2. Tạo hoặc cập nhật tài khoản Lập trình viên mẫu (Developer / App Owner)
     const devEmail = 'developer@example.com';
@@ -42,12 +44,12 @@ async function seed() {
       [devEmail, devPasswordHash, 'App Developer']
     );
     const devUserId = devRes.rows[0].id;
-    console.log(`✅ App Developer: ${devRes.rows[0].email} (Mật khẩu: ${devPassword})`);
+    console.log(` App Developer: ${devRes.rows[0].email}`);
 
     // 3. Tạo hoặc cập nhật Ứng dụng mẫu khớp với cấu hình Client (demo-service)
     const sampleAppId = 'app_22c57454b00eb44a55c66bf4';
-    const sampleAppToken =
-      'apt_926a40eb5a7b8a7341ef0347f4d2fa640b69663ffff2a034197e65e5f030fa51';
+    const sampleAppToken = process.env.SEED_APP_TOKEN;
+    if (!sampleAppToken || !/^apt_[a-f0-9]{64}$/.test(sampleAppToken)) throw new Error('Set SEED_APP_TOKEN to a generated 256-bit app token');
     
     // Đọc từ biến môi trường SEED_ADMIN_EMAILS nếu có, mặc định là mảng rỗng []
     const sampleAdminEmails = process.env.SEED_ADMIN_EMAILS
@@ -68,7 +70,9 @@ async function seed() {
       [sampleAppId, sampleAppToken, sampleAdminEmails, devUserId]
     );
     const appIdInternal = appRes.rows[0].id;
-    console.log(`✅ Application: "${appRes.rows[0].name}" [${appRes.rows[0].appId}]`);
+    await client.query('UPDATE applications SET "allowedRedirectUris" = $1 WHERE id = $2',
+      [[process.env.SEED_REDIRECT_URI || 'http://localhost:3001/'], appIdInternal]);
+    console.log(` Application: "${appRes.rows[0].name}" [${appRes.rows[0].appId}]`);
     console.log(`   Admin Emails: ${appRes.rows[0].adminEmails.join(', ')}`);
 
     // 4. Cấu hình sẵn các OAuth Provider cho ứng dụng mẫu (Google & Facebook)
@@ -90,11 +94,11 @@ async function seed() {
            "updatedAt" = NOW();`,
       [appIdInternal, googleClientId, googleClientSecret, fbClientId, fbClientSecret]
     );
-    console.log('✅ OAuth Providers: Bật sẵn Google & Facebook cho ứng dụng mẫu');
+    console.log(' OAuth Providers: Bật sẵn Google & Facebook cho ứng dụng mẫu');
 
-    console.log('\n🎉 Nạp dữ liệu mẫu hoàn tất! Hệ thống đã sẵn sàng để demo.');
+    console.log('\n Nạp dữ liệu mẫu hoàn tất! Hệ thống đã sẵn sàng để demo.');
   } catch (err) {
-    console.error('❌ Lỗi khi nạp dữ liệu mẫu:', err);
+    console.error(' Lỗi khi nạp dữ liệu mẫu:', err);
     process.exit(1);
   } finally {
     await client.end();

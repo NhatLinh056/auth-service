@@ -5,8 +5,10 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { join } from 'node:path';
 import { AppModule } from './app.module.js';
+import { getAuthPublicUrl } from './auth/oauth-public-url.js';
 
 async function bootstrap() {
+  getAuthPublicUrl();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // --- Kích hoạt CORS ---
