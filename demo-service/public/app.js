@@ -4,10 +4,7 @@ function escapeHtml(value) {
 
 /**
  * CLIENT APPLICATION LOGIC — DEMO SERVICE (PROJECT 2)
- * Clean, modern customer portal with seamless social authentication (Google & Facebook).
- * Role-based access control:
- * - App Owner / Delegated Admin: ADMIN (manages all system orders)
- * - Regular Customer: USER (manages personal orders)
+ * Streamlined integration showcase with Auth Service (Project 1) via Google & Facebook OAuth.
  */
 
 const API_BASE = window.location.origin; // http://localhost:3001
@@ -16,7 +13,8 @@ const translations = {
   en: {
     nav: {
       brand_title: 'Customer Portal',
-      brand_tag: 'Order Services',
+      brand_tag: 'Auth Integration',
+      app_desc: '— Auth Service OAuth Integration Demo',
     },
     auth: {
       title: 'Sign In to Your Account',
@@ -25,14 +23,12 @@ const translations = {
       btn_facebook: 'Sign in with Facebook',
     },
     btn: {
-      copy: 'Copy Token',
       sign_out: 'Sign Out',
     },
     toasts: {
       oauth_redirect: 'Redirecting to sign-in provider...',
       signed_in: 'Welcome back,',
       signed_out: 'Signed out successfully.',
-      copied: 'Token copied to clipboard.',
       not_enabled: 'This sign-in method is currently disabled. Please contact the administrator.',
     },
     status: {
@@ -40,12 +36,28 @@ const translations = {
       connected: 'System Online',
       disconnected: 'Disconnected',
       offline: 'System Offline',
+    },
+    profile: {
+      title: 'Account Profile',
+      user_id: 'User ID:',
+      provider: 'Provider:',
+      tenant: 'Organization:',
+      auth_status: 'Auth Status:',
+      verified: 'Verified',
+      integration_notice_title: 'Integration Successful:',
+      integration_notice_desc: 'Demo app is securely connected and authenticated via Auth Service (Project 1) using OAuth 2.0 PKCE.',
+    },
+    api_test: {
+      title: 'Token Verification (Protected API)',
+      desc: 'Call endpoint GET /auth/protected with Bearer token to verify access via Auth Service.',
+      btn_call: 'Test Protected API',
     }
   },
   vi: {
     nav: {
       brand_title: 'Cổng Khách Hàng',
-      brand_tag: 'Dịch Vụ Đơn Hàng',
+      brand_tag: 'Tích Hợp Xác Thực',
+      app_desc: '— Minh Họa Tích Hợp OAuth với Auth Service',
     },
     auth: {
       title: 'Đăng Nhập Tài Khoản',
@@ -54,14 +66,12 @@ const translations = {
       btn_facebook: 'Đăng nhập bằng Facebook',
     },
     btn: {
-      copy: 'Sao Chép Token',
       sign_out: 'Đăng Xuất',
     },
     toasts: {
       oauth_redirect: 'Đang chuyển hướng sang trang đăng nhập...',
       signed_in: 'Chào mừng trở lại,',
       signed_out: 'Đã đăng xuất thành công.',
-      copied: 'Đã sao chép token vào bộ nhớ tạm.',
       not_enabled: 'Phương thức này hiện chưa được mở. Vui lòng liên hệ quản trị viên.',
     },
     status: {
@@ -69,6 +79,21 @@ const translations = {
       connected: 'Hệ Thống Trực Tuyến',
       disconnected: 'Mất Kết Nối',
       offline: 'Ngoại Tuyến',
+    },
+    profile: {
+      title: 'Thông Tin Tài Khoản',
+      user_id: 'User ID:',
+      provider: 'Phương Thức:',
+      tenant: 'Doanh Nghiệp:',
+      auth_status: 'Xác Thực:',
+      verified: 'Đã Xác Thực',
+      integration_notice_title: 'Tích Hợp Thành Công:',
+      integration_notice_desc: 'Ứng dụng Demo đã kết nối và xác thực an toàn qua Auth Service (Project 1) bằng giao thức OAuth 2.0 PKCE.',
+    },
+    api_test: {
+      title: 'Kiểm Chứng Token (Protected API)',
+      desc: 'Gọi endpoint GET /auth/protected kèm Bearer token để xác thực quyền truy cập qua Auth Service.',
+      btn_call: 'Thử Gọi API Bảo Vệ',
     }
   }
 };
@@ -80,8 +105,6 @@ const state = {
   providers: [],
   handshake: null,
   handshakeStatus: null,
-  orders: [],
-  showJsonView: false,
   oauthBusy: false,
 };
 
@@ -144,65 +167,30 @@ function updateAuthUI() {
     if (unauthView) unauthView.style.display = 'none';
     if (authView) authView.style.display = 'block';
 
-    const role = state.user.role || 'USER';
-    const isAdmin = role === 'ADMIN';
-
-    // Populate user profile info
     const nameEl = document.getElementById('user-name-display');
     const emailEl = document.getElementById('user-email-display');
-    const roleEl = document.getElementById('user-role-display');
     const idEl = document.getElementById('user-id-display');
     const providerEl = document.getElementById('user-provider-display');
     const avatarEl = document.getElementById('user-avatar');
-    const tokenEl = document.getElementById('user-token-display');
-    const explanationBox = document.getElementById('role-explanation-box');
 
-    if (nameEl) nameEl.textContent = state.user.name || state.user.email?.split('@')[0] || 'User';
+    const displayName = state.user.name || state.user.email?.split('@')[0] || 'User';
+    if (nameEl) nameEl.textContent = displayName;
     if (emailEl) emailEl.textContent = state.user.email || 'N/A';
     if (idEl) idEl.textContent = state.user.id || state.user.sub || 'N/A';
-
-    if (roleEl) {
-      if (isAdmin) {
-        roleEl.textContent = state.lang === 'vi' ? 'Quản Trị Viên' : 'Administrator';
-        roleEl.style.background = 'rgba(16, 185, 129, 0.2)';
-        roleEl.style.color = '#10b981';
-        roleEl.style.border = '1px solid rgba(16, 185, 129, 0.4)';
-      } else {
-        roleEl.textContent = state.lang === 'vi' ? 'Khách Hàng' : 'Customer';
-        roleEl.style.background = 'rgba(99, 102, 241, 0.2)';
-        roleEl.style.color = '#818cf8';
-        roleEl.style.border = '1px solid rgba(99, 102, 241, 0.4)';
-      }
-    }
 
     if (providerEl) {
       const p = (state.user.provider || 'OAuth').toUpperCase();
       providerEl.textContent = p;
     }
 
-    if (explanationBox) {
-      if (isAdmin) {
-        explanationBox.style.background = 'rgba(16, 185, 129, 0.08)';
-        explanationBox.style.borderColor = 'rgba(16, 185, 129, 0.3)';
-        explanationBox.innerHTML = `
-          <div style="color: #10b981; font-weight: 600; margin-bottom: 2px;">
-            Quản Trị Viên (ADMIN)
-          </div>
-          <div style="color: var(--text-muted); font-size: 12px;">
-            Tài khoản của bạn được cấp quyền Quản Trị Viên. Bạn có thể xem và quản lý danh sách toàn bộ đơn hàng trong hệ thống.
-          </div>
-        `;
+    const tenantEl = document.getElementById('user-tenant-display');
+    if (tenantEl) {
+      if (state.user.tenantName || state.user.tenantId) {
+        tenantEl.textContent = state.user.tenantName ? `${state.user.tenantName} (${state.user.tenantId})` : state.user.tenantId;
+        tenantEl.style.color = '#38bdf8';
       } else {
-        explanationBox.style.background = 'rgba(99, 102, 241, 0.08)';
-        explanationBox.style.borderColor = 'rgba(99, 102, 241, 0.3)';
-        explanationBox.innerHTML = `
-          <div style="color: #818cf8; font-weight: 600; margin-bottom: 2px;">
-            Khách Hàng (USER)
-          </div>
-          <div style="color: var(--text-muted); font-size: 12px;">
-            Chào mừng bạn! Dưới đây là danh sách các đơn hàng cá nhân của bạn.
-          </div>
-        `;
+        tenantEl.textContent = state.lang === 'vi' ? 'Chưa tham gia' : 'None';
+        tenantEl.style.color = 'var(--text-muted)';
       }
     }
 
@@ -213,21 +201,19 @@ function updateAuthUI() {
           const url = new URL(state.user.avatar);
           if (url.protocol === 'https:') {
             const img = document.createElement('img');
-            img.src = url.href; img.alt = 'Avatar';
+            img.src = url.href;
+            img.alt = 'Avatar';
             img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%';
             avatarEl.appendChild(img);
           }
-        } catch { avatarEl.textContent = '?'; }
+        } catch {
+          avatarEl.textContent = '?';
+        }
       } else {
         const initial = (state.user.name || state.user.email || 'U').charAt(0).toUpperCase();
         avatarEl.textContent = initial;
       }
     }
-
-    if (tokenEl) tokenEl.textContent = state.token;
-
-    // Tự động tải đơn hàng
-    fetchOrders();
   } else {
     if (unauthView) unauthView.style.display = 'block';
     if (authView) authView.style.display = 'none';
@@ -235,7 +221,7 @@ function updateAuthUI() {
 }
 
 /**
- * Synchronize user profile with Project 2 backend (checks role)
+ * Synchronize user profile with Project 2 backend
  */
 async function syncUserProfile() {
   if (!state.token) return;
@@ -253,12 +239,9 @@ async function syncUserProfile() {
         state.user = {
           ...state.user,
           ...data.user,
-          role: data.user.role,
-          isAppOwner: data.user.isAppOwner,
         };
         localStorage.setItem('demo_user', JSON.stringify(state.user));
         updateAuthUI();
-        if (typeof loadTenant === 'function') void loadTenant();
       }
     }
   } catch (err) {
@@ -275,6 +258,16 @@ async function handleUrlCallback() {
   sessionStorage.removeItem('login_state');
   sessionStorage.removeItem('oauth_verifier');
   window.history.replaceState({}, document.title, window.location.pathname);
+  if (params.has('error')) {
+    const err = params.get('error');
+    showToast(
+      err === 'oauth_cancelled'
+        ? (state.lang === 'vi' ? 'Đã hủy đăng nhập qua nhà cung cấp.' : 'Sign-in cancelled by user.')
+        : (state.lang === 'vi' ? 'Đăng nhập qua nhà cung cấp thất bại.' : 'Sign-in failed.'),
+      'error'
+    );
+    return;
+  }
   if (!code || !expectedState || params.get('state') !== expectedState || !verifier) {
     showToast('Phiên đăng nhập không hợp lệ. Vui lòng thử lại.', 'error');
     return;
@@ -293,205 +286,110 @@ async function handleUrlCallback() {
     await syncUserProfile();
     updateAuthUI();
     showToast(t('toasts.signed_in'));
-  } catch (error) { showToast(error.message || 'Không thể kết nối máy chủ.', 'error'); }
+  } catch (error) {
+    showToast(error.message || 'Không thể kết nối máy chủ.', 'error');
+  }
 }
 
 function logout() {
-  if (typeof resetTenant === 'function') resetTenant();
   state.token = null;
   state.user = null;
-  state.orders = [];
   localStorage.removeItem('demo_token');
   localStorage.removeItem('demo_user');
+
+  const resultEl = document.getElementById('api-test-result');
+  const statusEl = document.getElementById('api-test-status');
+  if (resultEl) {
+    resultEl.style.display = 'none';
+    resultEl.textContent = '';
+  }
+  if (statusEl) statusEl.textContent = '';
 
   updateAuthUI();
   showToast(t('toasts.signed_out'));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ORDERS MANAGEMENT & TABLE RENDERING
-// ─────────────────────────────────────────────────────────────────────────────
-function renderOrdersTable(orders, isAdmin) {
-  const tbody = document.getElementById('orders-table-body');
-  const subtitle = document.getElementById('orders-subtitle');
-  if (!tbody) return;
-
-  if (subtitle) {
-    if (isAdmin) {
-      subtitle.textContent = state.lang === 'vi'
-        ? `Đang hiển thị toàn bộ ${orders.length} đơn hàng trên hệ thống (Quyền Quản Trị Viên).`
-        : `Showing all ${orders.length} orders across the system (Administrator view).`;
-    } else {
-      subtitle.textContent = state.lang === 'vi'
-        ? `Bạn có ${orders.length} đơn hàng.`
-        : `You have ${orders.length} orders.`;
-    }
-  }
-
-  if (!orders || orders.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" class="table-empty" style="text-align: center; padding: 32px 16px; color: var(--text-dim);">
-          <div style="font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px;">
-            ${state.lang === 'vi' ? 'Chưa có đơn hàng nào' : 'No orders found'}
-          </div>
-          <div style="font-size: 12px; color: var(--text-dim);">
-            ${state.lang === 'vi' ? 'Bấm nút "+ Đặt Hàng Thử Nghiệm" ở trên để tạo đơn hàng mới.' : 'Click "+ Place Sample Order" to create one.'}
-          </div>
-        </td>
-      </tr>
-    `;
-    return;
-  }
-
-  tbody.innerHTML = orders.map(o => {
-    let badgeClass = 'badge';
-    let badgeStyle = 'background: rgba(148, 163, 184, 0.15); color: #cbd5e1;';
-    if (o.status === 'CONFIRMED') {
-      badgeStyle = 'background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3);';
-    } else if (o.status === 'SHIPPED') {
-      badgeStyle = 'background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);';
-    } else if (o.status === 'PENDING') {
-      badgeStyle = 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);';
-    }
-
-    const isMine = o.userEmail === state.user?.email;
-    const customerDisplay = isMine
-      ? `<span style="color: #67e8f9; font-weight: 500;">${escapeHtml(o.userEmail)} <small style="color: var(--text-dim);">(Bạn)</small></span>`
-      : `<span style="color: var(--text-muted);">${escapeHtml(o.userEmail)}</span>`;
-
-    return `
-      <tr>
-        <td style="font-family: var(--font-mono); font-size: 12px; color: var(--text-dim);">${escapeHtml(o.id)}</td>
-        <td style="font-weight: 500; color: #fff;">${escapeHtml(o.item)}</td>
-        <td style="text-align: center; color: var(--text-muted);">${escapeHtml(o.quantity)}</td>
-        <td style="text-align: right; font-weight: 600; color: #34d399;">$${(o.totalPrice || 0).toLocaleString()}</td>
-        <td style="font-size: 12px;">${customerDisplay}</td>
-        <td style="text-align: center;">
-          <span class="badge" style="${badgeStyle} font-size: 10px; font-weight: 600; padding: 2px 8px;">
-            ${escapeHtml(o.status)}
-          </span>
-        </td>
-      </tr>
-    `;
-  }).join('');
-}
-
-async function fetchOrders() {
-  const btn = document.getElementById('btn-fetch-orders');
-  const jsonDisplay = document.getElementById('orders-json-display');
-
-  if (!state.token) return;
-
-  if (btn) btn.disabled = true;
-
-  try {
-    const res = await fetch(`${API_BASE}/orders`, {
-      headers: {
-        'Authorization': `Bearer ${state.token}`
-      }
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      state.orders = Array.isArray(data.orders) ? data.orders : [];
-      const isAdmin = (data.user?.role || state.user?.role) === 'ADMIN';
-      renderOrdersTable(state.orders, isAdmin);
-
-      if (jsonDisplay) {
-        jsonDisplay.textContent = JSON.stringify(data, null, 2);
-      }
-    } else {
-      showToast(`Lỗi: ${data.message || res.statusText}`, 'error');
-    }
-  } catch (err) {
-    showToast(`Không thể kết nối đến máy chủ: ${err.message}`, 'error');
-  } finally {
-    if (btn) btn.disabled = false;
-  }
-}
-
-async function createSampleOrder() {
-  const btn = document.getElementById('btn-create-order');
+async function testProtectedApi() {
+  const statusEl = document.getElementById('api-test-status');
+  const resultEl = document.getElementById('api-test-result');
+  const btn = document.getElementById('btn-test-protected-api');
 
   if (!state.token) {
-    showToast('Vui lòng đăng nhập để tạo đơn hàng', 'error');
+    showToast(state.lang === 'vi' ? 'Vui lòng đăng nhập trước.' : 'Please sign in first.', 'error');
     return;
   }
 
-  const sampleItems = [
-    { item: 'Tai nghe Sony WH-1000XM5', price: 349, quantity: 1 },
-    { item: 'Chuột không dây Logitech MX Master 3S', price: 99, quantity: 1 },
-    { item: 'Bàn phím cơ Keychron Q1 Pro', price: 219, quantity: 1 },
-    { item: 'Màn hình Dell UltraSharp 27 4K', price: 620, quantity: 1 },
-    { item: 'iPad Pro 11 inch M4 Wi-Fi', price: 999, quantity: 1 },
-  ];
-
-  const randomItem = sampleItems[Math.floor(Math.random() * sampleItems.length)];
-
   if (btn) btn.disabled = true;
+  if (statusEl) statusEl.textContent = state.lang === 'vi' ? 'Đang gọi API...' : 'Calling API...';
 
   try {
-    const res = await fetch(`${API_BASE}/orders`, {
-      method: 'POST',
+    const res = await fetch(`${API_BASE}/auth/protected`, {
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${state.token}`
-      },
-      body: JSON.stringify(randomItem)
+      }
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+
+    if (resultEl) {
+      resultEl.style.display = 'block';
+      const displayData = (res.ok && data && data.user) ? {
+        message: data.message,
+        authenticated: data.authenticated,
+        service: data.service,
+        appId: data.appId,
+        user: {
+          id: data.user.id || data.user.userId,
+          email: data.user.email,
+          tenantId: data.user.tenantId ?? null,
+        },
+        timestamp: data.timestamp,
+      } : data;
+
+      resultEl.textContent = JSON.stringify({
+        status: res.status,
+        statusText: res.statusText,
+        data: displayData,
+      }, null, 2);
+    }
 
     if (res.ok) {
-      showToast(
-        state.lang === 'vi'
-          ? `Đã đặt thành công: "${randomItem.item}" ($${randomItem.price})!`
-          : `Placed order: "${randomItem.item}" ($${randomItem.price})!`,
-        'success'
-      );
-      await fetchOrders();
+      if (statusEl) statusEl.innerHTML = `<span style="color: #10b981;">HTTP ${res.status} OK (Đã xác thực)</span>`;
+      showToast(state.lang === 'vi' ? 'Xác thực API bảo vệ thành công!' : 'Protected API verified successfully!');
+    } else if (res.status === 403) {
+      if (statusEl) statusEl.innerHTML = `<span style="color: #ef4444;">HTTP 403 (${data.message || 'Truy cập bị từ chối'})</span>`;
+      showToast(data.message || (state.lang === 'vi' ? 'Truy cập bị từ chối' : 'Access denied'), 'error');
     } else {
-      showToast(`Lỗi tạo đơn: ${data.message || res.statusText}`, 'error');
+      if (statusEl) statusEl.innerHTML = `<span style="color: #ef4444;">HTTP ${res.status} (${data.message || 'Lỗi'})</span>`;
+      showToast(data.message || 'API error', 'error');
     }
   } catch (err) {
-    showToast(`Lỗi kết nối: ${err.message}`, 'error');
+    if (statusEl) statusEl.innerHTML = `<span style="color: #ef4444;">Network Error</span>`;
+    showToast(err.message, 'error');
   } finally {
     if (btn) btn.disabled = false;
   }
-}
-
-function toggleJsonView() {
-  state.showJsonView = !state.showJsonView;
-  const box = document.getElementById('orders-result-box');
-  const btnText = document.getElementById('btn-toggle-json-text');
-
-  if (box) {
-    box.style.display = state.showJsonView ? 'block' : 'none';
-  }
-  if (btnText) {
-    btnText.textContent = state.showJsonView
-      ? '{ } Ẩn Dữ Liệu API (JSON)'
-      : '{ } Xem Dữ Liệu API (JSON)';
-  }
-}
-
-function copyToken() {
-  if (!state.token) return;
-  navigator.clipboard.writeText(state.token).then(() => {
-    showToast(t('toasts.copied'));
-  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OAUTH INITIATION
 // ─────────────────────────────────────────────────────────────────────────────
-async function loginWithAuth() {
+async function loginWithProvider(provider = 'google') {
   if (state.oauthBusy) return;
+
+  const prov = (state.providers || []).find(p => (p.provider || '').toLowerCase() === provider.toLowerCase());
+  if (prov && !prov.enabled) {
+    showToast(t('toasts.not_enabled'), 'error');
+    return;
+  }
+
   state.oauthBusy = true;
   const button = document.getElementById('btn-auth-login');
+  const googleBtn = document.getElementById('btn-oauth-google');
+  const fbBtn = document.getElementById('btn-oauth-facebook');
   if (button) button.disabled = true;
+  if (googleBtn) googleBtn.disabled = true;
+  if (fbBtn) fbBtn.disabled = true;
   try {
     if (!crypto?.subtle) throw new Error('Cần sử dụng HTTPS hoặc localhost để đăng nhập.');
     const random = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
@@ -503,7 +401,7 @@ async function loginWithAuth() {
     sessionStorage.setItem('login_state', clientState);
     const response = await fetch(`${API_BASE}/auth/start`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ codeChallenge, state: clientState }),
+      body: JSON.stringify({ provider, codeChallenge, state: clientState }),
     });
     const result = await response.json();
     if (!response.ok || !result.authorizeUrl) throw new Error(result.message || 'Không thể mở trang đăng nhập.');
@@ -512,8 +410,13 @@ async function loginWithAuth() {
     sessionStorage.removeItem('oauth_verifier'); sessionStorage.removeItem('login_state');
     state.oauthBusy = false;
     if (button) button.disabled = false;
+    renderProvidersList(state.providers);
     showToast(error.message || 'Không thể mở trang đăng nhập.', 'error');
   }
+}
+
+async function loginWithAuth(provider = 'google') {
+  return loginWithProvider(provider);
 }
 
 async function refreshProviders() {
@@ -537,13 +440,15 @@ function renderProvidersList(providers) {
 
   if (googleBtn) {
     const isGoogleEnabled = Boolean(googleProv && googleProv.enabled);
-    googleBtn.style.opacity = isGoogleEnabled ? '1' : '0.6';
+    googleBtn.disabled = !isGoogleEnabled;
+    if (googleBtn.style) googleBtn.style.opacity = isGoogleEnabled ? '1' : '0.45';
     googleBtn.title = isGoogleEnabled ? t('auth.btn_google') : t('toasts.not_enabled');
   }
 
   if (fbBtn) {
     const isFbEnabled = Boolean(fbProv && fbProv.enabled);
-    fbBtn.style.opacity = isFbEnabled ? '1' : '0.6';
+    fbBtn.disabled = !isFbEnabled;
+    if (fbBtn.style) fbBtn.style.opacity = isFbEnabled ? '1' : '0.45';
     fbBtn.title = isFbEnabled ? t('auth.btn_facebook') : t('toasts.not_enabled');
   }
 }
@@ -567,7 +472,7 @@ function updateHandshakeUI() {
   }
 
   if (state.handshake) {
-    const appName = state.handshake.handshake?.appName || state.handshake.appName || 'Demo Order Service';
+    const appName = state.handshake.handshake?.appName || state.handshake.appName || 'Demo Service';
     const appStatus = state.handshake.handshake?.applicationStatus || state.handshake.status || 'ACTIVE';
 
     if (bannerAppName) bannerAppName.textContent = appName;

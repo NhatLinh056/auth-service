@@ -19,6 +19,8 @@ export function TenantsTab() {
   const [joinRequests, setJoinRequests] = useState<TenantJoinRequest[]>([]);
   const [joinRequestsError, setJoinRequestsError] = useState<string | null>(null);
   const [showAudit, setShowAudit] = useState(false);
+  const [globalAuditLogs, setGlobalAuditLogs] = useState<TenantAuditLog[]>([]);
+  const [showGlobalAudit, setShowGlobalAudit] = useState(false);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ text: string; error?: boolean } | null>(null);
   const [copiedId, setCopiedId] = useState(false);
@@ -31,8 +33,15 @@ export function TenantsTab() {
   const [editDesc, setEditDesc] = useState('');
   const [transferUserId, setTransferUserId] = useState('');
   const [transferReason, setTransferReason] = useState('');
+  const [customTargetUser, setCustomTargetUser] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
+
+  const resetTransferForm = () => {
+    setTransferUserId('');
+    setTransferReason('');
+    setCustomTargetUser(false);
+  };
 
   const loadData = async (selectedId?: string) => {
     try {
@@ -68,7 +77,7 @@ export function TenantsTab() {
           setAuditLogs([]);
         }
 
-        if (detail.canManage) {
+        if (detail.isOwner) {
           try {
             const reqs = await tenantsService.listJoinRequests(activeId);
             setJoinRequests(reqs);
@@ -87,6 +96,8 @@ export function TenantsTab() {
         setJoinRequests([]);
         setJoinRequestsError(null);
         setShowAudit(false);
+        setShowTransfer(false);
+        resetTransferForm();
       }
     } catch (err: any) {
       setFeedback({ text: err.message || (vi ? 'Không thể tải thông tin doanh nghiệp' : 'Failed to load tenant info'), error: true });
@@ -177,8 +188,7 @@ export function TenantsTab() {
       await tenantsService.transfer(current.id, { userId: transferUserId, reason: transferReason.trim() || undefined });
       setFeedback({ text: vi ? 'Đã chuyển quyền sở hữu thành công.' : 'Ownership transferred.' });
       setShowTransfer(false);
-      setTransferUserId('');
-      setTransferReason('');
+      resetTransferForm();
       await loadData(current.id);
     } catch (err: any) {
       setFeedback({ text: err.message, error: true });
@@ -252,11 +262,27 @@ export function TenantsTab() {
       try {
         const logs = await tenantsService.getAudit(current.id);
         setAuditLogs(logs);
+        setShowAudit(true);
       } catch (err: any) {
         setFeedback({ text: err.message, error: true });
       }
+    } else {
+      setShowAudit(false);
     }
-    setShowAudit(!showAudit);
+  };
+
+  const handleToggleGlobalAudit = async () => {
+    if (!showGlobalAudit) {
+      try {
+        const logs = await tenantsService.getAudit();
+        setGlobalAuditLogs(logs);
+        setShowGlobalAudit(true);
+      } catch (err: any) {
+        setFeedback({ text: err.message, error: true });
+      }
+    } else {
+      setShowGlobalAudit(false);
+    }
   };
 
   if (loading && !context) {
@@ -295,41 +321,114 @@ export function TenantsTab() {
       )}
 
       {/* Super Admin Bar */}
-      {context?.isSystemAdmin && allTenants.length > 0 && (
+      {context?.isSystemAdmin && (
         <div className="tenant-admin-bar">
-          <div className="tenant-admin-bar-label">
-            <span>{vi ? 'Doanh nghiệp hệ thống:' : 'System Tenants:'}</span>
-          </div>
-          <select
-            className="tenant-admin-bar-select"
-            value={current?.id || ''}
-            onChange={(e) => {
-              setShowAudit(false);
-              setAuditLogs([]);
-              setJoinRequests([]);
-              setJoinRequestsError(null);
-              setShowEdit(false);
-              setShowTransfer(false);
-              void loadData(e.target.value);
-            }}
+          {allTenants.length > 0 && (
+            <>
+              <div className="tenant-admin-bar-label">
+                <span>{vi ? 'Doanh nghiệp hệ thống:' : 'System Tenants:'}</span>
+              </div>
+              <select
+                className="tenant-admin-bar-select"
+                value={current?.id || ''}
+                onChange={(e) => {
+                  setShowAudit(false);
+                  setAuditLogs([]);
+                  setJoinRequests([]);
+                  setJoinRequestsError(null);
+                  setShowEdit(false);
+                  setShowTransfer(false);
+                  resetTransferForm();
+                  void loadData(e.target.value);
+                }}
+              >
+                {context?.tenant ? (
+                  <option value={context.tenant.id}>
+                    {vi ? `Doanh nghiệp của tôi (${context.tenant.name})` : `My Tenant (${context.tenant.name})`}
+                  </option>
+                ) : (
+                  <option value="" disabled={allTenants.length > 0 && Boolean(current?.id)}>
+                    {vi ? '-- Chọn doanh nghiệp cần xem --' : '-- Select Tenant --'}
+                  </option>
+                )}
+                {allTenants
+                  .filter((t) => t.id !== context?.tenant?.id)
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} (Chủ: {t.owner?.name || t.owner?.email} · {t._count?.users ?? 0} {vi ? 'thành viên' : 'members'})
+                    </option>
+                  ))}
+              </select>
+            </>
+          )}
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={handleToggleGlobalAudit}
+            style={{ marginLeft: allTenants.length > 0 ? 'auto' : undefined, whiteSpace: 'nowrap' }}
           >
-            {context?.tenant ? (
-              <option value={context.tenant.id}>
-                {vi ? `Doanh nghiệp của tôi (${context.tenant.name})` : `My Tenant (${context.tenant.name})`}
-              </option>
-            ) : (
-              <option value="" disabled={allTenants.length > 0 && Boolean(current?.id)}>
-                {vi ? '-- Chọn doanh nghiệp cần xem --' : '-- Select Tenant --'}
-              </option>
-            )}
-            {allTenants
-              .filter((t) => t.id !== context?.tenant?.id)
-              .map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} (Chủ: {t.owner?.name || t.owner?.email} · {t._count?.users ?? 0} {vi ? 'thành viên' : 'members'})
-                </option>
-              ))}
-          </select>
+            {showGlobalAudit
+              ? (vi ? 'Ẩn nhật ký hệ thống' : 'Hide System Audit')
+              : (vi ? 'Nhật ký toàn hệ thống' : 'System Audit Log')}
+          </button>
+        </div>
+      )}
+
+      {/* Global Audit Logs Panel */}
+      {showGlobalAudit && context?.isSystemAdmin && (
+        <div className="tenant-card" style={{ marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#fff', margin: 0 }}>
+              {vi ? 'Nhật ký can thiệp & chuyển quyền toàn hệ thống' : 'System-wide Audit Logs'}
+            </h3>
+            <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShowGlobalAudit(false)}>✕</button>
+          </div>
+          {globalAuditLogs.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: 0 }}>
+              {vi ? 'Chưa có bản ghi nhật ký hệ thống nào.' : 'No system audit records found.'}
+            </p>
+          ) : (
+            <div className="table-container" style={{ margin: 0 }}>
+              <table className="data-table" style={{ minWidth: '600px' }}>
+                <thead>
+                  <tr>
+                    <th>{vi ? 'Thời gian' : 'Time'}</th>
+                    <th>{vi ? 'Doanh nghiệp' : 'Tenant'}</th>
+                    <th>{vi ? 'Hành động' : 'Action'}</th>
+                    <th>{vi ? 'Chủ cũ → Mới' : 'From → To'}</th>
+                    <th>{vi ? 'Người thực hiện' : 'Actor'}</th>
+                    <th>{vi ? 'Lý do' : 'Reason'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {globalAuditLogs.map((log) => (
+                    <tr key={log.id}>
+                      <td style={{ whiteSpace: 'nowrap', fontSize: '12px', color: 'var(--text-muted)' }}>
+                        {new Date(log.createdAt).toLocaleString(vi ? 'vi-VN' : 'en-US')}
+                      </td>
+                      <td style={{ fontWeight: 500 }}>
+                        {log.tenantName || log.tenantId}
+                      </td>
+                      <td>
+                        <span className={`tenant-badge ${log.action.includes('ADMIN') ? 'tenant-badge-admin' : 'tenant-badge-member'}`}>
+                          {log.action}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '12px', fontFamily: 'monospace' }}>
+                        {log.fromOwnerId ? log.fromOwnerId.slice(0, 8) : 'None'} → {log.toOwnerId ? log.toOwnerId.slice(0, 8) : 'None'}
+                      </td>
+                      <td style={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+                        {log.actorUserId ? log.actorUserId.slice(0, 8) : 'System'}
+                      </td>
+                      <td style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                        {log.reason || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -364,17 +463,22 @@ export function TenantsTab() {
               <div className="tenant-actions">
                 {current.canManage && (
                   <>
+                    {current.isOwner && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setShowEdit(!showEdit)}
+                      >
+                        {showEdit ? (vi ? 'Đóng' : 'Close') : (vi ? 'Chỉnh sửa' : 'Edit')}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
-                      onClick={() => setShowEdit(!showEdit)}
-                    >
-                      {showEdit ? (vi ? 'Đóng' : 'Close') : (vi ? 'Chỉnh sửa' : 'Edit')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => setShowTransfer(!showTransfer)}
+                      onClick={() => {
+                        setShowTransfer(!showTransfer);
+                        resetTransferForm();
+                      }}
                     >
                       {vi ? 'Chuyển chủ' : 'Transfer'}
                     </button>
@@ -385,13 +489,15 @@ export function TenantsTab() {
                     >
                       {showAudit ? (vi ? 'Ẩn nhật ký' : 'Hide Audit') : (vi ? 'Nhật ký' : 'Audit Logs')}
                     </button>
-                    <button
-                      type="button"
-                      className="btn btn-danger btn-sm"
-                      onClick={() => void handleDelete()}
-                    >
-                      {vi ? 'Xóa' : 'Delete'}
-                    </button>
+                    {current.isOwner && (
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-sm"
+                        onClick={() => void handleDelete()}
+                      >
+                        {vi ? 'Xóa' : 'Delete'}
+                      </button>
+                    )}
                   </>
                 )}
                 {!current.isOwner && context?.tenant?.id === current.id && (
@@ -431,7 +537,7 @@ export function TenantsTab() {
             </div>
 
             {/* Inline Edit Form */}
-            {showEdit && current.canManage && (
+            {showEdit && current.isOwner && (
               <form onSubmit={handleUpdate} className="tenant-subform">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#fff', margin: 0 }}>
@@ -477,31 +583,71 @@ export function TenantsTab() {
                   <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#fff', margin: 0 }}>
                     {vi ? 'Chuyển giao quyền sở hữu' : 'Transfer Ownership'}
                   </h4>
-                  <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShowTransfer(false)}>✕</button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs"
+                    onClick={() => {
+                      setShowTransfer(false);
+                      resetTransferForm();
+                    }}
+                  >
+                    ✕
+                  </button>
                 </div>
                 <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: '0 0 12px', lineHeight: '1.4' }}>
                   {vi
                     ? 'Chuyển quyền sở hữu cho một thành viên hiện tại trong doanh nghiệp. Chủ cũ sẽ trở thành thành viên thường.'
                     : 'Transfer ownership to an existing member. The current owner will become a regular member.'}
                 </p>
+                {context?.isSystemAdmin && !current.isOwner && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs"
+                      onClick={() => {
+                        setCustomTargetUser(!customTargetUser);
+                        setTransferUserId('');
+                      }}
+                    >
+                      {customTargetUser
+                        ? (vi ? '← Chọn từ danh sách thành viên' : '← Select from member list')
+                        : (vi ? 'Nhập User ID người dùng ngoài chưa có tenant' : 'Enter User ID of unassigned user')}
+                    </button>
+                  </div>
+                )}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginBottom: '14px' }}>
                   <div>
-                    <label className="form-label">{vi ? 'Chọn chủ sở hữu mới *' : 'Select New Owner *'}</label>
-                    <select
-                      className="form-control"
-                      required
-                      value={transferUserId}
-                      onChange={(e) => setTransferUserId(e.target.value)}
-                    >
-                      <option value="">{vi ? '-- Chọn thành viên --' : '-- Select member --'}</option>
-                      {(current.members || [])
-                        .filter((m) => m.id !== current.ownerUserId)
-                        .map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name || m.email} ({m.email})
-                          </option>
-                        ))}
-                    </select>
+                    <label className="form-label">
+                      {customTargetUser && !current.isOwner
+                        ? (vi ? 'User ID người nhận quyền (chưa có tenant) *' : 'Recipient User ID (unassigned) *')
+                        : (vi ? 'Chọn chủ sở hữu mới *' : 'Select New Owner *')}
+                    </label>
+                    {customTargetUser && !current.isOwner ? (
+                      <input
+                        type="text"
+                        className="form-control"
+                        required
+                        placeholder={vi ? 'Nhập User ID (UUID)...' : 'Enter User ID (UUID)...'}
+                        value={transferUserId}
+                        onChange={(e) => setTransferUserId(e.target.value)}
+                      />
+                    ) : (
+                      <select
+                        className="form-control"
+                        required
+                        value={transferUserId}
+                        onChange={(e) => setTransferUserId(e.target.value)}
+                      >
+                        <option value="">{vi ? '-- Chọn thành viên --' : '-- Select member --'}</option>
+                        {(current.members || [])
+                          .filter((m) => m.id !== current.ownerUserId)
+                          .map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name || m.email} ({m.email})
+                            </option>
+                          ))}
+                      </select>
+                    )}
                   </div>
                   <div>
                     <label className="form-label">
@@ -522,7 +668,16 @@ export function TenantsTab() {
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button type="submit" className="btn btn-primary btn-sm">{vi ? 'Xác nhận chuyển' : 'Confirm Transfer'}</button>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowTransfer(false)}>{vi ? 'Hủy' : 'Cancel'}</button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      setShowTransfer(false);
+                      resetTransferForm();
+                    }}
+                  >
+                    {vi ? 'Hủy' : 'Cancel'}
+                  </button>
                 </div>
               </form>
             )}
@@ -578,8 +733,8 @@ export function TenantsTab() {
             )}
           </div>
 
-          {/* Join Requests Panel (Only for Managers/Owners) */}
-          {current.canManage && (
+          {/* Join Requests Panel (Only for Owners) */}
+          {current.isOwner && (
             <div className="tenant-panel">
               <div className="tenant-panel-header">
                 <h3 className="tenant-panel-title">
@@ -697,7 +852,7 @@ export function TenantsTab() {
                           )}
                         </td>
                         <td style={{ textAlign: 'right' }}>
-                          {member.id !== current.ownerUserId && (
+                          {current.isOwner && member.id !== current.ownerUserId && (
                             <button
                               type="button"
                               className="btn btn-danger btn-xs"

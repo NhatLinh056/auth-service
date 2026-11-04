@@ -4,7 +4,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import type { JwtPayload } from '../common/strategies/jwt.strategy.js';
 import { CreateTenantDto, JoinTenantDto, RejectJoinRequestDto, TransferTenantDto, UpdateTenantDto } from './tenant.dto.js';
-import { TenantsService } from './tenants.service.js';
+import { TenantsService, type TenantActor } from './tenants.service.js';
 
 @ApiTags('tenants')
 @ApiBearerAuth()
@@ -12,7 +12,12 @@ import { TenantsService } from './tenants.service.js';
 @Controller('tenants')
 export class TenantsController {
   constructor(private readonly tenants: TenantsService) {}
-  private actor(user: JwtPayload) { return user.type === 'platform' ? user.sub : user.userId!; }
+  private actor(user: JwtPayload): TenantActor {
+    return {
+      id: user.type === 'platform' ? user.sub : (user.userId || user.sub),
+      type: user.type || 'platform',
+    };
+  }
 
   @Get('me')
   me(@CurrentUser() user: JwtPayload) { return this.tenants.me(this.actor(user)); }

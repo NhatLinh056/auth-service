@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException } from '@nestjs/common';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuthUserProfile } from '../auth-client/auth-client.service.js';
 
 export interface Order {
@@ -10,13 +9,15 @@ export interface Order {
   totalPrice: number;
   userId: string;
   userEmail: string;
+  tenantId: string;
+  tenantName?: string;
   status: 'PENDING' | 'CONFIRMED' | 'SHIPPED';
   createdAt: string;
 }
 
 @Injectable()
 export class OrdersService {
-  // In-memory simulated orders
+  // In-memory simulated orders isolated by tenant
   private orders: Order[] = [
     {
       id: 'ord_101',
@@ -25,6 +26,8 @@ export class OrdersService {
       totalPrice: 3499,
       userId: '44ace1e1-37c3-4a14-a5db-3aa92d90c6fe',
       userEmail: 'user@example.com',
+      tenantId: 'tenant-alpha',
+      tenantName: 'Doanh nghiệp Alpha',
       status: 'CONFIRMED',
       createdAt: new Date(Date.now() - 86400000).toISOString(),
     },
@@ -35,6 +38,8 @@ export class OrdersService {
       totalPrice: 1998,
       userId: 'customer-uuid-001',
       userEmail: 'customer@example.com',
+      tenantId: 'tenant-alpha',
+      tenantName: 'Doanh nghiệp Alpha',
       status: 'SHIPPED',
       createdAt: new Date(Date.now() - 43200000).toISOString(),
     },
@@ -45,31 +50,42 @@ export class OrdersService {
       totalPrice: 219,
       userId: 'customer-uuid-002',
       userEmail: 'customer2@example.com',
+      tenantId: 'tenant-beta',
+      tenantName: 'Doanh nghiệp Beta',
       status: 'PENDING',
       createdAt: new Date(Date.now() - 7200000).toISOString(),
     },
   ];
 
   findAll(user: AuthUserProfile): Order[] {
-    // Return all orders for ADMIN, or filter by user email/id
-    if (user.role === 'ADMIN') {
-      return this.orders;
+    if (!user.tenantId) {
+      throw new ForbiddenException('Người dùng chưa thuộc doanh nghiệp nào');
     }
-    return this.orders.filter(o => o.userId === user.id);
+    // Tenant Owner sees all orders of their tenant; regular members only see their own orders within the tenant
+    if (user.isTenantOwner) {
+      return this.orders.filter(o => o.tenantId === user.tenantId);
+    }
+    return this.orders.filter(o => o.tenantId === user.tenantId && (o.userId === user.id || (Boolean(user.userId) && o.userId === user.userId)));
   }
 
   findById(id: string, user: AuthUserProfile): Order {
+    if (!user.tenantId) {
+      throw new ForbiddenException('Người dùng chưa thuộc doanh nghiệp nào');
+    }
     const order = this.orders.find(o => o.id === id);
-    if (!order) {
+    if (!order || order.tenantId !== user.tenantId) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
-    if (user.role !== 'ADMIN' && order.userId !== user.id) {
+    if (!user.isTenantOwner && order.userId !== user.id && (!user.userId || order.userId !== user.userId)) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
     return order;
   }
 
   create(data: { item: string; quantity: number; price: number }, user: AuthUserProfile): Order {
+    if (!user.tenantId) {
+      throw new ForbiddenException('Người dùng chưa thuộc doanh nghiệp nào');
+    }
     if (!data || typeof data.item !== 'string' || !data.item.trim() || data.item.length > 200 ||
         !Number.isSafeInteger(data.quantity) || data.quantity < 1 || data.quantity > 10000 ||
         typeof data.price !== 'number' || !Number.isFinite(data.price) || data.price < 0 || data.price > 100000000) {
@@ -82,6 +98,8 @@ export class OrdersService {
       totalPrice: data.price * data.quantity,
       userId: user.id,
       userEmail: user.email,
+      tenantId: user.tenantId,
+      tenantName: user.tenantName || undefined,
       status: 'PENDING',
       createdAt: new Date().toISOString(),
     };

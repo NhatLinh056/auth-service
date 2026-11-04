@@ -1,19 +1,19 @@
-﻿# Hệ thống xác thực Microservices
+# Hệ thống xác thực Microservices
 
 Hai dịch vụ NestJS dùng chung hệ thống định danh:
 
 | Dịch vụ | Chức năng | Địa chỉ |
 |---|---|---|
 | [Auth Service](auth-service/README.md) | Quản lý tài khoản, ứng dụng, OAuth; Developer Console | http://localhost:3000 |
-| [Demo Service](demo-service/README.md) | Tích hợp đăng nhập tập trung và quản lý đơn hàng mẫu | http://localhost:3001 |
+| [Demo Service](demo-service/README.md) | Tích hợp đăng nhập OAuth (Google/Facebook) tập trung và API minh họa bảo vệ | http://localhost:3001 |
 
 ## Chức năng chính
 
 - Chủ ứng dụng tạo và quản lý ứng dụng trong Developer Console, nhận AppID/AppToken, đăng ký URL quay về và bật Google/Facebook.
-- Auth Service xác thực ứng dụng, xử lý đăng nhập và xác định quyền USER/ADMIN riêng cho từng ứng dụng.
-- Customer Portal chuyển sang màn hình đăng nhập Auth Service, nhận mã dùng một lần và tạo phiên riêng cho ứng dụng; người dùng tạo, xem đơn hàng theo quyền của mình.
+- Auth Service xác thực ứng dụng, xử lý đăng nhập và xác định quyền theo danh tính nền tảng (khách hàng app luôn nhận quyền USER; chủ ứng dụng nhận isAppOwner; chủ doanh nghiệp nhận isTenantOwner; Super Admin hệ thống nhận isSystemAdmin).
+- Demo Portal đăng nhập trực tiếp qua OAuth Google/Facebook với Auth Service, nhận mã dùng một lần và đổi JWT ứng dụng; kiểm chứng token an toàn qua API bảo vệ minh họa (`GET /auth/protected`).
 - Liên kết Google/Facebook và đổi mật khẩu được thực hiện tại trang Tài khoản của Auth Service.
-- Người dùng chưa thuộc doanh nghiệp có thể tạo tenant và trở thành chủ. Chủ quản lý thông tin, chuyển quyền sở hữu; Super Admin can thiệp có nhật ký.
+- Quản lý doanh nghiệp (Multi-tenant): Người chưa thuộc tenant có thể tạo tenant mới (trở thành Owner) hoặc gửi yêu cầu xin gia nhập. Chủ doanh nghiệp phê duyệt/từ chối yêu cầu, loại thành viên, chuyển quyền sở hữu và xóa tenant. Super Admin có quyền can thiệp chuyển chủ (kèm lý do bắt buộc) và xem nhật ký audit toàn hệ thống.
 
 ## Chạy trên máy đã cấu hình
 
@@ -48,9 +48,13 @@ Khi deploy lên domain thật, xem cấu hình `AUTH_PUBLIC_URL` trong [Auth Ser
 - Developer Console: http://localhost:3000
 - Customer Portal: http://localhost:3001
 - Handshake: http://localhost:3001/status
-- API không có token phải trả 401: http://localhost:3001/orders
+- API không có token phải trả 401: http://localhost:3001/auth/protected (hoặc http://localhost:3001/orders)
 - Nếu dùng dữ liệu demo, xem thông tin tài khoản mẫu trong script seed của Auth Service. Chỉ dùng dữ liệu này khi chạy local.
 
-Owner và OAuth user trong `adminEmails` có quyền ADMIN của ứng dụng. Platform Admin không tự có quyền ADMIN ở Demo; USER chỉ xem đơn của mình.
+Hệ thống phân tách rõ 4 cấp quyền độc lập:
+- Super Admin hệ thống (`Role.ADMIN`): quản lý nền tảng, can thiệp chuyển chủ tenant có lý do và xem audit toàn hệ thống; app token bị chặn dùng quyền này.
+- Application Owner (`isAppOwner`): quản lý cấu hình ứng dụng khách trong Developer Console.
+- Tenant Owner (`isTenantOwner`): quản lý doanh nghiệp, duyệt/từ chối thành viên, loại thành viên và chuyển quyền sở hữu.
+- Member / User (`USER`): thành viên thuộc tenant hoặc khách hàng của app; chỉ thao tác trong phạm vi được cấp.
 
-Giới hạn bản demo: đơn hàng và state/mã OAuth lưu trong bộ nhớ; khởi động lại làm mất dữ liệu tạm. JWT phía trình duyệt lưu trong localStorage. Đơn hàng hiện phân quyền theo app, chưa cô lập theo tenant; luồng xin gia nhập doanh nghiệp chưa được triển khai.
+Giới hạn bản demo: đơn hàng và state/mã OAuth lưu trong bộ nhớ; khởi động lại làm mất dữ liệu tạm. Giao diện Demo Service được tinh gọn đúng 4 chức năng người dùng (Login Google, Login Facebook, Profile cơ bản kèm thông tin doanh nghiệp tùy chọn, Logout) và nút kiểm chứng API bảo vệ (`GET /auth/protected`) độc lập nghiệp vụ đơn hàng. Route `/orders` và `/tenant/*` backend vẫn được bảo lưu để giữ tương thích ngược.

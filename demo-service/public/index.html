@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Customer Portal — Cổng Dịch Vụ Trực Tuyến</title>
+  <title>Customer Portal — Tích Hợp Đăng Nhập</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261101_01">
+  <link rel="stylesheet" href="style.css?v=20261103_01">
 </head>
 <body>
 
@@ -22,7 +22,7 @@
         </div>
         <div class="brand-text">
           <span class="brand-title" data-i18n="nav.brand_title">Cổng Khách Hàng</span>
-          <span class="brand-tag" data-i18n="nav.brand_tag">Dịch Vụ Đơn Hàng</span>
+          <span class="brand-tag" data-i18n="nav.brand_tag">Tích Hợp Xác Thực</span>
         </div>
       </div>
 
@@ -43,25 +43,21 @@
   </header>
 
   <!-- Main Container -->
-  <main class="main-container" style="max-width: 800px; margin: 32px auto; padding: 0 16px;">
+  <main class="main-container" style="max-width: 600px; margin: 32px auto; padding: 0 16px;">
 
-    <!-- ─────────────────────────────────────────────────────────────────────────
-         APPLICATION HEADER (GỌN GÀNG, CHUYÊN NGHIỆP)
-         ───────────────────────────────────────────────────────────────────────── -->
+    <!-- APPLICATION HEADER -->
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding: 14px 20px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
       <div style="display: flex; align-items: center; gap: 10px;">
         <div style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);"></div>
         <div>
-          <strong style="font-size: 15px; color: #fff;" id="banner-app-name">Demo Order Service</strong>
-          <span style="font-size: 12px; color: var(--text-dim); margin-left: 8px;">— Cổng Quản Lý &amp; Đặt Hàng Trực Tuyến</span>
+          <strong style="font-size: 15px; color: #fff;" id="banner-app-name">Demo Service</strong>
+          <span style="font-size: 12px; color: var(--text-dim); margin-left: 8px;" data-i18n="nav.app_desc">— Minh Họa Tích Hợp OAuth với Auth Service</span>
         </div>
       </div>
       <span class="badge badge-success" id="banner-app-status" style="font-size: 11px;">ACTIVE</span>
     </div>
 
-    <!-- ─────────────────────────────────────────────────────────────────────────
-         VIEW 1: UNAUTHENTICATED (CHỈ ĐĂNG NHẬP OAUTH, TINH GỌN)
-         ───────────────────────────────────────────────────────────────────────── -->
+    <!-- VIEW 1: UNAUTHENTICATED (CHỈ ĐĂNG NHẬP OAUTH, TINH GỌN) -->
     <div class="card" id="unauth-view" style="max-width: 480px; margin: 0 auto;">
       <div class="card-header" style="text-align: center; justify-content: center; flex-direction: column; gap: 6px; padding: 28px 24px 16px;">
         <div class="card-icon card-icon-auth" style="margin: 0 auto 8px; width: 44px; height: 44px;">
@@ -72,27 +68,39 @@
           </svg>
         </div>
         <h3 class="card-title" style="font-size: 20px;" data-i18n="auth.title">Đăng Nhập Tài Khoản</h3>
-        <p class="card-subtitle" style="font-size: 13px;">Sử dụng tài khoản chung tại Auth Service</p>
+        <p class="card-subtitle" style="font-size: 13px;" data-i18n="auth.subtitle">Đăng nhập nhanh chóng và bảo mật qua mạng xã hội</p>
       </div>
 
       <div class="card-body" style="padding: 16px 24px 28px;">
-        <button type="button" class="btn btn-primary" id="btn-auth-login" onclick="loginWithAuth()" style="width:100%">Đăng nhập qua Auth Service</button>
-        <p style="text-align:center; margin-top:16px">Chọn phương thức đăng nhập và quản lý tài khoản tại Auth Service.</p>
+        <div class="oauth-actions">
+          <button type="button" class="btn btn-oauth btn-oauth-google" id="btn-oauth-google" onclick="loginWithProvider('google')">
+            <svg width="18" height="18" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            <span data-i18n="auth.btn_google">Đăng nhập bằng Google</span>
+          </button>
+          <button type="button" class="btn btn-oauth btn-oauth-facebook" id="btn-oauth-facebook" onclick="loginWithProvider('facebook')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+            <span data-i18n="auth.btn_facebook">Đăng nhập bằng Facebook</span>
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- ─────────────────────────────────────────────────────────────────────────
-         VIEW 2: AUTHENTICATED (PROFILE & ORDERS TRỰC QUAN)
-         ───────────────────────────────────────────────────────────────────────── -->
-    <div class="card" id="auth-view" style="display: none;">
+    <!-- VIEW 2: AUTHENTICATED (PROFILE CƠ BẢN) -->
+    <div class="card" id="auth-view" style="display: none; max-width: 540px; margin: 0 auto;">
       <!-- Header -->
-      <div class="card-header" style="justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+      <div class="card-header" style="justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 20px 24px;">
         <div style="display: flex; align-items: center; gap: 12px;">
           <div class="user-avatar" id="user-avatar" style="overflow: hidden; width: 44px; height: 44px; font-size: 18px;">U</div>
           <div>
             <div style="display: flex; align-items: center; gap: 8px;">
               <strong class="user-name" id="user-name-display" style="font-size: 16px;">Loading...</strong>
-              <span class="user-role-badge" id="user-role-display">USER</span>
             </div>
             <div class="user-email" id="user-email-display" style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">user@example.com</div>
           </div>
@@ -103,104 +111,53 @@
         </button>
       </div>
 
-      <div class="card-body">
-        <!-- Role Notification Banner -->
-        <section id="tenant-panel" class="tenant-panel" aria-label="Doanh nghiệp"><p>Đang tải thông tin doanh nghiệp…</p></section>
-        <div id="role-explanation-box" style="padding: 12px 16px; border-radius: var(--radius-sm); margin-bottom: 20px; font-size: 13px; line-height: 1.5; border: 1px solid var(--border-subtle); background: var(--bg-surface-elevated);">
-          <!-- Dynamic Content based on ADMIN / USER -->
+      <div class="card-body" style="padding: 20px 24px;">
+        <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 16px;">
+          <h4 style="font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="profile.title">
+            Thông Tin Tài Khoản
+          </h4>
+          <div style="display: grid; grid-template-columns: 130px 1fr; gap: 10px; font-size: 13px; line-height: 1.6;">
+            <span style="color: var(--text-dim);" data-i18n="profile.user_id">User ID:</span>
+            <code id="user-id-display" class="meta-code" style="word-break: break-all; font-size: 12px;">...</code>
+
+            <span style="color: var(--text-dim);" data-i18n="profile.provider">Phương Thức:</span>
+            <span id="user-provider-display" class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; width: fit-content; font-size: 11px;">OAUTH</span>
+
+            <span style="color: var(--text-dim);" data-i18n="profile.tenant">Doanh Nghiệp:</span>
+            <span id="user-tenant-display" style="font-size: 12px; color: var(--text-muted);">Chưa tham gia</span>
+
+            <span style="color: var(--text-dim);" data-i18n="profile.auth_status">Xác Thực:</span>
+            <span class="badge badge-success" style="width: fit-content; font-size: 11px;" data-i18n="profile.verified">Đã Xác Thực</span>
+          </div>
         </div>
 
-        <!-- ───────────────────────────────────────────────────────────────────
-             ORDERS MANAGEMENT SECTION (BẢNG ĐƠN HÀNG TRỰC QUAN)
-             ─────────────────────────────────────────────────────────────────── -->
-        <div style="margin-bottom: 24px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
-            <div>
-              <h4 style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 2px;">Danh Sách Đơn Hàng</h4>
-              <p style="font-size: 12px; color: var(--text-muted);" id="orders-subtitle">
-                Đang tải dữ liệu đơn hàng...
-              </p>
-            </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <button class="btn btn-secondary btn-sm" onclick="fetchOrders()" id="btn-fetch-orders">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="23 4 23 10 17 10"></polyline>
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                </svg>
-                <span>Làm Mới</span>
-              </button>
-              <button class="btn btn-primary btn-sm" onclick="createSampleOrder()" id="btn-create-order">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                <span>+ Đặt Hàng Thử Nghiệm</span>
-              </button>
-            </div>
+        <!-- PROTECTED API TEST SECTION (MINH HỌA XÁC MINH TOKEN) -->
+        <div style="margin-top: 16px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <h4 style="font-size: 13px; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="api_test.title">
+              Kiểm Chứng Token (Protected API)
+            </h4>
+            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 10px;">UserAuthGuard</span>
           </div>
-
-          <!-- Orders Table Container -->
-          <div class="table-container" style="border-radius: var(--radius-md); overflow-x: auto;">
-            <table class="data-table" style="width: 100%; border-collapse: collapse;">
-              <thead>
-                <tr>
-                  <th style="padding: 10px 14px; font-size: 11px;">Mã Đơn</th>
-                  <th style="padding: 10px 14px; font-size: 11px;">Sản Phẩm</th>
-                  <th style="padding: 10px 14px; font-size: 11px; text-align: center;">SL</th>
-                  <th style="padding: 10px 14px; font-size: 11px; text-align: right;">Tổng Tiền</th>
-                  <th style="padding: 10px 14px; font-size: 11px;" id="th-customer">Khách Hàng</th>
-                  <th style="padding: 10px 14px; font-size: 11px; text-align: center;">Trạng Thái</th>
-                </tr>
-              </thead>
-              <tbody id="orders-table-body">
-                <tr>
-                  <td colspan="6" class="table-empty" style="text-align: center; padding: 24px; color: var(--text-dim);">
-                    Đang tải danh sách đơn hàng...
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Toggle raw JSON option -->
-          <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
-            <button type="button" class="btn btn-secondary btn-xs" onclick="toggleJsonView()" style="font-size: 11px; color: var(--text-dim);">
-              <span id="btn-toggle-json-text">{ } Xem Dữ Liệu API (JSON)</span>
+          <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 12px; line-height: 1.4;" data-i18n="api_test.desc">
+            Gọi endpoint <code>GET /auth/protected</code> kèm Bearer token để xác thực quyền truy cập qua Auth Service.
+          </p>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-test-protected-api" onclick="testProtectedApi()" data-i18n="api_test.btn_call" style="padding: 6px 14px;">
+              Thử Gọi API Bảo Vệ
             </button>
+            <span id="api-test-status" style="font-size: 12px; color: var(--text-muted);"></span>
           </div>
-
-          <!-- Raw JSON Viewer (Hidden by default) -->
-          <div id="orders-result-box" style="display: none; margin-top: 10px;">
-            <pre id="orders-json-display" style="background: var(--bg-surface-subtle); padding: 12px; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 11px; color: #a5b4fc; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; margin: 0; border: 1px solid var(--border-subtle);"></pre>
+          <div id="api-test-result" style="display: none; margin-top: 12px; padding: 10px 12px; background: #0f172a; border: 1px solid #334155; border-radius: var(--radius-sm); font-family: 'JetBrains Mono', monospace; font-size: 11px; max-height: 180px; overflow-y: auto; white-space: pre-wrap;">
           </div>
         </div>
 
-        <!-- ───────────────────────────────────────────────────────────────────
-             SESSION DETAILS (THU GỌN GỌN GÀNG)
-             ─────────────────────────────────────────────────────────────────── -->
-        <details style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 10px 14px;">
-          <summary style="cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text-muted); user-select: none;">
-            Chi Tiết Phiên Đăng Nhập &amp; Mã JWT Token
-          </summary>
-          <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-subtle);">
-            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 8px; font-size: 12px; margin-bottom: 12px;">
-              <span style="color: var(--text-dim);">UID Người Dùng:</span>
-              <code id="user-id-display" class="meta-code" style="word-break: break-all;">...</code>
-              <span style="color: var(--text-dim);">Phương Thức:</span>
-              <span id="user-provider-display" class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; width: fit-content;">OAuth</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <span style="font-size: 11px; color: var(--text-dim); font-weight: 500;">JWT Access Token:</span>
-              <button class="btn btn-secondary btn-xs" onclick="copyToken()" style="font-size: 10px; padding: 2px 8px;">
-                Sao Chép Token
-              </button>
-            </div>
-            <div class="token-row">
-              <code class="token-value" id="user-token-display" style="font-size: 10px;">...</code>
-            </div>
-          </div>
-        </details>
-
+        <div style="margin-top: 16px; padding: 12px 14px; background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+          <strong style="color: #10b981;" data-i18n="profile.integration_notice_title">Tích Hợp Thành Công:</strong>
+          <span data-i18n="profile.integration_notice_desc">
+            Ứng dụng Demo đã kết nối và xác thực an toàn qua Auth Service (Project 1) bằng giao thức OAuth 2.0 PKCE.
+          </span>
+        </div>
       </div>
     </div>
 
@@ -209,7 +166,6 @@
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="app.js?v=task3-20261102_tenant"></script>
-  <script src="tenant.js?v=20261102_01"></script>
+  <script src="app.js?v=streamlined-20261103"></script>
 </body>
 </html>

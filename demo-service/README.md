@@ -1,35 +1,41 @@
-﻿# Demo Service
+# Demo Service
 
-Customer Portal minh họa tích hợp đăng nhập tập trung và quản lý đơn hàng. Dịch vụ không lưu mật khẩu hoặc bảng người dùng riêng.
+Ứng dụng phụ tinh gọn dùng để chứng minh khả năng tích hợp đăng nhập OAuth (Google & Facebook) với Auth Service (Project 1). Dịch vụ không lưu mật khẩu hoặc bảng người dùng riêng.
 
 - Portal: http://localhost:3001
 - Kiểm tra kết nối Auth: http://localhost:3001/status
 
 ## Chức năng chính
 
-- Chuyển sang màn hình Auth Service để đăng nhập bằng email/mật khẩu hoặc Google/Facebook đã bật cho ứng dụng.
-- Đổi mã đăng nhập một lần lấy phiên người dùng và kiểm tra JWT qua Auth Service khi truy cập API đơn hàng.
-- Tạo và xem đơn hàng mẫu: USER chỉ xem đơn của mình; ADMIN xem toàn bộ đơn của ứng dụng.
-- Hiển thị trạng thái kết nối và thông tin ứng dụng tại `/status`.
+- **Giao diện tinh gọn (Đúng 4 chức năng người dùng + 1 API bảo vệ):**
+  - Chưa đăng nhập: Hiển thị đúng 2 nút "Đăng nhập bằng Google" và "Đăng nhập bằng Facebook", cùng trạng thái kết nối với Auth Service.
+  - Đăng nhập thành công: Hiển thị thông tin tài khoản cơ bản (họ tên, email, User ID, provider, thông tin tenant tùy chọn nếu có) và nút đăng xuất. Mọi tài khoản (có hoặc chưa có tenant) đều đăng nhập và xem được màn hình này.
+  - Kiểm chứng API bảo vệ: Nút "Thử Gọi API Bảo Vệ" gọi endpoint `GET /auth/protected` kèm Bearer token (qua `UserAuthGuard`), chứng minh token hợp lệ cho mọi User Demo (có hoặc chưa có tenant) và phản hồi ngữ cảnh xác thực tối thiểu (`authenticated`, `service`, `appId`, `user` gồm `id`, `email`, `tenantId`) mà không chứa cờ vai trò hệ thống/app, cờ quyền sở hữu hay nghiệp vụ đơn hàng.
+  - Không hiển thị nội dung quản lý doanh nghiệp (tenant), vai trò tenant/app, cờ quyền sở hữu, bảng đơn hàng hay JWT thô trên giao diện Demo.
+- **Tương thích API backend:** Các API `/orders` và proxy `/tenant/*` vẫn được bảo lưu ở backend Demo để giữ tương thích với các bài kiểm thử Task 7 và client bên ngoài; dữ liệu đơn hàng vẫn được cô lập chặt chẽ theo tenant ở tầng backend.
+- **Bảo mật luồng OAuth:** PKCE S256, browser-bound state, mã đổi token một lần, AppToken chỉ lưu ở backend, không đưa JWT vào URL.
 
-## Cài đặt và chạy
+## Luồng tích hợp
 
-Phần **Doanh nghiệp** trong Portal cho phép tạo và xem tenant. Chủ doanh nghiệp có thể sửa thông tin, chuyển quyền cho thành viên, xem nhật ký và xóa tenant khi không còn thành viên khác. Super Admin có thêm danh sách doanh nghiệp và quyền chuyển chủ với lý do được ghi nhận. Luồng xin gia nhập/phê duyệt và giới hạn đơn hàng theo tenant sẽ được bổ sung riêng.
+Luồng đăng nhập:
+1. Trình duyệt người dùng bấm nút Google/Facebook tại Demo (`http://localhost:3001`).
+2. Demo tạo PKCE verifier/challenge (S256) và `state` ngẫu nhiên lưu tại `sessionStorage`.
+3. Backend Demo nhận yêu cầu `POST /auth/start`, kiểm tra provider khả dụng/đang bật, dùng AppID/AppToken gọi Auth Service sinh URL chuyển hướng.
+4. Trình duyệt chuyển tiếp trực tiếp sang Auth Service (`/auth/oauth/:provider`) rồi sang Google/Facebook (không qua trang chọn trung gian).
+5. Sau khi đăng nhập nhà cung cấp, Auth Service xác thực và chuyển hướng trở lại Demo kèm mã code dùng một lần và `state`.
+6. Demo kiểm tra `state` khớp trình duyệt, gọi `POST /auth/exchange` để backend Demo dùng code + verifier đổi lấy JWT phiên ứng dụng.
+7. Demo lưu JWT trong bộ nhớ trình duyệt, hiển thị thông tin tài khoản và cho phép đăng xuất an toàn.
 
-Liên kết Google/Facebook, xác nhận tài khoản trùng email và thiết lập mật khẩu được thực hiện tại **Auth Service**. Demo không nhận mật khẩu hoặc phiên nền tảng để liên kết. Các ứng dụng dùng chung `userId`, còn ID thành viên và quyền trong từng app được giữ riêng.
-
-Luồng tích hợp: trình duyệt tạo PKCE và state → backend Demo dùng AppID/AppToken tạo yêu cầu đăng nhập → chuyển sang Auth → quay về Demo với mã dùng một lần và state → backend đổi mã lấy JWT giới hạn cho app. AppToken chỉ nằm ở backend.
-
-Chạy trong `demo-service`:
+## Cài đặt và cấu hình
 
 ```powershell
-# Cài các gói phụ thuộc.
+# Cài các gói phụ thuộc
 npm install
-# Tạo file cấu hình từ mẫu nếu chưa có .env.
+# Tạo file cấu hình từ mẫu nếu chưa có .env
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-Cấu hình:
+Cấu hình mẫu (`.env`):
 
 ```env
 PORT=3001
@@ -42,19 +48,17 @@ APP_TOKEN=<AppToken từ Developer Console>
 Khởi động Auth Service trước, rồi chạy:
 
 ```powershell
-# Chạy Customer Portal ở chế độ phát triển.
+# Chạy Customer Portal ở chế độ phát triển
 npm run start:dev
 ```
 
-Để đăng nhập OAuth, bật provider trong Console, điền credential hợp lệ và khai báo `http://localhost:3001/` trong danh sách URL quay về của ứng dụng.
+Để đăng nhập OAuth, bật provider trong Developer Console (`http://localhost:3000`), cấu hình Client ID/Secret và khai báo `http://localhost:3001/` trong allowlist redirect URL.
 
-Khi chạy trên domain thật, dùng `AUTH_SERVICE_URL=https://auth.example.com` và `PUBLIC_URL=https://shop.example.com`; thêm **chính xác** `https://shop.example.com/` vào danh sách URL quay về của ứng dụng trong Developer Console. Cấu hình `AUTH_PUBLIC_URL=https://auth.example.com` bên Auth Service và đăng ký callback Auth tại Google/Meta. Cả hai domain cần HTTPS. Sau khi đổi `.env`, khởi động lại dịch vụ.
+## Kiểm thử và giới hạn kiểm chứng
 
-## Kiểm thử thủ công
-
-1. Mở `/status`: cần `handshakeStatus=SUCCESS`, `handshake.applicationStatus=ACTIVE`.
-2. Mở Portal, chọn **Đăng nhập qua Auth Service**, xác nhận tài khoản tại Auth và kiểm tra quay về Portal.
-3. USER chỉ xem đơn của mình; owner hoặc OAuth user thuộc `adminEmails` nhận ADMIN và xem toàn bộ đơn.
-4. Bỏ token khi gọi `/orders`: phải nhận 401. Platform Admin không tự được quyền ADMIN của ứng dụng.
-
-Mỗi request nghiệp vụ được Auth Service xác thực lại bằng JWT và AppID/AppToken. Không dùng cache handshake để cấp quyền. Đơn hàng lưu trong bộ nhớ và mất khi restart.
+- **Kiểm thử tự động:**
+  - Demo unit tests: `powershell -Command "cd demo-service; npx vitest run"` (84/84 PASS).
+  - Typecheck: `npx --prefix demo-service tsc -p demo-service/tsconfig.json --noEmit` (0 errors).
+  - Backend build: `npm --prefix demo-service run build` (PASS).
+  - Syntax check: `node --check demo-service/public/app.js` (PASS).
+- **Giới hạn chưa kiểm chứng:** Luồng OAuth thực tế cần Client ID và Secret hợp lệ từ Google Cloud Console và Meta Developer Console trong môi trường mạng thực tế.

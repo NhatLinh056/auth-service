@@ -1,4 +1,4 @@
-﻿# Auth Service
+# Auth Service
 
 Dịch vụ định danh trung tâm: NestJS, Prisma, PostgreSQL và Developer Console React.
 
@@ -9,8 +9,8 @@ Dịch vụ định danh trung tâm: NestJS, Prisma, PostgreSQL và Developer Co
 ## Chức năng chính
 
 - Tài khoản nền tảng đăng nhập Developer Console để tạo và quản lý ứng dụng khách.
-- Mỗi ứng dụng có AppID/AppToken, danh sách URL quay về, cấu hình Google/Facebook và danh sách email quản trị (`adminEmails`).
-- Auth Service cung cấp màn hình đăng nhập tập trung bằng email/mật khẩu hoặc OAuth, cấp mã dùng một lần và xác định quyền USER/ADMIN theo ứng dụng.
+- Mỗi ứng dụng có AppID/AppToken, danh sách URL quay về và cấu hình Google/Facebook.
+- Auth Service cung cấp màn hình đăng nhập tập trung bằng email/mật khẩu hoặc OAuth, cấp mã dùng một lần và chuẩn hóa quyền người dùng (khách hàng app mang quyền USER; tách biệt với quyền quản trị nền tảng và quản trị doanh nghiệp).
 - Demo Service gửi AppID/AppToken để xác thực ứng dụng và kiểm tra JWT, quyền người dùng qua API của Auth Service.
 
 ## Cài đặt lần đầu
@@ -61,15 +61,14 @@ Trong chi tiết ứng dụng trên Console:
 1. Điền Client ID/Secret và bật Google hoặc Facebook.
 2. Đăng ký callback hiển thị trong Console tại nhà cung cấp. Khi chạy local, dùng `http://localhost:3000/auth/oauth/google/callback` hoặc `http://localhost:3000/auth/oauth/facebook/callback`.
 3. Thêm URL Portal chính xác, chẳng hạn `https://shop.example.com/`, vào **URL quay về ứng dụng sau đăng nhập** trong chi tiết app. Có thể đăng ký thêm URL staging hoặc localhost cho các môi trường khác.
-4. Điền `adminEmails` nếu muốn ủy quyền quản trị cho tài khoản OAuth.
 
 Redirect phải khớp chính xác. Luồng đăng nhập dùng state gắn với trình duyệt, PKCE và mã dùng một lần; không truyền JWT qua URL.
 
 ## API chính
 
-Tenant đại diện doanh nghiệp. Mỗi user thuộc tối đa một tenant; người tạo tự trở thành chủ. Chủ được cập nhật thông tin, chuyển quyền cho thành viên hiện tại và xóa doanh nghiệp khi không còn thành viên khác. Super Admin được chuyển quyền cho thành viên hoặc user chưa thuộc doanh nghiệp, phải ghi lý do nếu can thiệp doanh nghiệp của người khác. Chủ cũ vẫn là thành viên sau khi chuyển quyền. Không thể xóa tài khoản còn sở hữu doanh nghiệp.
+Tenant đại diện doanh nghiệp. Mỗi user thuộc tối đa một tenant; người tạo tự trở thành chủ (Tenant Owner). Chủ quản lý thông tin, phê duyệt/từ chối yêu cầu gia nhập, loại thành viên, chuyển quyền cho thành viên hiện tại và xóa doanh nghiệp khi không còn thành viên khác. Thành viên thường có thể tự rời doanh nghiệp (chủ sở hữu phải chuyển quyền trước khi rời). Super Admin có thể can thiệp chuyển quyền cho thành viên hoặc user chưa thuộc doanh nghiệp (bắt buộc ghi lý do can thiệp), nhưng không can thiệp vào các thao tác quản trị nội bộ khác của tenant. Chủ cũ trở thành thành viên sau khi chuyển quyền; không thể xóa tài khoản còn sở hữu doanh nghiệp.
 
-API tenant chấp nhận phiên nền tảng hoặc phiên ứng dụng hợp lệ; quyền Super Admin luôn lấy từ danh tính chung trong database. `GET /tenants/me` trả doanh nghiệp và quyền hiện tại; `/tenants` hỗ trợ tạo/danh sách, `/tenants/:id` hỗ trợ xem/sửa/xóa, `POST /tenants/:id/transfer` chuyển chủ. Nhật ký nằm tại `/tenants/:id/audit`; chỉ Super Admin được xem `/tenants/audit` toàn hệ thống. Nhật ký được giữ sau khi xóa tenant.
+API tenant chấp nhận phiên nền tảng hoặc phiên ứng dụng hợp lệ; quyền Super Admin chỉ áp dụng cho phiên nền tảng (`type === 'platform'`), token ứng dụng (`type === 'app_user'`) bị chặn khỏi các quyền này. `GET /tenants/me` trả doanh nghiệp, context quyền và yêu cầu gia nhập hiện tại; `/tenants` hỗ trợ tạo/danh sách, `/tenants/:id` xem/sửa/xóa, `POST /tenants/:id/transfer` chuyển chủ. Luồng gia nhập gồm `POST /tenants/join`, `GET /tenants/join-request/my`, `POST /tenants/join-request/:id/cancel`, `GET /tenants/:id/join-requests`, `POST /tenants/join-requests/:id/approve` và `POST /tenants/join-requests/:id/reject`. Thành viên rời bằng `POST /tenants/leave`; chủ loại thành viên bằng `DELETE /tenants/:id/members/:userId`. Nhật ký tenant tại `/tenants/:id/audit`; chỉ Super Admin với platform token được xem `/tenants/audit` toàn hệ thống. Nhật ký audit được giữ nguyên ngay cả khi tenant bị xóa.
 
 Danh tính người dùng được lưu chung trong `User`; `AppUser` là quan hệ thành viên và quyền riêng trong từng ứng dụng. Trong phiên ứng dụng, `userId` là ID danh tính chung; `id` và JWT `sub` vẫn là ID thành viên để giữ tương thích dữ liệu nghiệp vụ.
 
@@ -82,10 +81,11 @@ Migration `20261102010000_shared_user_identity` giữ nguyên user, thành viên
 - `POST /auth/oauth/exchange`: backend ứng dụng đổi code/verifier lấy JWT riêng của app.
 - `/auth/login`: đăng nhập tài khoản nền tảng.
 - `/auth/verify-service`: xác thực AppID/AppToken.
-- `/users/verify-app-user`: xác thực JWT cùng credential dịch vụ, kiểm tra tenant và trả `appRole` mới nhất.
+- `/users/verify-app-user`: xác thực JWT cùng credential dịch vụ và trả context quyền hiện hành (`isTenantOwner`, `tenantId`, `isAppOwner`); người dùng chưa thuộc doanh nghiệp có `tenantId: null`.
 - `/applications`: quản lý ứng dụng bằng tài khoản nền tảng.
 - `POST /auth/account/password`: tạo mật khẩu cho tài khoản OAuth đã xác minh hoặc đổi mật khẩu với `currentPassword`.
+- `/tenants`: quản lý doanh nghiệp, danh sách, chi tiết, chuyển chủ, xin gia nhập, phê duyệt và audit log.
 
-Frontend đã được build vào `public`. Sau khi sửa React, chạy trong `frontend`: `npm run build -- --outDir ../public`.
+Frontend đã được build vào `public`. Sau khi sửa React, chạy: `npm --prefix frontend run build` và đồng bộ `frontend/dist/*` sang `public/`.
 
 Yêu cầu đăng nhập và mã tạm được lưu trong bộ nhớ của một tiến trình. Restart làm hết hiệu lực yêu cầu đang chờ; triển khai nhiều instance cần kho dùng chung có TTL và thao tác tiêu thụ mã nguyên tử.

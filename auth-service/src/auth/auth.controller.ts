@@ -152,8 +152,9 @@ export class AuthController {
     @Res() res: Response,
     @Query('app_id') appId?: string,
     @Query('code_challenge') codeChallenge?: string,
+    @Query('state') clientState?: string,
   ) {
-    const authUrl = await this.oauthService.getAuthorizationUrl(provider, redirectUri, appId, codeChallenge);
+    const authUrl = await this.oauthService.getAuthorizationUrl(provider, redirectUri, appId, codeChallenge, undefined, clientState);
     const state = new URL(authUrl).searchParams.get('state')!;
     res.cookie('oauth_state', state, {
       httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production',
@@ -225,6 +226,7 @@ export class AuthController {
     const code = this.grants.issue(result, result.appId, result.codeChallenge);
     const targetUrl = new URL(result.redirectUri);
     targetUrl.searchParams.set('code', code);
+    if (result.clientState) targetUrl.searchParams.set('state', result.clientState);
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Referrer-Policy', 'no-referrer');
     return res.redirect(targetUrl.toString());

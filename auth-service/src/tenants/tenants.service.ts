@@ -10,14 +10,29 @@ const summary = {
   _count: { select: { users: true } },
 } satisfies Prisma.TenantInclude;
 
+export interface TenantActor {
+  id?: string;
+  userId?: string;
+  type?: 'platform' | 'app_user';
+}
+export type TenantActorInput = string | TenantActor;
+
 @Injectable()
 export class TenantsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async actor(db: Prisma.TransactionClient, id: string) {
+  private async actor(db: Prisma.TransactionClient, actorInput: TenantActorInput) {
+    const id = typeof actorInput === 'string' ? actorInput : (actorInput.id || actorInput.userId)!;
+    const type = typeof actorInput === 'string' ? 'platform' : (actorInput.type || 'platform');
     const user = await db.user.findUnique({ where: { id } });
     if (!user) throw new UnauthorizedException('Tài khoản không còn tồn tại');
-    return user;
+    const isPlatformAdmin = type === 'platform' && user.role === Role.ADMIN;
+    return {
+      ...user,
+      role: isPlatformAdmin ? Role.ADMIN : Role.USER,
+      type,
+      isPlatformAdmin,
+    };
   }
 
   private async transaction<T>(action: (db: Prisma.TransactionClient) => Promise<T>): Promise<T> {
@@ -38,9 +53,9 @@ export class TenantsService {
     }
   }
 
-  async create(actorId: string, dto: CreateTenantDto) {
+  async create(actorInput: TenantActorInput, dto: CreateTenantDto) {
     return this.transaction(async db => {
-      const actor = await this.actor(db, actorId);
+      const actor = await this.actor(db, actorInput);
       if (actor.tenantId) throw new ConflictException('Bạn đã thuộc một doanh nghiệp');
       const tenant = await db.tenant.create({ data: { name: dto.name, description: dto.description, ownerUserId: actor.id } });
       await db.user.update({ where: { id: actor.id }, data: { tenantId: tenant.id } });
@@ -55,13 +70,13 @@ export class TenantsService {
     });
   }
 
-  async me(actorId: string) {
-    const actor = await this.actor(this.prisma, actorId);
-    const tenant = actor.tenantId ? await this.detail(actor.id, actor.tenantId) : null;
-    const pendingRequest = !actor.tenantId ? await this.myJoinRequest(actor.id) : null;
+  async me(actorInput: TenantActorInput) {
+    const actor = await this.actor(this.prisma, actorInput);
+    const tenant = actor.tenantId ? await this.detail(actorInput, actor.tenantId) : null;
+    const pendingRequest = !actor.tenantId ? await this.myJoinRequest(actorInput) : null;
     return {
       tenant,
-      isSystemAdmin: actor.role === Role.ADMIN,
+      isSystemAdmin: actor.isPlatformAdmin,
       canCreate: !actor.tenantId,
       pendingRequest,
       joinRequest: pendingRequest,
@@ -69,9 +84,9 @@ export class TenantsService {
     };
   }
 
-  async applyJoin(actorId: string, dto: JoinTenantDto) {
+  async applyJoin(actorInput: TenantActorInput, dto: JoinTenantDto) {
     return this.transaction(async db => {
-      const actor = await this.actor(db, actorId);
+      const actor = await this.actor(db, actorInput);
       if (actor.tenantId) throw new ConflictException('Bạn đã thuộc một doanh nghiệp');
 
       const targetTenant = await db.tenant.findUnique({ where: { id: dto.tenantId } });
@@ -102,7 +117,8 @@ export class TenantsService {
     });
   }
 
-  async myJoinRequest(actorId: string) {
+  async myJoinRequest(actorInput: TenantActorInput) {
+    const actorUserId = typeof actorInput === 'string' ? actorInput : (actorInput.id || actorInput.userId)!;
     const include = {
       tenant: {
         select: {
@@ -115,23 +131,24 @@ export class TenantsService {
     };
 
     const pending = await this.prisma.tenantJoinRequest.findFirst({
-      where: { userId: actorId, status: TenantJoinRequestStatus.PENDING },
+      where: { userId: actorUserId, status: TenantJoinRequestStatus.PENDING },
       include,
     });
     if (pending) return pending;
 
     return this.prisma.tenantJoinRequest.findFirst({
-      where: { userId: actorId, status: TenantJoinRequestStatus.REJECTED },
+      where: { userId: actorUserId, status: TenantJoinRequestStatus.REJECTED },
       orderBy: { updatedAt: 'desc' },
       include,
     });
   }
 
-  async cancelJoinRequest(actorId: string, requestId: string) {
+  async cancelJoinRequest(actorInput: TenantActorInput, requestId: string) {
+    const actorUserId = typeof actorInput === 'string' ? actorInput : (actorInput.id || actorInput.userId)!;
     return this.transaction(async db => {
       const request = await db.tenantJoinRequest.findUnique({ where: { id: requestId } });
       if (!request) throw new NotFoundException('Không tìm thấy yêu cầu gia nhập');
-      if (request.userId !== actorId) throw new ForbiddenException('Bạn không có quyền thao tác trên yêu cầu này');
+      if (request.userId !== actorUserId) throw new ForbiddenException('Bạn không có quyền thao tác trên yêu cầu này');
       if (request.status !== TenantJoinRequestStatus.PENDING && request.status !== TenantJoinRequestStatus.REJECTED) {
         throw new ConflictException('Chỉ có thể hủy hoặc đóng yêu cầu đang ở trạng thái PENDING hoặc REJECTED');
       }
@@ -142,31 +159,32 @@ export class TenantsService {
     });
   }
 
-  async list(actorId: string) {
-    const actor = await this.actor(this.prisma, actorId);
+  async list(actorInput: TenantActorInput) {
+    const actor = await this.actor(this.prisma, actorInput);
     return this.prisma.tenant.findMany({
-      where: actor.role === Role.ADMIN ? undefined : { id: actor.tenantId || '__none__' },
+      where: actor.isPlatformAdmin ? undefined : { id: actor.tenantId || '__none__' },
       include: summary, orderBy: { createdAt: 'desc' },
     });
   }
 
-  async detail(actorId: string, tenantId: string) {
+  async detail(actorInput: TenantActorInput, tenantId: string) {
     return this.transaction(async db => {
-      const actor = await this.actor(db, actorId);
+      const actor = await this.actor(db, actorInput);
       const tenant = await db.tenant.findUnique({ where: { id: tenantId }, include: summary });
       if (!tenant) throw new NotFoundException('Không tìm thấy doanh nghiệp');
-      if (actor.role !== Role.ADMIN && actor.tenantId !== tenant.id) throw new ForbiddenException('Không được truy cập doanh nghiệp khác');
-      const canManage = actor.role === Role.ADMIN || tenant.ownerUserId === actor.id;
+      if (!actor.isPlatformAdmin && actor.tenantId !== tenant.id) throw new ForbiddenException('Không được truy cập doanh nghiệp khác');
+      const isOwner = tenant.ownerUserId === actor.id;
+      const canManage = isOwner || actor.isPlatformAdmin;
       const members = canManage ? await db.user.findMany({
         where: { tenantId }, select: { id: true, email: true, name: true }, orderBy: { email: 'asc' },
       }) : [];
-      return { ...tenant, canManage, isOwner: tenant.ownerUserId === actor.id, members };
+      return { ...tenant, canManage, isOwner, members };
     });
   }
 
-  async listJoinRequests(actorId: string, tenantId: string) {
-    const actor = await this.actor(this.prisma, actorId);
-    await this.managed(this.prisma, actor, tenantId);
+  async listJoinRequests(actorInput: TenantActorInput, tenantId: string) {
+    const actor = await this.actor(this.prisma, actorInput);
+    await this.requireOwner(this.prisma, actor, tenantId);
     return this.prisma.tenantJoinRequest.findMany({
       where: { tenantId },
       include: {
@@ -176,7 +194,7 @@ export class TenantsService {
     });
   }
 
-  async approveJoinRequest(actorId: string, requestId: string) {
+  async approveJoinRequest(actorInput: TenantActorInput, requestId: string) {
     const outcome = await this.transaction(async db => {
       const request = await db.tenantJoinRequest.findUnique({
         where: { id: requestId },
@@ -187,7 +205,7 @@ export class TenantsService {
         throw new ConflictException('Yêu cầu không còn ở trạng thái chờ duyệt');
       }
 
-      const actor = await this.actor(db, actorId);
+      const actor = await this.actor(db, actorInput);
       if (actor.id !== request.tenant.ownerUserId) {
         throw new ForbiddenException('Chỉ chủ doanh nghiệp mới có quyền phê duyệt yêu cầu gia nhập');
       }
@@ -237,7 +255,7 @@ export class TenantsService {
     return outcome.approved;
   }
 
-  async rejectJoinRequest(actorId: string, requestId: string, dto?: RejectJoinRequestDto) {
+  async rejectJoinRequest(actorInput: TenantActorInput, requestId: string, dto?: RejectJoinRequestDto) {
     return this.transaction(async db => {
       const request = await db.tenantJoinRequest.findUnique({
         where: { id: requestId },
@@ -248,7 +266,7 @@ export class TenantsService {
         throw new ConflictException('Yêu cầu không còn ở trạng thái chờ duyệt');
       }
 
-      const actor = await this.actor(db, actorId);
+      const actor = await this.actor(db, actorInput);
       if (actor.id !== request.tenant.ownerUserId) {
         throw new ForbiddenException('Chỉ chủ doanh nghiệp mới có quyền từ chối yêu cầu gia nhập');
       }
@@ -272,10 +290,10 @@ export class TenantsService {
     });
   }
 
-  async removeMember(actorId: string, tenantId: string, targetUserId: string) {
+  async removeMember(actorInput: TenantActorInput, tenantId: string, targetUserId: string) {
     return this.transaction(async db => {
-      const actor = await this.actor(db, actorId);
-      const tenant = await this.managed(db, actor, tenantId);
+      const actor = await this.actor(db, actorInput);
+      const tenant = await this.requireOwner(db, actor, tenantId);
 
       if (targetUserId === tenant.ownerUserId) {
         throw new ConflictException('Không thể loại chủ doanh nghiệp. Cần chuyển quyền sở hữu trước.');
@@ -305,9 +323,9 @@ export class TenantsService {
     });
   }
 
-  async leave(actorId: string) {
+  async leave(actorInput: TenantActorInput) {
     return this.transaction(async db => {
-      const actor = await this.actor(db, actorId);
+      const actor = await this.actor(db, actorInput);
       if (!actor.tenantId) {
         throw new ConflictException('Bạn chưa thuộc doanh nghiệp nào');
       }
@@ -338,11 +356,11 @@ export class TenantsService {
     });
   }
 
-  async update(actorId: string, tenantId: string, dto: UpdateTenantDto) {
+  async update(actorInput: TenantActorInput, tenantId: string, dto: UpdateTenantDto) {
     if (dto.name === undefined && dto.description === undefined) throw new BadRequestException('Không có thông tin cần cập nhật');
     return this.transaction(async db => {
-      const actor = await this.actor(db, actorId);
-      const tenant = await this.managed(db, actor, tenantId);
+      const actor = await this.actor(db, actorInput);
+      const tenant = await this.requireOwner(db, actor, tenantId);
       const updated = await db.tenant.update({ where: { id: tenantId }, data: dto });
       await db.tenantAuditLog.create({ data: {
         tenantId, tenantName: tenant.name, actorUserId: actor.id, action: 'UPDATED',
@@ -351,11 +369,16 @@ export class TenantsService {
     });
   }
 
-  async transfer(actorId: string, tenantId: string, dto: TransferTenantDto) {
+  async transfer(actorInput: TenantActorInput, tenantId: string, dto: TransferTenantDto) {
     return this.transaction(async db => {
-      const actor = await this.actor(db, actorId);
-      const tenant = await this.managed(db, actor, tenantId);
-      const intervention = actor.role === Role.ADMIN && actor.id !== tenant.ownerUserId;
+      const actor = await this.actor(db, actorInput);
+      const tenant = await db.tenant.findUnique({ where: { id: tenantId } });
+      if (!tenant) throw new NotFoundException('Không tìm thấy doanh nghiệp');
+      const isOwner = actor.id === tenant.ownerUserId;
+      const intervention = actor.isPlatformAdmin && !isOwner;
+      if (!isOwner && !intervention) {
+        throw new ForbiddenException('Chỉ chủ doanh nghiệp hoặc Super Admin mới có quyền chuyển quyền sở hữu');
+      }
       if (intervention && !dto.reason?.trim()) throw new BadRequestException('Super Admin cần ghi lý do chuyển quyền sở hữu');
       if (dto.userId === tenant.ownerUserId) throw new ConflictException('Người này đã là chủ doanh nghiệp');
       const target = await db.user.findUnique({ where: { id: dto.userId } });
@@ -378,10 +401,10 @@ export class TenantsService {
     });
   }
 
-  async delete(actorId: string, tenantId: string) {
+  async delete(actorInput: TenantActorInput, tenantId: string) {
     return this.transaction(async db => {
-      const actor = await this.actor(db, actorId);
-      const tenant = await this.managed(db, actor, tenantId);
+      const actor = await this.actor(db, actorInput);
+      const tenant = await this.requireOwner(db, actor, tenantId);
       const members = await db.user.count({ where: { tenantId, id: { not: tenant.ownerUserId } } });
       if (members) throw new ConflictException('Doanh nghiệp còn thành viên. Cần xử lý thành viên trước khi xóa.');
       await db.user.updateMany({ where: { tenantId }, data: { tenantId: null } });
@@ -393,19 +416,19 @@ export class TenantsService {
     });
   }
 
-  async audit(actorId: string, tenantId?: string) {
-    const actor = await this.actor(this.prisma, actorId);
-    if (actor.role !== Role.ADMIN) {
+  async audit(actorInput: TenantActorInput, tenantId?: string) {
+    const actor = await this.actor(this.prisma, actorInput);
+    if (!actor.isPlatformAdmin) {
       if (!tenantId) throw new ForbiddenException('Chỉ Super Admin được xem toàn bộ nhật ký');
-      await this.managed(this.prisma, actor, tenantId);
+      await this.requireOwner(this.prisma, actor, tenantId);
     }
     return this.prisma.tenantAuditLog.findMany({ where: tenantId ? { tenantId } : undefined, orderBy: { createdAt: 'desc' }, take: 100 });
   }
 
-  private async managed(db: Prisma.TransactionClient, actor: { id: string; role: Role }, id: string) {
+  private async requireOwner(db: Prisma.TransactionClient, actor: { id: string }, id: string) {
     const tenant = await db.tenant.findUnique({ where: { id } });
     if (!tenant) throw new NotFoundException('Không tìm thấy doanh nghiệp');
-    if (actor.role !== Role.ADMIN && actor.id !== tenant.ownerUserId) throw new ForbiddenException('Chỉ chủ doanh nghiệp được thực hiện thao tác này');
+    if (actor.id !== tenant.ownerUserId) throw new ForbiddenException('Chỉ chủ doanh nghiệp được thực hiện thao tác này');
     return tenant;
   }
 }

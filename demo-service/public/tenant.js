@@ -55,11 +55,13 @@ function renderTenant() {
   } else {
     html += `<div class="tenant-info"><strong>${escape(current.name)}</strong><span>${escape(current.description || 'Chưa có mô tả')}</span><span>Chủ doanh nghiệp: ${escape(current.owner.name || current.owner.email)} · ${escape(current.owner.email)}</span><span>${current._count.users} thành viên</span><label>Tenant ID<code>${escape(current.id)}</code></label><span class="tenant-role">${current.isOwner ? 'Bạn là chủ doanh nghiệp' : admin ? 'Bạn đang quản trị hệ thống' : 'Bạn là thành viên'}</span></div>`;
     if (current.canManage) {
-      html += `<details class="tenant-details"><summary>Chỉnh sửa thông tin</summary><form class="tenant-form" onsubmit="updateTenant(event)"><label>Tên doanh nghiệp<input name="name" maxlength="120" value="${escape(current.name)}" required /></label><label>Mô tả<textarea name="description" maxlength="500" rows="2">${escape(current.description || '')}</textarea></label><button class="btn btn-primary btn-sm" type="submit">Lưu thay đổi</button></form></details>`;
+      if (current.isOwner) {
+        html += `<details class="tenant-details"><summary>Chỉnh sửa thông tin</summary><form class="tenant-form" onsubmit="updateTenant(event)"><label>Tên doanh nghiệp<input name="name" maxlength="120" value="${escape(current.name)}" required /></label><label>Mô tả<textarea name="description" maxlength="500" rows="2">${escape(current.description || '')}</textarea></label><button class="btn btn-primary btn-sm" type="submit">Lưu thay đổi</button></form></details>`;
+      }
       html += `<details class="tenant-details"><summary>Chuyển quyền sở hữu</summary><p class="tenant-help">Người nhận sẽ trở thành chủ; chủ cũ vẫn là thành viên. Chỉ chọn người đã thuộc doanh nghiệp.</p><form class="tenant-form" onsubmit="transferTenant(event)"><label>Người nhận<select name="userId" required><option value="">Chọn thành viên</option>${current.members.filter(member => member.id !== current.ownerUserId).map(member => `<option value="${escape(member.id)}">${escape(member.name || member.email)} · ${escape(member.email)}</option>`).join('')}</select></label>`;
       if (admin && !current.isOwner) html += `<label>Hoặc ID user chưa thuộc doanh nghiệp<input name="overrideUserId" placeholder="ID tài khoản cần nhận quyền" oninput="this.form.elements.userId.required = !this.value" /></label>`;
       html += `<label>Lý do ${admin && !current.isOwner ? '(bắt buộc)' : '(tùy chọn)'}<textarea name="reason" maxlength="500" rows="2" ${admin && !current.isOwner ? 'required' : ''}></textarea></label><button class="btn btn-secondary btn-sm" type="submit">Xác nhận chuyển quyền</button></form></details>`;
-      html += `<div class="tenant-actions"><button class="btn btn-secondary btn-sm" onclick="showTenantAudit()">Xem nhật ký</button><button class="btn btn-danger btn-sm" onclick="deleteTenant()">Xóa doanh nghiệp</button></div><div id="tenant-audit" class="tenant-audit" hidden></div>`;
+      html += `<div class="tenant-actions"><button class="btn btn-secondary btn-sm" onclick="showTenantAudit()">Xem nhật ký</button>${current.isOwner ? '<button class="btn btn-danger btn-sm" onclick="deleteTenant()">Xóa doanh nghiệp</button>' : ''}</div><div id="tenant-audit" class="tenant-audit" hidden></div>`;
     }
   }
   document.getElementById('tenant-panel').innerHTML = html;
@@ -72,6 +74,8 @@ async function tenantMutation(action, success, nextId) {
   try {
     const result = await action();
     await loadTenant(nextId === undefined ? result?.id : nextId);
+    if (typeof syncUserProfile === 'function') void syncUserProfile();
+    if (typeof fetchOrders === 'function') void fetchOrders();
     tenantFeedback(success);
     showToast(success);
   } catch (error) { tenantFeedback(error.message, true); showToast(error.message, 'error'); }

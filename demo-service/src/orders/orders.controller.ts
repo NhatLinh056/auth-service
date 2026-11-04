@@ -42,15 +42,10 @@ export class OrdersController {
         authService: 'CONNECTED',
         applicationStatus: handshake.application?.status || (handshake as any).status || 'ACTIVE',
         appId: handshake.application?.appId || (handshake as any).appId,
-        appName: handshake.application?.name || (handshake as any).appName,
-        owner: {
-          userId: handshake.application?.userId || handshake.application?.user?.id,
-          email: handshake.application?.user?.email,
-          name: handshake.application?.user?.name,
-          roleInProject1: handshake.application?.user?.role || 'USER',
-          roleInProject2: 'ADMIN (Chủ sở hữu ứng dụng)',
-        },
+        appName: handshake.application?.name || (handshake as any).appName || 'Demo Service',
       },
+        
+
       availableOAuthProviders: providers,
       timestamp: new Date().toISOString(),
     };
@@ -68,12 +63,23 @@ export class OrdersController {
   @Post('auth/start')
   @Header('Cache-Control', 'no-store')
   @HttpCode(HttpStatus.OK)
-  startLogin(@Body() body: { codeChallenge?: string; state?: string }) {
+  async startLogin(@Body() body: { provider?: string; codeChallenge?: string; state?: string }) {
     if (!/^[A-Za-z0-9_-]{43}$/.test(body?.codeChallenge || '') ||
         !/^[A-Za-z0-9_-]{32,128}$/.test(body?.state || '')) {
       throw new BadRequestException('Invalid login request');
     }
-    return this.authClientService.createLoginFlow(`${appConfig.publicUrl}/`, body.codeChallenge!, body.state!);
+    const provider = body.provider ? String(body.provider).toLowerCase() : undefined;
+    if (provider && !['google', 'facebook'].includes(provider)) {
+      throw new BadRequestException('Unsupported OAuth provider');
+    }
+    if (provider) {
+      const providers = await this.authClientService.getAvailableProviders();
+      const match = (providers || []).find(p => (p.provider || '').toLowerCase() === provider);
+      if (match && !match.enabled) {
+        throw new BadRequestException(`Phương thức đăng nhập qua ${match.name || provider} hiện đang bị vô hiệu hóa.`);
+      }
+    }
+    return this.authClientService.createLoginFlow(`${appConfig.publicUrl}/`, body.codeChallenge!, body.state!, provider);
   }
 
   /**
@@ -90,6 +96,28 @@ export class OrdersController {
       throw new BadRequestException('Invalid login exchange');
     }
     return this.authClientService.exchangeOAuthCode(body.code, body.verifier);
+  }
+
+  /**
+   * Protected Illustrative Endpoint (Project 2)
+   * Verifies application-scoped user token via UserAuthGuard and returns safe verification context.
+   * Works for all users (with or without tenant) without requiring or returning order business data.
+   */
+  @Get('auth/protected')
+  @UseGuards(UserAuthGuard)
+  getProtectedResource(@CurrentUser() user: AuthUserProfile) {
+    return {
+      message: 'Token xác thực thành công qua Auth Service',
+      authenticated: true,
+      service: 'demo-service',
+      appId: user.appId || appConfig.appId,
+      user: {
+        id: user.id || user.userId,
+        email: user.email,
+        tenantId: user.tenantId ?? null,
+      },
+      timestamp: new Date().toISOString(),
+    };
   }
 
   @Get('auth/me')

@@ -21,6 +21,7 @@ export interface OAuthStatePayload {
   redirectUri: string;
   appId?: string;
   codeChallenge: string;
+  clientState?: string;
 }
 
 export interface OAuthCallbackResult {
@@ -32,6 +33,7 @@ export interface OAuthCallbackResult {
   redirectUri: string;
   appId: string;
   codeChallenge: string;
+  clientState?: string;
 }
 
 export interface NormalizedOAuthProfile {
@@ -98,6 +100,7 @@ export class OAuthService {
     appId?: string,
     codeChallenge?: string,
     flowId?: string,
+    clientState?: string,
   ): Promise<string> {
     const provider = this.oauthProvidersService.normalizeProvider(providerInput);
 
@@ -117,6 +120,7 @@ export class OAuthService {
       codeChallenge,
       appId: targetAppId,
       ...(flowId ? { flowId } : {}),
+      ...(clientState ? { clientState } : {}),
     };
 
     const signedState = await this.jwtService.signAsync(statePayload, {
@@ -251,6 +255,7 @@ export class OAuthService {
       redirectUri: statePayload.redirectUri,
       appId: targetAppId,
       codeChallenge: statePayload.codeChallenge,
+      ...(statePayload.clientState ? { clientState: statePayload.clientState } : {}),
     };
   }
 

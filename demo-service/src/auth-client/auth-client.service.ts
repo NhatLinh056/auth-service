@@ -35,6 +35,7 @@ export interface VerifyServiceResult {
 
 export interface AuthUserProfile {
   id: string;
+  userId?: string;
   email: string;
   name?: string;
   role: string;
@@ -43,6 +44,9 @@ export interface AuthUserProfile {
   appRole?: string;
   provider?: string;
   avatar?: string;
+  tenantId?: string | null;
+  tenantName?: string | null;
+  isTenantOwner?: boolean;
 }
 
 export interface OAuthProviderInfo {
@@ -156,7 +160,15 @@ export class AuthClientService {
     }
   }
 
-  async createLoginFlow(redirectUri: string, codeChallenge: string, state: string) {
+  async createLoginFlow(redirectUri: string, codeChallenge: string, state: string, provider?: string) {
+    if (provider) {
+      const authUrl = new URL(`${appConfig.authServiceUrl}/auth/oauth/${encodeURIComponent(provider)}`);
+      authUrl.searchParams.set('app_id', appConfig.appId);
+      authUrl.searchParams.set('redirect_uri', redirectUri);
+      authUrl.searchParams.set('code_challenge', codeChallenge);
+      authUrl.searchParams.set('state', state);
+      return { authorizeUrl: authUrl.toString() };
+    }
     try {
       const response = await this.http.post('/auth/flows', { redirectUri, codeChallenge, state }, { headers: this.getServiceHeaders() });
       return response.data;
