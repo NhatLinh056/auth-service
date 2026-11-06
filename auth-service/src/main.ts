@@ -37,8 +37,8 @@ async function bootstrap() {
   if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_SWAGGER === 'true') {
     const config = new DocumentBuilder()
       .setTitle('Auth Service API')
-      .setDescription('Authentication & Authorization Service')
-      .setVersion('1.0')
+      .setDescription('Trung tâm Xác thực & Quản trị Danh tính Tập trung (Centralized Identity & Multi-tenant Platform)')
+      .setVersion('2.0')
       .addBearerAuth()
       .build();
 

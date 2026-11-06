@@ -4,6 +4,8 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { applicationsService } from '../../services/applications.service';
 import type { Application, ApplicationStatus } from '../../types/application.types';
+import type { SanitizedOAuthProvider } from '../../types/provider.types';
+import { SelectedAppView } from './SelectedAppView';
 
 interface ApplicationsTabProps {
   applications: Application[];
@@ -11,7 +13,10 @@ interface ApplicationsTabProps {
   onRefresh: () => void;
   onOpenCreateModal: () => void;
   onOpenDetailModal: (app: Application) => void;
-  onGoToProviders: (appId: string) => void;
+  selectedApp?: Application | null;
+  onSelectApp?: (app: Application | null) => void;
+  onUpdateApp?: (app: Application) => void;
+  onOpenConfigureProvider?: (provider: SanitizedOAuthProvider) => void;
 }
 
 export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
@@ -20,11 +25,22 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
   onRefresh,
   onOpenCreateModal,
   onOpenDetailModal,
-  onGoToProviders,
+  selectedApp,
+  onSelectApp,
+  onUpdateApp,
+  onOpenConfigureProvider,
 }) => {
   const { isAuthenticated, user } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { showToast } = useToast();
+
+  const [internalSelectedApp, setInternalSelectedApp] = useState<Application | null>(null);
+  const currentSelectedApp = selectedApp !== undefined ? selectedApp : internalSelectedApp;
+
+  const handleSelectApp = (app: Application | null) => {
+    if (onSelectApp) onSelectApp(app);
+    setInternalSelectedApp(app);
+  };
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | ApplicationStatus>('ALL');
@@ -106,6 +122,25 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
   const countBadgeText = t('filter.showing_apps')
     .replace('{count}', String(filteredApplications.length))
     .replace('{total}', String(applications.length));
+
+  if (currentSelectedApp) {
+    return (
+      <SelectedAppView
+        app={currentSelectedApp}
+        onBack={() => handleSelectApp(null)}
+        onUpdateApp={(updated) => {
+          handleSelectApp(updated);
+          if (onUpdateApp) onUpdateApp(updated);
+          onRefresh();
+        }}
+        onDeleteApp={(_id) => {
+          handleSelectApp(null);
+          onRefresh();
+        }}
+        onOpenConfigureProvider={onOpenConfigureProvider || (() => {})}
+      />
+    );
+  }
 
   return (
     <div className="tab-content active" id="tab-apps">
@@ -254,8 +289,19 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
                 const ownerEmail = app.user?.email || user?.email || '—';
 
                 return (
-                  <tr key={app.id}>
-                    <td style={{ fontWeight: 600, color: '#fff' }}>{app.name}</td>
+                  <tr
+                    key={app.id}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => handleSelectApp(app)}
+                  >
+                    <td style={{ fontWeight: 600, color: '#fff' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>{app.name}</span>
+                        <span style={{ fontSize: 11, color: 'var(--primary, #3b82f6)' }}>
+                          {lang === 'vi' ? '(Mở)' : '(Open)'}
+                        </span>
+                      </div>
+                    </td>
                     <td>
                       <span className="mono-tag">
                         <span>{app.appId}</span>
@@ -264,7 +310,10 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
                           className="btn-icon"
                           style={{ width: 20, height: 20 }}
                           title={t('table.copy_appid')}
-                          onClick={() => copyAppId(app.appId)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyAppId(app.appId);
+                          }}
                         >
                           <svg
                             width="12"
@@ -308,15 +357,18 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
                     >
                       {createdDate}
                     </td>
-                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <td
+                      style={{ textAlign: 'right', whiteSpace: 'nowrap' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="app-actions-group">
                         <button
                           type="button"
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => onGoToProviders(app.id)}
-                          title={t('apps.goto_providers_title')}
+                          className="btn btn-primary btn-sm"
+                          onClick={() => handleSelectApp(app)}
+                          id={`btn-open-app-${app.id}`}
                         >
-                          {t('apps.btn_providers')}
+                          {lang === 'vi' ? 'Quản lý' : 'Manage'}
                         </button>
                         <button
                           type="button"

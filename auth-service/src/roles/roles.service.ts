@@ -58,45 +58,6 @@ export class RolesService {
   }
 
   /**
-   * Lấy thông tin không gian người dùng cơ bản (USER)
-   */
-  getUserSpaceInfo(userId: string) {
-    return {
-      message: 'Chào mừng người dùng đến không gian cá nhân',
-      userId,
-      permissions: [
-        'READ_PROFILE',
-        'UPDATE_PROFILE',
-        'VIEW_PUBLIC_DATA',
-      ],
-    };
-  }
-
-  /**
-   * Tra cứu vai trò và thông tin phân quyền của một người dùng theo ID
-   */
-  async getUserRole(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      throw new NotFoundException(`Không tìm thấy người dùng với ID: ${userId}`);
-    }
-
-    const roleInfo = this.rolesList.find((r) => r.role === user.role);
-
-    return {
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      roleName: roleInfo?.name || user.role,
-      description: roleInfo?.description || '',
-    };
-  }
-
-  /**
    * Gán hoặc thay đổi vai trò của người dùng
    */
   async assignRole(assignRoleDto: AssignRoleDto) {
@@ -118,33 +79,12 @@ export class RolesService {
     });
 
     // 3. Loại bỏ passwordHash để đảm bảo an toàn thông tin
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _, ...sanitizedUser } = updatedUser;
 
     return {
       message: `Đã gán vai trò ${role} cho người dùng thành công`,
       user: sanitizedUser,
-    };
-  }
-
-  /**
-   * Lấy thông tin thống kê người dùng dành riêng cho ADMIN
-   */
-  async getAdminDashboard() {
-    const totalUsers = await this.prisma.user.count();
-    const adminCount = await this.prisma.user.count({
-      where: { role: Role.ADMIN },
-    });
-    const userCount = await this.prisma.user.count({
-      where: { role: Role.USER },
-    });
-
-    return {
-      message: 'Chào mừng Quản trị viên đến bảng điều khiển hệ thống',
-      stats: {
-        totalUsers,
-        adminCount,
-        userCount,
-      },
     };
   }
 }

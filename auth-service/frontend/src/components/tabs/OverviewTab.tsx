@@ -1,95 +1,214 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { useToast } from '../../contexts/ToastContext';
+import { tenantsService, type TenantContext } from '../../services/tenants.service';
+import { usersService } from '../../services/users.service';
 import type { Application } from '../../types/application.types';
 
 interface OverviewTabProps {
   applications: Application[];
   onGoToApps: () => void;
   onOpenAppDetail: (app: Application) => void;
+  onOpenCreateApp?: () => void;
+  onGoToTenants?: () => void;
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({
   applications,
   onGoToApps,
   onOpenAppDetail,
+  onOpenCreateApp,
+  onGoToTenants,
 }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAdmin } = useAuth();
   const { t, lang } = useLanguage();
-  const { showToast } = useToast();
 
-  const [copiedSnippet, setCopiedSnippet] = useState<number | null>(null);
+  const [tenantContext, setTenantContext] = useState<TenantContext | null>(null);
+  const [globalUsersCount, setGlobalUsersCount] = useState<number | null>(null);
+  const [loadingContext, setLoadingContext] = useState(false);
 
-  const handleCopyCode = (snippetText: string, stepIndex: number) => {
-    navigator.clipboard.writeText(snippetText.trim()).then(() => {
-      setCopiedSnippet(stepIndex);
-      showToast(`${t('toasts.copied')} Snippet ${t('toasts.to_clipboard')}`);
-      setTimeout(() => setCopiedSnippet(null), 1800);
-    });
-  };
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setLoadingContext(true);
+
+    const promises: Promise<any>[] = [
+      tenantsService.getMe().then((ctx) => setTenantContext(ctx)).catch(() => setTenantContext(null)),
+    ];
+
+    if (isAdmin) {
+      promises.push(
+        usersService.getAll().then((users) => setGlobalUsersCount(users.length)).catch(() => setGlobalUsersCount(null))
+      );
+    }
+
+    Promise.allSettled(promises).finally(() => setLoadingContext(false));
+  }, [isAuthenticated, isAdmin]);
 
   const recentApps = applications.slice(0, 5);
 
-  const snippet1 = `AUTH_SERVICE_URL=http://localhost:3000
-AUTH_SERVICE_APP_ID=app_22c57454b00eb44a...
-AUTH_SERVICE_APP_TOKEN=apt_789f2a41d0bc8...`;
-
-  const snippet2 = `X-App-Id: app_22c57454b00eb44a...
-X-App-Token: apt_789f2a41d0bc8...
-Content-Type: application/json`;
-
-  const snippet3 = `HTTP/1.1 200 OK
-{
-  "valid": true,
-  "appId": "app_22c57454...",
-  "status": "ACTIVE"
-}`;
+  const getTenantBadgeText = () => {
+    if (loadingContext) return '...';
+    if (tenantContext?.tenant) {
+      const roleStr = tenantContext.tenant.isOwner
+        ? (lang === 'vi' ? 'Chủ sở hữu' : 'Owner')
+        : (lang === 'vi' ? 'Thành viên' : 'Member');
+      return `${tenantContext.tenant.name} (${roleStr})`;
+    }
+    if (tenantContext?.pendingRequest) {
+      return lang === 'vi' ? 'Đang chờ duyệt gia nhập' : 'Pending join request';
+    }
+    return lang === 'vi' ? 'Chưa tham gia doanh nghiệp' : 'No tenant joined';
+  };
 
   return (
     <div className="tab-content active" id="tab-overview">
-      <div className="page-header">
+      <div className="page-header" style={{ marginBottom: 20 }}>
         <div>
-          <h1 className="page-title">{t('overview.title')}</h1>
-          <p className="page-subtitle">{t('overview.subtitle')}</p>
+          <h1 className="page-title">{lang === 'vi' ? 'Dashboard Tổng Quan' : 'Dashboard Overview'}</h1>
+          <p className="page-subtitle">
+            {lang === 'vi'
+              ? 'Trung tâm điều hành danh tính, ứng dụng và tổ chức doanh nghiệp.'
+              : 'Central hub for identity, applications, and multi-tenant organization.'}
+          </p>
         </div>
       </div>
 
-      {/* Quick Metrics Grid */}
+      {/* User Context & Identity Banner */}
+      <div
+        className="card"
+        style={{
+          padding: '16px 20px',
+          marginBottom: 20,
+          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%)',
+          border: '1px solid var(--border-subtle)',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              background: 'var(--primary-subtle, rgba(59, 130, 246, 0.2))',
+              color: 'var(--primary, #3b82f6)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              fontSize: 18,
+            }}
+          >
+            {user?.email?.charAt(0).toUpperCase() || 'U'}
+          </div>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 16, color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>{user?.email || (lang === 'vi' ? 'Chưa xác thực' : 'Not Authenticated')}</span>
+              <span className={`status-pill ${isAdmin ? 'status-pill-primary' : 'status-pill-neutral'}`} style={{ fontSize: 11, padding: '2px 8px' }}>
+                {isAdmin ? (lang === 'vi' ? 'System Admin' : 'System Admin') : (lang === 'vi' ? 'Platform User' : 'Platform User')}
+              </span>
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>{lang === 'vi' ? 'Doanh nghiệp:' : 'Tenant:'}</span>
+              <span style={{ color: tenantContext?.tenant ? 'var(--text-main, #e2e8f0)' : 'var(--text-dim)' }}>
+                {getTenantBadgeText()}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Action CTAs */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {onOpenCreateApp && (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={onOpenCreateApp}
+              id="dashboard-cta-create-app"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 6 }}>
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>{lang === 'vi' ? 'Tạo Ứng Dụng' : 'New App'}</span>
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={onGoToApps}
+            id="dashboard-cta-manage-apps"
+          >
+            <span>{lang === 'vi' ? 'Quản lý Ứng dụng' : 'Applications'}</span>
+          </button>
+          {onGoToTenants && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={onGoToTenants}
+              id="dashboard-cta-tenants"
+            >
+              <span>{lang === 'vi' ? 'Doanh nghiệp' : 'Tenants'}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Real Metrics Grid */}
       <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-label">{t('overview.apps_label')}</div>
+        {/* Applications Card */}
+        <div className="stat-card" style={{ cursor: 'pointer' }} onClick={onGoToApps}>
+          <div className="stat-label">{lang === 'vi' ? 'Ứng Dụng Của Bạn' : 'My Applications'}</div>
           <div className="stat-value" id="overview-apps-count">
             {applications.length}
           </div>
-          <div className="stat-hint">{t('overview.apps_hint')}</div>
+          <div className="stat-hint">
+            {lang === 'vi' ? 'Ứng dụng bạn có quyền quản trị' : 'Applications you can manage'}
+          </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-label">{t('overview.identity_label')}</div>
+        {/* Tenant Card */}
+        <div className="stat-card" style={{ cursor: onGoToTenants ? 'pointer' : 'default' }} onClick={onGoToTenants}>
+          <div className="stat-label">{lang === 'vi' ? 'Doanh Nghiệp (Tenant)' : 'Tenant Organization'}</div>
           <div
             className="stat-value"
-            id="overview-user-identity"
-            style={{ fontSize: 16, wordBreak: 'break-all' }}
+            id="overview-tenant-name"
+            style={{ fontSize: 18, wordBreak: 'break-word', color: tenantContext?.tenant ? '#fff' : 'var(--text-dim)' }}
           >
-            {isAuthenticated && user ? user.email : t('overview.not_auth')}
+            {tenantContext?.tenant ? tenantContext.tenant.name : (tenantContext?.pendingRequest ? (lang === 'vi' ? 'Chờ Duyệt' : 'Pending') : (lang === 'vi' ? 'Chưa Tham Gia' : 'None'))}
           </div>
-          <div className="stat-hint" id="overview-user-role">
-            {isAuthenticated && user
-              ? `${t('overview.role_prefix')}${
-                  user.role === 'ADMIN' ? t('table.role_admin') : t('table.role_user')
-                }`
-              : t('overview.signin_hint')}
+          <div className="stat-hint">
+            {tenantContext?.tenant
+              ? `${tenantContext.tenant._count?.users || 1} ${lang === 'vi' ? 'thành viên' : 'members'} • ${tenantContext.tenant.isOwner ? (lang === 'vi' ? 'Chủ sở hữu' : 'Owner') : (lang === 'vi' ? 'Thành viên' : 'Member')}`
+              : (tenantContext?.pendingRequest ? (lang === 'vi' ? 'Yêu cầu gia nhập đang chờ xử lý' : 'Join request pending') : (lang === 'vi' ? 'Bấm để tạo hoặc xin gia nhập' : 'Join or create tenant'))}
           </div>
         </div>
 
+        {/* System Users Card (Admin Only) */}
+        {isAdmin && (
+          <div className="stat-card">
+            <div className="stat-label">{lang === 'vi' ? 'Người Dùng Hệ Thống' : 'System Users (Global)'}</div>
+            <div className="stat-value" id="overview-system-users-count">
+              {globalUsersCount !== null ? globalUsersCount : '...'}
+            </div>
+            <div className="stat-hint">
+              {lang === 'vi' ? 'Tài khoản canonical toàn platform (Chỉ Admin)' : 'Platform canonical accounts (Admin only)'}
+            </div>
+          </div>
+        )}
+
+        {/* Service Status Card */}
         <div className="stat-card">
           <div className="stat-label">{t('overview.status_label')}</div>
           <div
             className="stat-value"
             style={{
               fontSize: 16,
-              color: 'var(--success)',
+              color: 'var(--success, #10b981)',
               display: 'flex',
               alignItems: 'center',
               gap: 8,
@@ -101,167 +220,17 @@ Content-Type: application/json`;
         </div>
       </div>
 
-      {/* Service Integration Guide */}
-      <div className="integration-card">
-        <div className="integration-header">
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span className="guide-badge">Architecture Guide</span>
-              <h2 className="section-title" style={{ margin: 0 }}>
-                {t('guide.title')}
-              </h2>
-            </div>
-            <p className="section-subtitle">{t('guide.subtitle')}</p>
-          </div>
-          <div className="status-pill status-pill-success">
-            <span className="status-dot"></span>
-            <span>{t('guide.ready_pill')}</span>
-          </div>
-        </div>
-
-        {/* Visual Architectural Flow Diagram */}
-        <div className="arch-flow-bar">
-          <div className="arch-node">
-            <div className="arch-node-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                <line x1="8" y1="21" x2="16" y2="21"></line>
-                <line x1="12" y1="17" x2="12" y2="21"></line>
-              </svg>
-            </div>
-            <div className="arch-node-content">
-              <div className="arch-node-title">1. Microservice Client</div>
-              <div className="arch-node-desc">Đọc AppID &amp; AppToken từ .env</div>
-            </div>
-          </div>
-
-          <div className="arch-arrow">
-            <span className="arch-arrow-label">HTTP Request + Headers</span>
-            <div className="arch-arrow-line">
-              <span className="arch-arrow-code">X-App-Id / X-App-Token</span>
-              <span className="arch-arrow-tip">&rarr;</span>
-            </div>
-          </div>
-
-          <div className="arch-node arch-node-center">
-            <div className="arch-node-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              </svg>
-            </div>
-            <div className="arch-node-content">
-              <div className="arch-node-title">2. Auth Service (Port 3000)</div>
-              <div className="arch-node-desc">AppAuthGuard đối soát DB PostgreSQL</div>
-            </div>
-          </div>
-
-          <div className="arch-arrow">
-            <span className="arch-arrow-label">Phản Hồi Xác Thực</span>
-            <div className="arch-arrow-line">
-              <span className="arch-arrow-code" style={{ color: 'var(--success)' }}>
-                200 OK (ACTIVE)
-              </span>
-              <span className="arch-arrow-tip">&rarr;</span>
-            </div>
-          </div>
-
-          <div className="arch-node arch-node-success">
-            <div className="arch-node-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
-            </div>
-            <div className="arch-node-content">
-              <div className="arch-node-title">3. Truy Cập Thành Công</div>
-              <div className="arch-node-desc">Xử lý nghiệp vụ &amp; dữ liệu</div>
-            </div>
-          </div>
-        </div>
-
-        {/* 3 Step Detailed Cards */}
-        <div className="guide-container">
-          {/* Step 1 */}
-          <div className="guide-step">
-            <div className="guide-step-header">
-              <span className="guide-step-num">1</span>
-              <div>
-                <span className="guide-step-title">{t('guide.step1_title')}</span>
-                <span className="guide-step-tag">Cấu hình .env</span>
-              </div>
-            </div>
-            <p className="guide-step-desc">{t('guide.step1_desc')}</p>
-            <div className="code-snippet-box">
-              <div className="code-header">
-                <span>.env (Microservice)</span>
-                <button
-                  type="button"
-                  className="btn-copy-code"
-                  onClick={() => handleCopyCode(snippet1, 1)}
-                >
-                  {copiedSnippet === 1 ? (lang === 'vi' ? 'Đã chép!' : 'Copied!') : 'Copy'}
-                </button>
-              </div>
-              <pre className="code-snippet">{snippet1}</pre>
-            </div>
-          </div>
-
-          {/* Step 2 */}
-          <div className="guide-step">
-            <div className="guide-step-header">
-              <span className="guide-step-num">2</span>
-              <div>
-                <span className="guide-step-title">{t('guide.step2_title')}</span>
-                <span className="guide-step-tag">X-App-Id &amp; X-App-Token</span>
-              </div>
-            </div>
-            <p className="guide-step-desc">{t('guide.step2_desc')}</p>
-            <div className="code-snippet-box">
-              <div className="code-header">
-                <span>HTTP Headers</span>
-                <button
-                  type="button"
-                  className="btn-copy-code"
-                  onClick={() => handleCopyCode(snippet2, 2)}
-                >
-                  {copiedSnippet === 2 ? (lang === 'vi' ? 'Đã chép!' : 'Copied!') : 'Copy'}
-                </button>
-              </div>
-              <pre className="code-snippet">{snippet2}</pre>
-            </div>
-          </div>
-
-          {/* Step 3 */}
-          <div className="guide-step">
-            <div className="guide-step-header">
-              <span className="guide-step-num">3</span>
-              <div>
-                <span className="guide-step-title">{t('guide.step3_title')}</span>
-                <span className="guide-step-tag">AppAuthGuard</span>
-              </div>
-            </div>
-            <p className="guide-step-desc">{t('guide.step3_desc')}</p>
-            <div className="code-snippet-box">
-              <div className="code-header">
-                <span>Response (200 OK)</span>
-                <button
-                  type="button"
-                  className="btn-copy-code"
-                  onClick={() => handleCopyCode(snippet3, 3)}
-                >
-                  {copiedSnippet === 3 ? (lang === 'vi' ? 'Đã chép!' : 'Copied!') : 'Copy'}
-                </button>
-              </div>
-              <pre className="code-snippet">{snippet3}</pre>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Recent Applications Section */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="card-title">{t('overview.recent_title')}</h2>
+      <div className="card" style={{ marginTop: 24 }}>
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2 className="card-title" style={{ margin: 0 }}>{t('overview.recent_title')}</h2>
+            <p className="card-subtitle" style={{ fontSize: 13, color: 'var(--text-dim)', margin: '4px 0 0 0' }}>
+              {lang === 'vi'
+                ? 'Các ứng dụng được quản lý gần đây. Bấm vào ứng dụng để xem App Users hoặc Cài đặt.'
+                : 'Recently managed applications. Click to open App Users or Settings.'}
+            </p>
+          </div>
           <button type="button" className="btn btn-ghost btn-sm" onClick={onGoToApps}>
             <span>{t('overview.view_all')}</span>
           </button>
@@ -275,16 +244,30 @@ Content-Type: application/json`;
                 <th>{t('table.appid')}</th>
                 <th>{t('table.status')}</th>
                 <th>{t('table.created')}</th>
+                <th style={{ textAlign: 'right' }}>{lang === 'vi' ? 'Hành động' : 'Actions'}</th>
               </tr>
             </thead>
             <tbody id="overview-recent-apps">
               {recentApps.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4}
-                    style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 24 }}
+                    colSpan={5}
+                    style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 32 }}
                   >
-                    {t('overview.empty_recent')}
+                    <div style={{ marginBottom: 12 }}>
+                      {lang === 'vi'
+                        ? 'Bạn chưa có ứng dụng nào được đăng ký.'
+                        : 'No applications found under your account.'}
+                    </div>
+                    {onOpenCreateApp && (
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={onOpenCreateApp}
+                      >
+                        {lang === 'vi' ? '+ Tạo Ứng Dụng Đầu Tiên' : '+ Create Your First App'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -304,14 +287,21 @@ Content-Type: application/json`;
                         <span className="mono-tag">{app.appId}</span>
                       </td>
                       <td>
-                        <span
-                          className={`status-indicator ${isActive ? 'active' : 'inactive'}`}
-                        >
+                        <span className={`status-indicator ${isActive ? 'active' : 'inactive'}`}>
                           {isActive ? t('table.status_active') : t('table.status_inactive')}
                         </span>
                       </td>
-                      <td style={{ color: 'var(--text-dim)', fontSize: 12 }}>
+                      <td style={{ color: 'var(--text-dim)', fontSize: 13 }}>
                         {createdDate}
+                      </td>
+                      <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => onOpenAppDetail(app)}
+                        >
+                          {lang === 'vi' ? 'Chi tiết' : 'Details'}
+                        </button>
                       </td>
                     </tr>
                   );
@@ -324,3 +314,5 @@ Content-Type: application/json`;
     </div>
   );
 };
+
+export default OverviewTab;

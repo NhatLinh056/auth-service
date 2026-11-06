@@ -26,14 +26,11 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
   const [activeSdkTab, setActiveSdkTab] = useState<SdkTab>('env');
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [adminEmailsInput, setAdminEmailsInput] = useState<string>('');
   const [redirectUris, setRedirectUris] = useState('');
-  const [isSavingEmails, setIsSavingEmails] = useState(false);
 
   React.useEffect(() => {
     if (app) {
       setRedirectUris((app.allowedRedirectUris || []).join('\n'));
-      setAdminEmailsInput((app.adminEmails || []).join(', '));
     }
   }, [app]);
 
@@ -160,47 +157,6 @@ curl -X GET "${origin}/users/verify-app-user" \\
     }
   };
 
-  const handleSaveAdminEmails = async () => {
-    if (!app) return;
-    setIsSavingEmails(true);
-    try {
-      const emailList = adminEmailsInput
-        .split(',')
-        .map((e) => e.trim().toLowerCase())
-        .filter(Boolean);
-
-      // Kiểm tra định dạng email hợp lệ
-      const invalidEmails = emailList.filter(
-        (e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e),
-      );
-      if (invalidEmails.length > 0) {
-        showToast(
-          lang === 'vi'
-            ? `Email không đúng định dạng: ${invalidEmails.join(', ')}`
-            : `Invalid email format: ${invalidEmails.join(', ')}`,
-          'error',
-        );
-        setIsSavingEmails(false);
-        return;
-      }
-
-      const updated = await applicationsService.update(app.id, {
-        adminEmails: emailList,
-      });
-
-      onUpdateApp({ ...app, adminEmails: updated.adminEmails || emailList });
-      showToast(
-        lang === 'vi'
-          ? 'Đã cập nhật danh sách email quản trị viên thành công'
-          : 'Admin emails updated successfully',
-      );
-    } catch (err: any) {
-      showToast(err.message || 'Lỗi khi cập nhật email quản trị', 'error');
-    } finally {
-      setIsSavingEmails(false);
-    }
-  };
-
   const isActive = app.status === 'ACTIVE';
   const ownerEmail = app.user?.email || '—';
   const createdDate = app.createdAt
@@ -309,80 +265,6 @@ curl -X GET "${origin}/users/verify-app-user" \\
             <div id="detail-app-created" className="detail-field-value">
               {createdDate}
             </div>
-          </div>
-        </div>
-
-        {/* Delegated Admin Emails Field */}
-        <div className="detail-field" style={{ marginBottom: 16 }}>
-          <div
-            className="detail-field-label"
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <span>
-              {lang === 'vi'
-                ? 'Email Quản Trị Viên Ủy Quyền (OAuth Admin)'
-                : 'Delegated Admin Emails (OAuth)'}
-            </span>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-              {lang === 'vi' ? 'Phân cách bằng dấu phẩy' : 'Comma-separated'}
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-            <input
-              type="text"
-              id="detail-admin-emails-input"
-              className="form-control"
-              placeholder={
-                lang === 'vi'
-                  ? 'Ví dụ: admin@example.com, manager@example.com'
-                  : 'e.g. admin@example.com, manager@example.com'
-              }
-              value={adminEmailsInput}
-              onChange={(e) => setAdminEmailsInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleSaveAdminEmails();
-                }
-              }}
-              style={{
-                flex: 1,
-                fontSize: '0.85rem',
-                padding: '6px 10px',
-                borderRadius: 6,
-                border: '1px solid #334155',
-                background: '#0f172a',
-                color: '#e2e8f0',
-              }}
-            />
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              id="btn-save-admin-emails"
-              onClick={handleSaveAdminEmails}
-              disabled={actionLoading || isSavingEmails}
-              style={{ whiteSpace: 'nowrap' }}
-            >
-              {isSavingEmails
-                ? lang === 'vi'
-                  ? 'Đang lưu...'
-                  : 'Saving...'
-                : lang === 'vi'
-                  ? 'Lưu'
-                  : 'Save'}
-            </button>
-          </div>
-          <div
-            className="form-hint"
-            style={{ marginTop: 4, fontSize: '0.75rem', color: '#64748b' }}
-          >
-            {lang === 'vi'
-              ? 'Tài khoản Google/Facebook có email trong danh sách này sẽ tự động nhận quyền ADMIN tại Client Microservice.'
-              : 'Google/Facebook accounts with these emails will automatically receive ADMIN role in Client Microservices.'}
           </div>
         </div>
 

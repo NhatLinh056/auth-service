@@ -8,7 +8,6 @@ import {
   Param,
   Patch,
   Post,
-  Put,
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Auth } from '../common/decorators/auth.decorator.js';
@@ -74,23 +73,6 @@ export class ApplicationsController {
   @ApiResponse({ status: 403, description: 'Không có quyền cập nhật ứng dụng của người khác' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy ứng dụng với ID này' })
   update(
-    @Param('id') id: string,
-    @Body() updateApplicationDto: UpdateApplicationDto,
-    @CurrentUser() currentUser: JwtPayload,
-  ) {
-    return this.applicationsService.update(id, updateApplicationDto, currentUser);
-  }
-
-  @Put(':id')
-  @Auth()
-  @ApiOperation({ summary: 'Cập nhật toàn bộ thông tin ứng dụng (chủ sở hữu hoặc ADMIN)' })
-  @ApiParam({ name: 'id', description: 'UUID của ứng dụng' })
-  @ApiResponse({ status: 200, description: 'Cập nhật ứng dụng thành công' })
-  @ApiResponse({ status: 400, description: 'Dữ liệu đầu vào không hợp lệ' })
-  @ApiResponse({ status: 401, description: 'Chưa xác thực (Thiếu hoặc sai JWT token)' })
-  @ApiResponse({ status: 403, description: 'Không có quyền cập nhật ứng dụng của người khác' })
-  @ApiResponse({ status: 404, description: 'Không tìm thấy ứng dụng với ID này' })
-  updatePut(
     @Param('id') id: string,
     @Body() updateApplicationDto: UpdateApplicationDto,
     @CurrentUser() currentUser: JwtPayload,

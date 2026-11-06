@@ -29,3 +29,32 @@ export interface UpdateAppPayload {
   adminEmails?: string[];
   allowedRedirectUris?: string[];
 }
+
+export interface AppUserIdentity {
+  provider: string;
+  email: string;
+  createdAt: string;
+}
+
+export interface AppUser {
+  id: string;
+  applicationId: string;
+  userId?: string | null;
+  email: string;
+  name?: string | null;
+  avatarUrl?: string | null;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+  identities?: AppUserIdentity[];
+  user?: {
+    id: string;
+    email: string;
+    name?: string | null;
+    tenantId?: string | null;
+    tenant?: {
+      id: string;
+      name: string;
+    } | null;
+  } | null;
+}

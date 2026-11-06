@@ -28,8 +28,6 @@ import { SetPasswordDto } from './dto/set-password.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import type { JwtPayload } from '../common/strategies/jwt.strategy.js';
 import { OAuthService } from './oauth.service.js';
-import { AccountOAuthService } from './account-oauth.service.js';
-import { getAuthPublicUrl } from './oauth-public-url.js';
 import { LoginFlowService } from './login-flow.service.js';
 import { Auth } from '../common/decorators/auth.decorator.js';
 
@@ -40,7 +38,6 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly oauthService: OAuthService,
     private readonly grants: OAuthGrantsService,
-    private readonly accountOAuth: AccountOAuthService,
     private readonly loginFlows: LoginFlowService,
   ) {}
 
@@ -187,19 +184,6 @@ export class AuthController {
     @Res() res: Response,
     @Req() req: Request,
   ) {
-    if (await this.accountOAuth.isAccountState(query.state)) {
-      const accountCookie = (req.headers.cookie || '').split(';').map(value => value.trim())
-        .find(value => value.startsWith('account_oauth_state='))?.slice('account_oauth_state='.length);
-      res.clearCookie('account_oauth_state', { path: '/auth/oauth' });
-      res.setHeader('Cache-Control', 'no-store');
-      res.setHeader('Referrer-Policy', 'no-referrer');
-      try {
-        const code = await this.accountOAuth.callback(provider, query, accountCookie);
-        return res.redirect(`${getAuthPublicUrl()}/?account_code=${encodeURIComponent(code)}#account`);
-      } catch {
-        return res.redirect(`${getAuthPublicUrl()}/?account_link_error=${query.error ? 'cancelled' : 'failed'}#account`);
-      }
-    }
     const cookie = (req.headers.cookie || '').split(';').map(v => v.trim())
       .find(v => v.startsWith('oauth_state='))?.slice('oauth_state='.length);
     res.clearCookie('oauth_state', { path: '/auth/oauth' });

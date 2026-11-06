@@ -4,7 +4,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 import { StatusPill } from '../common/StatusPill';
 
-export type TabType = 'overview' | 'apps' | 'users' | 'providers' | 'account' | 'tenants';
+export type TabType = 'overview' | 'apps' | 'tenants' | 'users' | 'account';
 
 interface NavbarProps {
   activeTab: TabType;
@@ -46,25 +46,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
 
         {/* Navigation Tabs */}
         <nav className="nav-center">
-          <button type="button" className={`nav-tab ${activeTab === 'account' ? 'active' : ''}`}
-            id="tab-btn-account" onClick={() => onTabChange('account')}>
-            {lang === 'vi' ? 'Tài khoản' : 'Account'}
-          </button>
-          <button
-            type="button"
-            className={`nav-tab ${activeTab === 'tenants' ? 'active' : ''}`}
-            id="tab-btn-tenants"
-            onClick={() => onTabChange('tenants')}
-          >
-            {lang === 'vi' ? 'Doanh nghiệp' : 'Tenants'}
-          </button>
           <button
             type="button"
             className={`nav-tab ${activeTab === 'overview' ? 'active' : ''}`}
             id="tab-btn-overview"
             onClick={() => onTabChange('overview')}
           >
-            {t('nav.overview')}
+            {lang === 'vi' ? 'Dashboard' : 'Dashboard'}
           </button>
           <button
             type="button"
@@ -74,6 +62,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
           >
             {t('nav.apps')}
           </button>
+          <button
+            type="button"
+            className={`nav-tab ${activeTab === 'tenants' ? 'active' : ''}`}
+            id="tab-btn-tenants"
+            onClick={() => onTabChange('tenants')}
+          >
+            {lang === 'vi' ? 'Doanh nghiệp' : 'Tenants'}
+          </button>
           {isAdmin && (
             <button
               type="button"
@@ -81,16 +77,16 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
               id="tab-btn-users"
               onClick={() => onTabChange('users')}
             >
-              {t('nav.users')}
+              {lang === 'vi' ? 'Người dùng hệ thống' : 'System Users'}
             </button>
           )}
           <button
             type="button"
-            className={`nav-tab ${activeTab === 'providers' ? 'active' : ''}`}
-            id="tab-btn-providers"
-            onClick={() => onTabChange('providers')}
+            className={`nav-tab ${activeTab === 'account' ? 'active' : ''}`}
+            id="tab-btn-account"
+            onClick={() => onTabChange('account')}
           >
-            {t('nav.providers')}
+            {lang === 'vi' ? 'Tài khoản' : 'My Account'}
           </button>
         </nav>
 

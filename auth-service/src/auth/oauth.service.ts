@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import axios from 'axios';
-import { OAuthProviderType, Role } from '../generated/prisma/enums.js';
+import { OAuthProviderType } from '../generated/prisma/enums.js';
 import { OAuthProvidersService } from '../oauth-providers/oauth-providers.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { getAuthPublicUrl, getOAuthCallbackUrl } from './oauth-public-url.js';

@@ -12,8 +12,4 @@ export const rolesService = {
       body: JSON.stringify({ userId, role }),
     });
   },
-
-  async getAdminDashboard(): Promise<any> {
-    return apiClient<any>('/roles/admin');
-  },
 };

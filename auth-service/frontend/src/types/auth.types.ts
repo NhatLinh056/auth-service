@@ -5,6 +5,7 @@ export interface User {
   email: string;
   name?: string | null;
   role: Role;
+  tenantId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

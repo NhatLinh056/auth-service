@@ -46,11 +46,9 @@ Không cần chạy lại migration khi chỉ khởi động dịch vụ đã c�
 
 Trong `.env`, đặt `ENABLE_DEMO_SEED=true` và `SEED_APP_TOKEN=apt_<64 ký tự hex ngẫu nhiên>`, sau đó chạy `npm run seed`. Lệnh tạo tài khoản và ứng dụng mẫu; xem thông tin mẫu trong script seed. Provider OAuth mới mặc định tắt; cần cấu hình và bật trong Developer Console. Seed giữ nguyên provider đã có. Đặt lại `ENABLE_DEMO_SEED=false` sau khi seed. Không seed lại DB có dữ liệu cần giữ cấu hình, vì seed cập nhật tài khoản và ứng dụng mẫu.
 
-## Cấu hình OAuth
+## Cấu hình OAuth & Quản lý Tài khoản
 
-Trang **Tài khoản** trên Project 1 quản lý liên kết Google/Facebook và mật khẩu của danh tính chung. Liên kết tài khoản dùng `ACCOUNT_GOOGLE_CLIENT_ID/SECRET`, `ACCOUNT_FACEBOOK_CLIENT_ID/SECRET`; khi để trống cả cặp sẽ dùng `GOOGLE_CLIENT_ID/SECRET` hoặc `FACEBOOK_CLIENT_ID/SECRET` của Auth Service. Không lấy credential từ một ứng dụng khách. Đăng ký callback Auth hiển thị trên Console với nhà cung cấp. Thiếu cấu hình thì nút liên kết được vô hiệu hóa; cấu hình OAuth theo từng app vẫn được quản lý riêng.
-
-Luồng liên kết bắt đầu từ phiên Project 1, dùng state/cookie riêng và mã xác nhận PKCE một lần. Liên kết không phát JWT qua URL, không tự đổi chủ danh tính OAuth đã thuộc tài khoản khác và không tạo thành viên app. Không cần thay đổi database cho trang Tài khoản này.
+Trang **Tài khoản** trên Project 1 quản lý thông tin định danh (User ID, Role, Doanh nghiệp trực thuộc) và mật khẩu của danh tính chung. Việc liên kết tài khoản OAuth được thực hiện an toàn qua luồng Client Sign-In của ứng dụng khi có xác nhận mật khẩu hoặc phiên đăng nhập (`ACCOUNT_LINK_REQUIRED`), chống tuyệt đối việc chiếm đoạt tài khoản hoặc tự ý gộp tài khoản chỉ dựa trên email trùng. Cấu hình OAuth theo từng app (Google/Facebook) được quản lý độc lập tại chi tiết ứng dụng trong Developer Console.
 
 Khi triển khai bằng domain thật, đặt `AUTH_PUBLIC_URL=https://auth.example.com` trong `.env` của Auth Service và khởi động lại. Console sẽ hiển thị callback tương ứng; đăng ký URL đó tại Google/Meta. URL này là đường về **Auth Service**, dùng chung cho các ứng dụng trên cùng domain Auth; người dùng cuối không tự nhập URL này.
 

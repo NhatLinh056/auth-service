@@ -7,7 +7,6 @@ import { ToastContainer } from './components/common/ToastContainer';
 import { OverviewTab } from './components/tabs/OverviewTab';
 import { ApplicationsTab } from './components/tabs/ApplicationsTab';
 import { UsersTab } from './components/tabs/UsersTab';
-import { ProvidersTab } from './components/tabs/ProvidersTab';
 import { AccountTab } from './components/tabs/AccountTab';
 import { TenantsTab } from './components/tabs/TenantsTab';
 import { CreateAppModal } from './components/modals/CreateAppModal';
@@ -17,7 +16,6 @@ import { ProviderModal } from './components/modals/ProviderModal';
 
 import { applicationsService } from './services/applications.service';
 import { usersService } from './services/users.service';
-import { providersService } from './services/providers.service';
 
 import type { Application } from './types/application.types';
 import type { User } from './types/auth.types';
@@ -36,11 +34,6 @@ export const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
 
-  // Providers state
-  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
-  const [providers, setProviders] = useState<SanitizedOAuthProvider[]>([]);
-  const [providersLoading, setProvidersLoading] = useState(false);
-
   // Modals state
   const [isCreateAppOpen, setIsCreateAppOpen] = useState(false);
   const [detailApp, setDetailApp] = useState<Application | null>(null);
@@ -54,15 +47,12 @@ export const App: React.FC = () => {
     try {
       const data = await applicationsService.findAll();
       setApplications(data);
-      if (data.length > 0 && !selectedAppId) {
-        setSelectedAppId(data[0].id);
-      }
     } catch {
       // Handled in service or empty
     } finally {
       setAppsLoading(false);
     }
-  }, [token, selectedAppId]);
+  }, [token]);
 
   // Load users
   const loadUsers = useCallback(async () => {
@@ -78,21 +68,6 @@ export const App: React.FC = () => {
     }
   }, [token, isAdmin]);
 
-  // Load providers for selected app
-  const loadProviders = useCallback(async (appId?: string) => {
-    const targetAppId = appId || selectedAppId;
-    if (!token || !targetAppId) return;
-    setProvidersLoading(true);
-    try {
-      const data = await providersService.findAllByApplication(targetAppId);
-      setProviders(data);
-    } catch {
-      setProviders([]);
-    } finally {
-      setProvidersLoading(false);
-    }
-  }, [token, selectedAppId]);
-
   // Fetch initial data when authenticated
   useEffect(() => {
     if (isAuthenticated) {
@@ -100,8 +75,6 @@ export const App: React.FC = () => {
     } else {
       setApplications([]);
       setUsers([]);
-      setProviders([]);
-      setSelectedAppId(null);
       setActiveTab(window.location.hash === '#account' ? 'account' : 'overview');
     }
   }, [isAuthenticated, loadApplications]);
@@ -111,29 +84,15 @@ export const App: React.FC = () => {
     if (!isAuthenticated) return;
     if (activeTab === 'users' && isAdmin) {
       loadUsers();
-    } else if (activeTab === 'providers' && selectedAppId) {
-      loadProviders(selectedAppId);
     } else if (activeTab === 'apps' || activeTab === 'overview') {
       loadApplications();
     }
-  }, [activeTab, isAuthenticated, isAdmin, selectedAppId, loadUsers, loadProviders, loadApplications]);
+  }, [activeTab, isAuthenticated, isAdmin, loadUsers, loadApplications]);
 
   // Handlers
-  const handleSelectAppForProviders = (appId: string) => {
-    setSelectedAppId(appId);
-    loadProviders(appId);
-  };
-
-  const handleGoToProviders = (appId: string) => {
-    setSelectedAppId(appId);
-    setActiveTab('providers');
-    loadProviders(appId);
-  };
-
   const handleCreateAppSuccess = (newApp: Application) => {
     setIsCreateAppOpen(false);
     setApplications(prev => [newApp, ...prev]);
-    setSelectedAppId(newApp.id);
     setDetailApp(newApp);
   };
 
@@ -148,8 +107,8 @@ export const App: React.FC = () => {
     setUsers(prev => prev.map(u => (u.id === updatedUser.id ? updatedUser : u)));
   };
 
-  const handleProviderSaved = (updated: SanitizedOAuthProvider) => {
-    setProviders(prev => prev.map(p => (p.provider === updated.provider ? updated : p)));
+  const handleProviderSaved = (_updated: SanitizedOAuthProvider) => {
+    setEditProvider(null);
   };
 
   const flowId = new URLSearchParams(window.location.search).get('signin');
@@ -176,6 +135,8 @@ export const App: React.FC = () => {
             applications={applications}
             onGoToApps={() => setActiveTab('apps')}
             onOpenAppDetail={setDetailApp}
+            onOpenCreateApp={() => setIsCreateAppOpen(true)}
+            onGoToTenants={() => setActiveTab('tenants')}
           />
         )}
 
@@ -186,7 +147,8 @@ export const App: React.FC = () => {
             onRefresh={loadApplications}
             onOpenCreateModal={() => setIsCreateAppOpen(true)}
             onOpenDetailModal={setDetailApp}
-            onGoToProviders={handleGoToProviders}
+            onUpdateApp={handleUpdateApp}
+            onOpenConfigureProvider={setEditProvider}
           />
         )}
 
@@ -198,18 +160,15 @@ export const App: React.FC = () => {
             onOpenAssignRole={setAssignRoleUser}
           />
         )}
-
-        {activeTab === 'providers' && (
-          <ProvidersTab
-            applications={applications}
-            selectedAppId={selectedAppId}
-            onSelectApp={handleSelectAppForProviders}
-            providers={providers}
-            loading={providersLoading}
-            onRefresh={() => loadProviders()}
-            onOpenConfigure={setEditProvider}
-            onOpenAppDetail={setDetailApp}
-          />
+        {activeTab === 'users' && !isAdmin && (
+          <div className="tab-content active" style={{ padding: '32px 0' }}>
+            <div className="tenant-notice is-error" style={{ maxWidth: 600 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 8px' }}>403 Forbidden</h3>
+              <p style={{ margin: 0 }}>
+                Chỉ Quản trị viên hệ thống (System Admin) mới có quyền truy cập trang quản lý người dùng toàn cục.
+              </p>
+            </div>
+          </div>
         )}
       </main>
 
@@ -235,7 +194,7 @@ export const App: React.FC = () => {
       />
 
       <ProviderModal
-        applicationId={selectedAppId}
+        applicationId={editProvider?.applicationId || ''}
         provider={editProvider}
         isOpen={Boolean(editProvider)}
         onClose={() => setEditProvider(null)}

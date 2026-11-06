@@ -11,7 +11,6 @@ import { AuthService } from './auth.service.js';
 import { OAuthService } from './oauth.service.js';
 import { SharedIdentityService } from './shared-identity.service.js';
 import { AccountController } from './account.controller.js';
-import { AccountOAuthService } from './account-oauth.service.js';
 import { LoginFlowService } from './login-flow.service.js';
 import { LoginFlowController } from './login-flow.controller.js';
 
@@ -32,7 +31,7 @@ import { LoginFlowController } from './login-flow.controller.js';
     }),
   ],
   controllers: [AuthController, AccountController, LoginFlowController],
-  providers: [LoginFlowService, AccountOAuthService, SharedIdentityService, OAuthGrantsService, AuthService, OAuthService, JwtStrategy],
+  providers: [LoginFlowService, SharedIdentityService, OAuthGrantsService, AuthService, OAuthService, JwtStrategy],
   exports: [AuthService, OAuthService, JwtModule, PassportModule, JwtStrategy],
 })
 export class AuthModule {}

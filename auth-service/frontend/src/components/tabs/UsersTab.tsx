@@ -15,7 +15,8 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   onRefresh,
   onOpenAssignRole,
 }) => {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const vi = lang === 'vi';
 
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | Role>('ALL');
@@ -30,7 +31,8 @@ export const UsersTab: React.FC<UsersTabProps> = ({
         const email = (u.email || '').toLowerCase();
         const name = (u.name || '').toLowerCase();
         const id = (u.id || '').toLowerCase();
-        return email.includes(q) || name.includes(q) || id.includes(q);
+        const tenant = (u.tenantId || '').toLowerCase();
+        return email.includes(q) || name.includes(q) || id.includes(q) || tenant.includes(q);
       });
     }
 
@@ -67,7 +69,11 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       <div className="page-header">
         <div>
           <h1 className="page-title">{t('users.title')}</h1>
-          <p className="page-subtitle">{t('users.subtitle')}</p>
+          <p className="page-subtitle">
+            {vi
+              ? 'Danh sách người dùng Canonical toàn hệ thống và phân quyền Quản trị viên (ADMIN).'
+              : 'Canonical system users directory and System Admin (ADMIN) role assignment.'}
+          </p>
         </div>
         <button
           type="button"
@@ -100,7 +106,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
               type="text"
               id="users-search-input"
               className="search-input"
-              placeholder={t('filter.search_users')}
+              placeholder={vi ? 'Tìm theo email, tên, User ID, Tenant ID...' : 'Search by email, name, User ID, Tenant ID...'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -146,6 +152,8 @@ export const UsersTab: React.FC<UsersTabProps> = ({
               <th>{t('table.email')}</th>
               <th>{t('table.user_name')}</th>
               <th>{t('table.role')}</th>
+              <th>{vi ? 'Doanh nghiệp (Tenant)' : 'Tenant ID'}</th>
+              <th>{t('table.created')}</th>
               <th style={{ textAlign: 'right' }}>{t('table.actions')}</th>
             </tr>
           </thead>
@@ -153,7 +161,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
             {loading ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={7}
                   style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 32 }}
                 >
                   {t('users.loading')}
@@ -162,7 +170,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
             ) : filteredUsers.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={7}
                   style={{ textAlign: 'center', padding: 36, color: 'var(--text-muted)' }}
                 >
                   <p style={{ marginBottom: 12 }}>{t('filter.no_matches')}</p>
@@ -178,14 +186,15 @@ export const UsersTab: React.FC<UsersTabProps> = ({
             ) : (
               filteredUsers.map((u) => (
                 <tr key={u.id}>
-                  <td
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 12,
-                      color: 'var(--text-dim)',
-                    }}
-                  >
-                    {u.id.slice(0, 8)}...
+                  <td>
+                    <code
+                      className="mono-tag"
+                      style={{ fontSize: 11, cursor: 'pointer' }}
+                      title={u.id}
+                      onClick={() => navigator.clipboard.writeText(u.id)}
+                    >
+                      {u.id.slice(0, 8)}…
+                    </code>
                   </td>
                   <td style={{ fontWeight: 500, color: '#fff' }}>{u.email}</td>
                   <td style={{ color: 'var(--text-muted)' }}>{u.name || '—'}</td>
@@ -195,6 +204,25 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                     >
                       {u.role === 'ADMIN' ? t('table.role_admin') : t('table.role_user')}
                     </span>
+                  </td>
+                  <td>
+                    {u.tenantId ? (
+                      <code
+                        className="mono-tag"
+                        style={{ fontSize: 11, cursor: 'pointer' }}
+                        title={u.tenantId}
+                        onClick={() => navigator.clipboard.writeText(u.tenantId!)}
+                      >
+                        {u.tenantId.slice(0, 8)}…
+                      </code>
+                    ) : (
+                      <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                        {vi ? 'Chưa tham gia' : 'None'}
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
+                    {u.createdAt ? new Date(u.createdAt).toLocaleDateString(vi ? 'vi-VN' : 'en-US') : '—'}
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <button

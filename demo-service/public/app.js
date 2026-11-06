@@ -41,7 +41,6 @@ const translations = {
       title: 'Account Profile',
       user_id: 'User ID:',
       provider: 'Provider:',
-      tenant: 'Organization:',
       auth_status: 'Auth Status:',
       verified: 'Verified',
       integration_notice_title: 'Integration Successful:',
@@ -84,7 +83,6 @@ const translations = {
       title: 'Thông Tin Tài Khoản',
       user_id: 'User ID:',
       provider: 'Phương Thức:',
-      tenant: 'Doanh Nghiệp:',
       auth_status: 'Xác Thực:',
       verified: 'Đã Xác Thực',
       integration_notice_title: 'Tích Hợp Thành Công:',
@@ -181,17 +179,6 @@ function updateAuthUI() {
     if (providerEl) {
       const p = (state.user.provider || 'OAuth').toUpperCase();
       providerEl.textContent = p;
-    }
-
-    const tenantEl = document.getElementById('user-tenant-display');
-    if (tenantEl) {
-      if (state.user.tenantName || state.user.tenantId) {
-        tenantEl.textContent = state.user.tenantName ? `${state.user.tenantName} (${state.user.tenantId})` : state.user.tenantId;
-        tenantEl.style.color = '#38bdf8';
-      } else {
-        tenantEl.textContent = state.lang === 'vi' ? 'Chưa tham gia' : 'None';
-        tenantEl.style.color = 'var(--text-muted)';
-      }
     }
 
     if (avatarEl) {
@@ -341,7 +328,6 @@ async function testProtectedApi() {
         user: {
           id: data.user.id || data.user.userId,
           email: data.user.email,
-          tenantId: data.user.tenantId ?? null,
         },
         timestamp: data.timestamp,
       } : data;

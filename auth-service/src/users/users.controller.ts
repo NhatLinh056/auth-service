@@ -93,6 +93,7 @@ export class UsersController {
   @ApiResponse({ status: 403, description: 'Không có quyền truy cập (chỉ dành cho ADMIN)' })
   async getAll() {
     const users = await this.usersService.findAll();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     return users.map(({ passwordHash: _, ...safeUser }) => safeUser);
   }
 

@@ -241,18 +241,4 @@ export class AuthClientService {
       throw new BadGatewayException(`Auth verification failed: ${message}`);
     }
   }
-
-  async tenantRequest(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, token: string, data?: unknown) {
-    try {
-      const response = await this.http.request({ method, url: `/tenants${path}`, data,
-        headers: { Authorization: token, ...this.getServiceHeaders() } });
-      return response.data;
-    } catch (error: any) {
-      const status = error.response?.status;
-      if ([400, 401, 403, 404, 409].includes(status)) {
-        throw new HttpException({ message: error.response.data?.message || 'Không thể thực hiện thao tác doanh nghiệp' }, status);
-      }
-      throw new BadGatewayException('Không thể kết nối dịch vụ quản lý doanh nghiệp');
-    }
-  }
 }

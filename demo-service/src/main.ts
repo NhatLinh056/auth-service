@@ -22,7 +22,7 @@ async function bootstrap() {
   logger.log(` Target Auth Service: ${appConfig.authServiceUrl}`);
   logger.log(` AppID: ${appConfig.appId || '(NOT SET)'}`);
   logger.log(` Handshake status: http://localhost:${appConfig.port}/status`);
-  logger.log(` Protected business orders: http://localhost:${appConfig.port}/orders`);
+  logger.log(` Protected illustrative resource: http://localhost:${appConfig.port}/auth/protected`);
   logger.log(`=======================================================`);
 }
 

@@ -9,10 +9,10 @@
 
 - **Giao diện tinh gọn (Đúng 4 chức năng người dùng + 1 API bảo vệ):**
   - Chưa đăng nhập: Hiển thị đúng 2 nút "Đăng nhập bằng Google" và "Đăng nhập bằng Facebook", cùng trạng thái kết nối với Auth Service.
-  - Đăng nhập thành công: Hiển thị thông tin tài khoản cơ bản (họ tên, email, User ID, provider, thông tin tenant tùy chọn nếu có) và nút đăng xuất. Mọi tài khoản (có hoặc chưa có tenant) đều đăng nhập và xem được màn hình này.
-  - Kiểm chứng API bảo vệ: Nút "Thử Gọi API Bảo Vệ" gọi endpoint `GET /auth/protected` kèm Bearer token (qua `UserAuthGuard`), chứng minh token hợp lệ cho mọi User Demo (có hoặc chưa có tenant) và phản hồi ngữ cảnh xác thực tối thiểu (`authenticated`, `service`, `appId`, `user` gồm `id`, `email`, `tenantId`) mà không chứa cờ vai trò hệ thống/app, cờ quyền sở hữu hay nghiệp vụ đơn hàng.
+  - Đăng nhập thành công: Hiển thị thông tin tài khoản cơ bản (họ tên, email, User ID, provider) và nút đăng xuất. Mọi tài khoản đều đăng nhập và xem được màn hình này.
+  - Kiểm chứng API bảo vệ: Nút "Thử Gọi API Bảo Vệ" gọi endpoint `GET /auth/protected` kèm Bearer token (qua `UserAuthGuard`), chứng minh token hợp lệ cho mọi User Demo và phản hồi ngữ cảnh xác thực tối thiểu (`authenticated`, `service`, `appId`, `user` gồm `id`, `email`, `name`) mà không chứa cờ vai trò hệ thống/app, cờ quyền sở hữu hay nghiệp vụ đơn hàng.
   - Không hiển thị nội dung quản lý doanh nghiệp (tenant), vai trò tenant/app, cờ quyền sở hữu, bảng đơn hàng hay JWT thô trên giao diện Demo.
-- **Tương thích API backend:** Các API `/orders` và proxy `/tenant/*` vẫn được bảo lưu ở backend Demo để giữ tương thích với các bài kiểm thử Task 7 và client bên ngoài; dữ liệu đơn hàng vẫn được cô lập chặt chẽ theo tenant ở tầng backend.
+- **Kiến trúc tinh gọn:** Loại bỏ hoàn toàn các controller đơn hàng (`/orders`) và proxy tenant (`/tenant/*`), chỉ giữ lại các endpoint cốt lõi phục vụ tích hợp xác thực: handshake (`GET /status`), danh sách provider (`GET /auth/providers`), khởi tạo luồng đăng nhập (`POST /auth/start`), đổi token (`POST /auth/exchange`) và API bảo vệ minh họa (`GET /auth/protected`).
 - **Bảo mật luồng OAuth:** PKCE S256, browser-bound state, mã đổi token một lần, AppToken chỉ lưu ở backend, không đưa JWT vào URL.
 
 ## Luồng tích hợp

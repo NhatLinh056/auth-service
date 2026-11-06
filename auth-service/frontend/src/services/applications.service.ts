@@ -1,6 +1,7 @@
 import { apiClient } from './api.client';
 import type {
   Application,
+  AppUser,
   CreateAppPayload,
   UpdateAppPayload,
 } from '../types/application.types';
@@ -38,5 +39,9 @@ export const applicationsService = {
     return apiClient<{ message: string; appToken: string }>(`/applications/${id}/regenerate-token`, {
       method: 'POST',
     });
+  },
+
+  async getAppUsers(id: string): Promise<AppUser[]> {
+    return apiClient<AppUser[]>(`/applications/${id}/users`);
   },
 };
