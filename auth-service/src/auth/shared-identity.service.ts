@@ -119,22 +119,9 @@ export class SharedIdentityService {
             await tx.oAuthIdentity.create({ data: { ...identityKey, email, userId: user.id } });
           }
 
-          // Only a verified provider subject can recover a legacy membership.
-          const legacyIdentity = await tx.appOAuthIdentity.findUnique({
-            where: { applicationId_provider_providerUserId: {
-              applicationId: app.id, provider, providerUserId: profile.providerUserId,
-            } }, include: { appUser: true },
-          });
           let membership = await tx.appUser.findUnique({
             where: { applicationId_userId: { applicationId: app.id, userId: user.id } },
           });
-          if (legacyIdentity && legacyIdentity.appUser.userId && legacyIdentity.appUser.userId !== user.id) {
-            throw new ConflictException('Thành viên cũ đã gắn với tài khoản khác; cần xác minh thủ công');
-          }
-          if (membership && legacyIdentity && membership.id !== legacyIdentity.appUserId) {
-            throw new ConflictException('Có nhiều bản ghi thành viên cần được đối chiếu trước khi liên kết');
-          }
-          membership ||= legacyIdentity?.appUser || null;
           if (!membership) {
             const existingEmail = await tx.appUser.findUnique({
               where: { applicationId_email: { applicationId: app.id, email } },
@@ -150,12 +137,6 @@ export class SharedIdentityService {
               applicationId: app.id, userId: user.id, email: user.email,
               name: user.name, avatarUrl: profile.avatarUrl, role: Role.USER,
             } });
-          if (!legacyIdentity) {
-            await tx.appOAuthIdentity.create({ data: {
-              applicationId: app.id, appUserId: membership.id,
-              provider, providerUserId: profile.providerUserId, email,
-            } });
-          }
           return {
             id: membership.id, userId: user.id, email: user.email, name: user.name,
             role, avatarUrl: profile.avatarUrl || membership.avatarUrl, provider,

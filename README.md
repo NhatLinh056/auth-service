@@ -1,60 +1,81 @@
-# Hệ thống xác thực Microservices
+# Hệ thống Xác thực Microservices
 
-Hai dịch vụ NestJS dùng chung hệ thống định danh:
+Kiến trúc định danh tập trung (Centralized Identity Provider) và ứng dụng khách (Client Service) xây dựng trên nền tảng NestJS, Prisma 7 và PostgreSQL.
 
-| Dịch vụ | Chức năng | Địa chỉ |
-|---|---|---|
-| [Auth Service](auth-service/README.md) | Quản lý tài khoản, ứng dụng, OAuth; Developer Console | http://localhost:3000 |
-| [Demo Service](demo-service/README.md) | Tích hợp đăng nhập OAuth (Google/Facebook) tập trung và API minh họa bảo vệ | http://localhost:3001 |
+## 1. Dịch vụ & Địa chỉ Truy cập
 
-## Chức năng chính
+| Dịch vụ | Vai trò | Địa chỉ | Tài liệu |
+|---|---|---|---|
+| **Auth Service** | Identity Provider trung tâm, Developer Console, Multi-tenant | http://localhost:3000 | [Xem chi tiết](auth-service/README.md) |
+| **Demo Service** | Client Microservice tích hợp OAuth & API bảo vệ | http://localhost:3001 | [Xem chi tiết](demo-service/README.md) |
 
-- Chủ ứng dụng tạo và quản lý ứng dụng trong Developer Console, nhận AppID/AppToken, đăng ký URL quay về và bật Google/Facebook.
-- Auth Service xác thực ứng dụng, xử lý đăng nhập và xác định quyền theo danh tính nền tảng (khách hàng app luôn nhận quyền USER; chủ ứng dụng nhận isAppOwner; chủ doanh nghiệp nhận isTenantOwner; Super Admin hệ thống nhận isSystemAdmin).
-- Demo Portal đăng nhập trực tiếp qua OAuth Google/Facebook với Auth Service, nhận mã dùng một lần và đổi JWT ứng dụng; kiểm chứng token an toàn qua API bảo vệ minh họa (`GET /auth/protected`).
-- Trang Tài khoản của Auth Service cho phép xem thông tin định danh, doanh nghiệp trực thuộc, danh tính OAuth đã liên kết và đổi mật khẩu an toàn. Việc liên kết danh tính OAuth diễn ra tự động và an toàn qua quy trình đăng nhập khi có xác thực mật khẩu/phiên (ACCOUNT_LINK_REQUIRED).
-- Quản lý doanh nghiệp (Multi-tenant): Người chưa thuộc tenant có thể tạo tenant mới (trở thành Owner) hoặc gửi yêu cầu xin gia nhập. Chủ doanh nghiệp phê duyệt/từ chối yêu cầu, loại thành viên, chuyển quyền sở hữu và xóa tenant. Super Admin có quyền can thiệp chuyển chủ (kèm lý do bắt buộc) và xem nhật ký audit toàn hệ thống.
+- **Swagger API Docs (Auth Service):** http://localhost:3000/api
+- **Handshake Status (Demo Service):** http://localhost:3001/status
+- **API Bảo vệ minh họa:** `GET http://localhost:3001/auth/protected` (Yêu cầu Bearer JWT)
 
-## Chạy trên máy đã cấu hình
+---
 
-Mở hai terminal tại thư mục dự án:
+## 2. Tổng hợp API Hệ thống
 
+| Phân hệ | Cổng | API tiêu biểu | Chi tiết |
+|---|---|---|---|
+| **Định danh & OAuth** | Port 3000 | `/auth/login`, `/auth/flows`, `/auth/oauth/exchange`, `/users/verify-app-user` | [Auth API](auth-service/README.md#1-xác-thực--tài-khoản-nền-tảng-platform-auth--account) |
+| **Quản lý Ứng dụng** | Port 3000 | `/applications`, `/applications/:id/auth-methods` (Google / Facebook) | [App API](auth-service/README.md#3-quản-lý-cấu-hình-ứng-dụng-khách-developer-applications) |
+| **Doanh nghiệp (Multi-tenant)** | Port 3000 | `/tenants`, `/tenants/:id/transfer`, `/tenants/join`, `/tenants/audit` | [Tenant API](auth-service/README.md#4-quản-lý-doanh-nghiệp--thành-viên-multi-tenant--memberships) |
+| **Quản trị Nền tảng** | Port 3000 | `/users`, `/tenants/:id/admin-transfer`, `/tenants/audit` | [Admin API](auth-service/README.md#5-quản-trị-hệ-thống-system-admin-platform-control) |
+| **Ứng dụng Khách Demo** | Port 3001 | `/status`, `/auth/providers`, `/auth/start`, `/auth/exchange`, `/auth/protected` | [Demo API](demo-service/README.md#bảng-tra-cứu-api) |
+
+---
+
+## 3. Phân quyền Độc lập 4 Cấp
+
+Hệ thống phân tách quyền theo nguyên tắc độc lập hoàn toàn, không chồng chéo:
+- **Super Admin (`Role.ADMIN`):** Quản trị toàn platform, xem audit toàn hệ thống, can thiệp chuyển chủ tenant kèm lý do. Token ứng dụng bị chặn hoàn toàn khỏi cấp này.
+- **Application Owner (`isAppOwner`):** Quản lý cấu hình ứng dụng khách, AppID/AppToken và phương thức OAuth trong Developer Console.
+- **Tenant Owner (`isTenantOwner`):** Quản lý nội bộ doanh nghiệp, duyệt/loại thành viên và chuyển giao quyền chủ sở hữu.
+- **End-User (`Role.USER`):** Khách hàng của ứng dụng hoặc thành viên doanh nghiệp. Người dùng chưa có doanh nghiệp (`tenantId: null`) vẫn sử dụng ứng dụng bình thường.
+
+---
+
+## 4. Nguyên tắc Bảo mật Cốt lõi
+
+1. **OAuth 2.0 + PKCE (S256) & State:** Tuyệt đối không truyền JWT qua URL. Sử dụng mã code dùng 1 lần (TTL 60s) trao đổi an toàn qua backend.
+2. **Chống Chiếm đoạt Tài khoản (Anti-Account Takeover):** Không tự động gộp tài khoản khi trùng email. Yêu cầu xác nhận mật khẩu hoặc phiên đăng nhập cũ (`ACCOUNT_LINK_REQUIRED`).
+3. **Service-to-Service Trust:** Mọi giao tiếp giữa Demo Service và Auth Service đều được bảo vệ bằng header `X-App-Id` và `X-App-Token` 256-bit.
+4. **App-scoped Token:** JWT cấp cho ứng dụng khách bị cô lập chặt chẽ theo `appId`, chống tấn công IDOR và dùng token chéo ứng dụng.
+
+---
+
+## 5. Triển khai & Khởi chạy trên Máy khác
+
+Yêu cầu hệ thống: Đã cài Node.js (v18+) và PostgreSQL (đã tạo sẵn database, mặc định: `auth_service_db`).
+
+```sql
+-- Chạy lệnh tạo database trong PostgreSQL nếu chưa có:
+CREATE DATABASE auth_service_db;
+```
+
+### Bước 1: Khởi chạy Auth Service (Port 3000)
 ```powershell
-# Chuyển vào Auth Service và chạy API cùng Developer Console ở chế độ phát triển.
 cd auth-service
+npm install
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+
+# Sinh client và áp dụng migration database
+npx prisma generate --config prisma7.config.ts
+npx prisma migrate deploy --config prisma7.config.ts
+
 npm run start:dev
 ```
 
+### Bước 2: Khởi chạy Demo Service (Port 3001)
+Mở Terminal thứ 2:
 ```powershell
-# Chuyển vào Demo Service và chạy Customer Portal ở chế độ phát triển.
 cd demo-service
+npm install
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+
 npm run start:dev
 ```
 
-Cần PostgreSQL đang chạy và file `.env` của từng dịch vụ đã cấu hình. Không đưa `.env` hoặc thông tin bí mật vào Git.
-
-## Cài đặt lần đầu
-
-1. Cài Node.js và PostgreSQL, tạo database.
-2. Làm theo [hướng dẫn Auth Service](auth-service/README.md) để cài dependencies, cấu hình và chạy migration.
-3. Tạo ứng dụng trong Developer Console; chép AppID/AppToken vào `.env` của Demo.
-4. Cấu hình Google/Facebook và thêm `http://localhost:3001/` vào danh sách URL quay về của ứng dụng.
-5. Chạy hai dịch vụ bằng các lệnh trên.
-
-Khi deploy lên domain thật, xem cấu hình `AUTH_PUBLIC_URL` trong [Auth Service](auth-service/README.md) và `PUBLIC_URL` trong [Demo Service](demo-service/README.md). Callback tại Google/Meta là URL của Auth Service; URL quay về sau đăng nhập là domain của ứng dụng khách và phải nằm trong allowlist của app.
-
-## Test nhanh
-
-- Developer Console: http://localhost:3000
-- Customer Portal: http://localhost:3001
-- Handshake: http://localhost:3001/status
-- API không có token phải trả 401: http://localhost:3001/auth/protected
-- Nếu dùng dữ liệu demo, xem thông tin tài khoản mẫu trong script seed của Auth Service. Chỉ dùng dữ liệu này khi chạy local.
-
-Hệ thống phân tách rõ 4 cấp quyền độc lập:
-- Super Admin hệ thống (`Role.ADMIN`): quản lý nền tảng, can thiệp chuyển chủ tenant có lý do và xem audit toàn hệ thống; app token bị chặn dùng quyền này.
-- Application Owner (`isAppOwner`): quản lý cấu hình ứng dụng khách trong Developer Console.
-- Tenant Owner (`isTenantOwner`): quản lý doanh nghiệp, duyệt/từ chối thành viên, loại thành viên và chuyển quyền sở hữu.
-- Member / User (`USER`): thành viên thuộc tenant hoặc khách hàng của app; chỉ thao tác trong phạm vi được cấp.
-
-Demo Service được tinh gọn tối đa, đóng vai trò ứng dụng khách tích hợp xác thực: cung cấp đăng nhập OAuth (Google/Facebook), xem hồ sơ cơ bản, đăng xuất và nút kiểm chứng API bảo vệ (`GET /auth/protected`). Demo Service không quản lý bảng người dùng riêng, không có nghiệp vụ đơn hàng hay quản trị doanh nghiệp (tenant). State và mã đăng nhập tạm thời được lưu trong bộ nhớ.
+> **Kết nối Microservice:** Mở Developer Console (`http://localhost:3000`), tạo ứng dụng mới (điền URL quay về: `http://localhost:3001/`). Copy `AppID` và `AppToken` dán vào `demo-service/.env` để thiết lập quan hệ tin cậy.

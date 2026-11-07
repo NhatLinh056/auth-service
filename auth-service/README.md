@@ -1,89 +1,111 @@
 # Auth Service
 
-Dịch vụ định danh trung tâm: NestJS, Prisma, PostgreSQL và Developer Console React.
+Dịch vụ định danh trung tâm (Centralized Identity Provider): NestJS, Prisma 7, PostgreSQL và Developer Console React.
 
-- Console: http://localhost:3000
-- Swagger: http://localhost:3000/api
-- Health: http://localhost:3000/health
+- **Developer Console:** http://localhost:3000
+- **Swagger API Docs:** http://localhost:3000/api
+- **Health Check:** http://localhost:3000/health
 
-## Chức năng chính
+## Khởi chạy Nhanh
 
-- Tài khoản nền tảng đăng nhập Developer Console để tạo và quản lý ứng dụng khách.
-- Mỗi ứng dụng có AppID/AppToken, danh sách URL quay về và cấu hình Google/Facebook.
-- Auth Service cung cấp màn hình đăng nhập tập trung bằng email/mật khẩu hoặc OAuth, cấp mã dùng một lần và chuẩn hóa quyền người dùng (khách hàng app mang quyền USER; tách biệt với quyền quản trị nền tảng và quản trị doanh nghiệp).
-- Demo Service gửi AppID/AppToken để xác thực ứng dụng và kiểm tra JWT, quyền người dùng qua API của Auth Service.
-
-## Cài đặt lần đầu
-
-Chạy trong `auth-service`:
+Yêu cầu: PostgreSQL đang chạy và đã tạo database (mặc định: `CREATE DATABASE auth_service_db;`).
 
 ```powershell
-# Cài các gói phụ thuộc.
+# Cài phụ thuộc và cấu hình môi trường
 npm install
-# Tạo file cấu hình từ mẫu nếu chưa có .env.
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
-```
 
-Điền `DATABASE_URL`, `JWT_SECRET` ngẫu nhiên và thông tin OAuth nếu sử dụng. Sinh giá trị ngẫu nhiên bằng:
-
-```powershell
-# Tạo chuỗi hex ngẫu nhiên để dùng làm JWT_SECRET.
-node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
-```
-
-```powershell
-# Tạo Prisma Client từ schema.
+# Sinh Prisma Client và áp dụng migration
 npx prisma generate --config prisma7.config.ts
-# Áp dụng các migration vào database đã cấu hình.
 npx prisma migrate deploy --config prisma7.config.ts
-# Chạy API và Developer Console ở chế độ phát triển.
+
+# Chạy API và Developer Console
 npm run start:dev
 ```
 
-Không cần chạy lại migration khi chỉ khởi động dịch vụ đã cài đặt.
+## Nguyên tắc Kiến trúc & Bảo mật Cốt lõi
 
-## Dữ liệu demo (tùy chọn, chỉ local)
+- **Mô hình Danh tính Độc lập:** `User` là thực thể định danh trung tâm toàn hệ sinh thái; `AppUser` là thành viên riêng trong từng ứng dụng khách. Quyền của Chủ ứng dụng (`isAppOwner`) và Chủ doanh nghiệp (`isTenantOwner`) tách rời tuyệt đối.
+- **Multi-tenant Độc lập:** Mỗi User thuộc tối đa 1 Tenant (`User.tenantId` nullable); người chưa có tenant vẫn sử dụng ứng dụng bình thường. Tenant Owner có toàn quyền duyệt/loại thành viên và chuyển giao sở hữu.
+- **Chống Chiếm đoạt Tài khoản (Anti-Takeover):** Tuyệt đối không tự gộp tài khoản khi đăng nhập OAuth trùng email (`ACCOUNT_LINK_REQUIRED`). Bắt buộc xác nhận mật khẩu hoặc phiên đăng nhập cũ để liên kết an toàn.
+- **Service Handshake:** Kiểm soát giao tiếp Microservice qua header `X-App-Id` và `X-App-Token` 256-bit.
 
-Trong `.env`, đặt `ENABLE_DEMO_SEED=true` và `SEED_APP_TOKEN=apt_<64 ký tự hex ngẫu nhiên>`, sau đó chạy `npm run seed`. Lệnh tạo tài khoản và ứng dụng mẫu; xem thông tin mẫu trong script seed. Provider OAuth mới mặc định tắt; cần cấu hình và bật trong Developer Console. Seed giữ nguyên provider đã có. Đặt lại `ENABLE_DEMO_SEED=false` sau khi seed. Không seed lại DB có dữ liệu cần giữ cấu hình, vì seed cập nhật tài khoản và ứng dụng mẫu.
+## Bảng Tra cứu API Chính
 
-## Cấu hình OAuth & Quản lý Tài khoản
+### 1. Xác thực & Tài khoản Nền tảng (Platform Auth & Account)
 
-Trang **Tài khoản** trên Project 1 quản lý thông tin định danh (User ID, Role, Doanh nghiệp trực thuộc) và mật khẩu của danh tính chung. Việc liên kết tài khoản OAuth được thực hiện an toàn qua luồng Client Sign-In của ứng dụng khi có xác nhận mật khẩu hoặc phiên đăng nhập (`ACCOUNT_LINK_REQUIRED`), chống tuyệt đối việc chiếm đoạt tài khoản hoặc tự ý gộp tài khoản chỉ dựa trên email trùng. Cấu hình OAuth theo từng app (Google/Facebook) được quản lý độc lập tại chi tiết ứng dụng trong Developer Console.
+| Method | Endpoint | Quyền | Mô tả |
+|---|---|---|---|
+| `POST` | `/auth/register` | Public | Đăng ký tài khoản nền tảng mới |
+| `POST` | `/auth/login` | Public | Đăng nhập tài khoản nền tảng, trả JWT |
+| `GET` | `/auth/account` | Bearer (User) | Lấy thông tin tài khoản hiện hành |
+| `POST` | `/auth/account/password` | Bearer (User) | Đổi mật khẩu hoặc tạo mật khẩu cho tài khoản OAuth |
 
-Khi triển khai bằng domain thật, đặt `AUTH_PUBLIC_URL=https://auth.example.com` trong `.env` của Auth Service và khởi động lại. Console sẽ hiển thị callback tương ứng; đăng ký URL đó tại Google/Meta. URL này là đường về **Auth Service**, dùng chung cho các ứng dụng trên cùng domain Auth; người dùng cuối không tự nhập URL này.
+### 2. Tích hợp Ứng dụng & Luồng OAuth (Client Apps & OAuth Flows)
 
-Ví dụ Google: `https://auth.example.com/auth/oauth/google/callback`; Facebook: `https://auth.example.com/auth/oauth/facebook/callback`. `AUTH_PUBLIC_URL` phải là origin HTTPS công khai, không có đường dẫn con, query hay fragment. HTTP chỉ dùng cho localhost khi phát triển.
+| Method | Endpoint | Quyền | Mô tả |
+|---|---|---|---|
+| `GET` | `/auth/verify-service` | `X-App-Id`, `X-App-Token` | Xác thực danh tính Microservice |
+| `GET` | `/auth/providers` | `X-App-Id`, `X-App-Token` | Danh sách provider OAuth đang bật của ứng dụng |
+| `POST` | `/auth/flows` | `X-App-Id`, `X-App-Token` | Khởi tạo phiên Centralized Login Flow |
+| `GET` | `/auth/flows/:id` | Public | Thông tin hiển thị của Login Flow |
+| `POST` | `/auth/flows/:id/password` | Public | Đăng nhập email/mật khẩu trong luồng tập trung |
+| `POST` | `/auth/flows/:id/session` | Bearer (User) | Tiếp tục bằng phiên Auth Service sẵn có |
+| `POST` | `/auth/flows/:id/oauth/:provider/begin` | Public | Bắt đầu OAuth trong luồng tập trung |
+| `POST` | `/auth/flows/:id/oauth/complete` | Public | Hoàn tất OAuth và liên kết danh tính an toàn |
+| `GET` | `/auth/oauth/:provider` | Public | Bắt đầu luồng Direct OAuth (PKCE, state) |
+| `GET` | `/auth/oauth/:provider/callback` | OAuth Provider | Callback điều hướng từ Google / Facebook |
+| `POST` | `/auth/oauth/exchange` | `X-App-Id`, `X-App-Token` | Đổi mã đăng nhập dùng 1 lần lấy App JWT |
+| `POST` | `/users/verify-app-user` | `X-App-Id`, `X-App-Token` + Bearer | Xác thực JWT ứng dụng và trả context quyền |
 
-Trong chi tiết ứng dụng trên Console:
+### 3. Quản lý Ứng dụng Khách (Developer Console)
 
-1. Điền Client ID/Secret và bật Google hoặc Facebook.
-2. Đăng ký callback hiển thị trong Console tại nhà cung cấp. Khi chạy local, dùng `http://localhost:3000/auth/oauth/google/callback` hoặc `http://localhost:3000/auth/oauth/facebook/callback`.
-3. Thêm URL Portal chính xác, chẳng hạn `https://shop.example.com/`, vào **URL quay về ứng dụng sau đăng nhập** trong chi tiết app. Có thể đăng ký thêm URL staging hoặc localhost cho các môi trường khác.
+| Method | Endpoint | Quyền | Mô tả |
+|---|---|---|---|
+| `GET` | `/applications` | Bearer (User / Admin) | Danh sách ứng dụng |
+| `POST` | `/applications` | Bearer (User) | Tạo ứng dụng khách mới |
+| `GET` | `/applications/:id` | Bearer (Owner / Admin) | Chi tiết cấu hình ứng dụng |
+| `PATCH` | `/applications/:id` | Bearer (Owner / Admin) | Cập nhật tên, danh sách Allowed Redirect URIs |
+| `DELETE` | `/applications/:id` | Bearer (Owner / Admin) | Xóa ứng dụng |
+| `POST` | `/applications/:id/regenerate-token` | Bearer (Owner / Admin) | Cấp lại AppToken bảo mật |
+| `GET` | `/applications/:id/users` | Bearer (Owner / Admin) | Danh sách người dùng của ứng dụng |
+| `GET` | `/applications/:id/auth-methods` | Bearer (Owner / Admin) | Danh sách cấu hình phương thức OAuth |
+| `PATCH` | `/applications/:id/auth-methods/:provider` | Bearer (Owner / Admin) | Cập nhật Client ID, Client Secret, Callback URL |
+| `POST` | `/applications/:id/auth-methods/:provider/toggle` | Bearer (Owner / Admin) | Bật / tắt phương thức OAuth |
 
-Redirect phải khớp chính xác. Luồng đăng nhập dùng state gắn với trình duyệt, PKCE và mã dùng một lần; không truyền JWT qua URL.
+### 4. Quản lý Doanh nghiệp (Multi-tenant & Memberships)
 
-## API chính
+| Method | Endpoint | Quyền | Mô tả |
+|---|---|---|---|
+| `GET` | `/tenants` | Bearer (User) | Danh sách doanh nghiệp công khai |
+| `POST` | `/tenants` | Bearer (User) | Tạo doanh nghiệp mới (trở thành Tenant Owner) |
+| `GET` | `/tenants/me` | Bearer (User) | Doanh nghiệp của tôi và trạng thái yêu cầu |
+| `GET` | `/tenants/:id` | Bearer (User) | Xem chi tiết doanh nghiệp |
+| `PATCH` | `/tenants/:id` | Bearer (Tenant Owner) | Cập nhật tên hoặc mô tả doanh nghiệp |
+| `DELETE` | `/tenants/:id` | Bearer (Tenant Owner) | Xóa doanh nghiệp (khi không còn thành viên khác) |
+| `POST` | `/tenants/:id/transfer` | Bearer (Tenant Owner) | Chuyển quyền chủ doanh nghiệp cho thành viên |
+| `DELETE` | `/tenants/:id/members/:userId` | Bearer (Tenant Owner) | Xóa thành viên khỏi doanh nghiệp |
+| `POST` | `/tenants/join` | Bearer (User) | Gửi yêu cầu xin gia nhập doanh nghiệp |
+| `GET` | `/tenants/join-request/my` | Bearer (User) | Xem yêu cầu gia nhập của bản thân |
+| `POST` | `/tenants/join-request/:id/cancel` | Bearer (User) | Hủy yêu cầu gia nhập đang chờ |
+| `GET` | `/tenants/:id/join-requests` | Bearer (Tenant Owner) | Danh sách yêu cầu xin gia nhập |
+| `POST` | `/tenants/join-requests/:id/approve` | Bearer (Tenant Owner) | Phê duyệt thành viên mới |
+| `POST` | `/tenants/join-requests/:id/reject` | Bearer (Tenant Owner) | Từ chối yêu cầu gia nhập |
+| `POST` | `/tenants/leave` | Bearer (Member) | Rời khỏi doanh nghiệp |
+| `GET` | `/tenants/:id/audit` | Bearer (Tenant Owner) | Xem nhật ký audit của doanh nghiệp |
 
-Tenant đại diện doanh nghiệp. Mỗi user thuộc tối đa một tenant; người tạo tự trở thành chủ (Tenant Owner). Chủ quản lý thông tin, phê duyệt/từ chối yêu cầu gia nhập, loại thành viên, chuyển quyền cho thành viên hiện tại và xóa doanh nghiệp khi không còn thành viên khác. Thành viên thường có thể tự rời doanh nghiệp (chủ sở hữu phải chuyển quyền trước khi rời). Super Admin có thể can thiệp chuyển quyền cho thành viên hoặc user chưa thuộc doanh nghiệp (bắt buộc ghi lý do can thiệp), nhưng không can thiệp vào các thao tác quản trị nội bộ khác của tenant. Chủ cũ trở thành thành viên sau khi chuyển quyền; không thể xóa tài khoản còn sở hữu doanh nghiệp.
+### 5. Quản trị Nền tảng (Platform Super Admin)
 
-API tenant chấp nhận phiên nền tảng hoặc phiên ứng dụng hợp lệ; quyền Super Admin chỉ áp dụng cho phiên nền tảng (`type === 'platform'`), token ứng dụng (`type === 'app_user'`) bị chặn khỏi các quyền này. `GET /tenants/me` trả doanh nghiệp, context quyền và yêu cầu gia nhập hiện tại; `/tenants` hỗ trợ tạo/danh sách, `/tenants/:id` xem/sửa/xóa, `POST /tenants/:id/transfer` chuyển chủ. Luồng gia nhập gồm `POST /tenants/join`, `GET /tenants/join-request/my`, `POST /tenants/join-request/:id/cancel`, `GET /tenants/:id/join-requests`, `POST /tenants/join-requests/:id/approve` và `POST /tenants/join-requests/:id/reject`. Thành viên rời bằng `POST /tenants/leave`; chủ loại thành viên bằng `DELETE /tenants/:id/members/:userId`. Nhật ký tenant tại `/tenants/:id/audit`; chỉ Super Admin với platform token được xem `/tenants/audit` toàn hệ thống. Nhật ký audit được giữ nguyên ngay cả khi tenant bị xóa.
+| Method | Endpoint | Quyền | Mô tả |
+|---|---|---|---|
+| `GET` | `/users` | Bearer (Super Admin) | Danh sách người dùng toàn hệ thống |
+| `GET` | `/users/:id` | Bearer (Super Admin) | Chi tiết thông tin người dùng |
+| `PATCH` | `/users/:id` | Bearer (Super Admin) | Cập nhật vai trò / thông tin người dùng |
+| `DELETE` | `/users/:id` | Bearer (Super Admin) | Xóa người dùng (không xóa tài khoản còn là chủ) |
+| `GET` | `/tenants/audit` | Bearer (Super Admin) | Xem toàn bộ nhật ký audit doanh nghiệp |
+| `POST` | `/tenants/:id/admin-transfer` | Bearer (Super Admin) | Can thiệp chuyển chủ tenant (kèm lý do) |
 
-Danh tính người dùng được lưu chung trong `User`; `AppUser` là quan hệ thành viên và quyền riêng trong từng ứng dụng. Trong phiên ứng dụng, `userId` là ID danh tính chung; `id` và JWT `sub` vẫn là ID thành viên để giữ tương thích dữ liệu nghiệp vụ.
+## Lưu ý Triển khai
 
-Google dùng định danh provider chung; Facebook được phân biệt thêm theo Client ID. Hệ thống không tự liên kết tài khoản chỉ vì trùng email. Trang đăng nhập Auth yêu cầu mật khẩu hiện tại hoặc phiên Auth của tài khoản đích để xác nhận (`ACCOUNT_LINK_REQUIRED`). Xác nhận OAuth có hiệu lực tối đa 5 phút, giới hạn 5 lần; mã cuối cùng trả về ứng dụng có hiệu lực 60 giây và dùng một lần. Ứng dụng khách chỉ gửi code/verifier, không tiếp nhận mật khẩu hoặc token nền tảng để liên kết.
-
-Migration `20261102010000_shared_user_identity` giữ nguyên user, thành viên và OAuth identity cũ. Thành viên cũ được gắn vào danh tính chung sau lần đăng nhập và xác minh tiếp theo; phiên OAuth cũ chưa được gắn user cần đăng nhập lại. Trường hợp dữ liệu cũ mâu thuẫn được giữ lại để đối chiếu, không tự gộp hoặc xóa.
-
-- `POST /auth/flows`: backend ứng dụng tạo yêu cầu đăng nhập bằng AppID/AppToken, URL quay về đã đăng ký, PKCE và state.
-- `GET /auth/flows/:id`: thông tin ứng dụng hiển thị tại màn hình đăng nhập Auth.
-- `POST /auth/oauth/exchange`: backend ứng dụng đổi code/verifier lấy JWT riêng của app.
-- `/auth/login`: đăng nhập tài khoản nền tảng.
-- `/auth/verify-service`: xác thực AppID/AppToken.
-- `/users/verify-app-user`: xác thực JWT cùng credential dịch vụ và trả context quyền hiện hành (`isTenantOwner`, `tenantId`, `isAppOwner`); người dùng chưa thuộc doanh nghiệp có `tenantId: null`.
-- `/applications`: quản lý ứng dụng bằng tài khoản nền tảng.
-- `POST /auth/account/password`: tạo mật khẩu cho tài khoản OAuth đã xác minh hoặc đổi mật khẩu với `currentPassword`.
-- `/tenants`: quản lý doanh nghiệp, danh sách, chi tiết, chuyển chủ, xin gia nhập, phê duyệt và audit log.
-
-Frontend đã được build vào `public`. Sau khi sửa React, chạy: `npm --prefix frontend run build` và đồng bộ `frontend/dist/*` sang `public/`.
-
-Yêu cầu đăng nhập và mã tạm được lưu trong bộ nhớ của một tiến trình. Restart làm hết hiệu lực yêu cầu đang chờ; triển khai nhiều instance cần kho dùng chung có TTL và thao tác tiêu thụ mã nguyên tử.
+- **Build Frontend Console:** Mã nguồn React nằm tại `frontend/`. Sau khi sửa code React, chạy `npm --prefix frontend run build` và đồng bộ `frontend/dist/*` sang `public/`.
+- **In-Memory State:** Yêu cầu đăng nhập, PKCE state và mã tạm lưu trong bộ nhớ tiến trình (TTL 60s - 300s, tối đa 5 lần thử).
