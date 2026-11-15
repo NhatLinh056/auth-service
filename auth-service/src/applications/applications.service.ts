@@ -205,23 +205,22 @@ export class ApplicationsService {
   }
 
   /**
-   * Xem danh sách người dùng cuối (khách hàng) của ứng dụng
+   * Xem danh sách người dùng cuối (khách hàng) của ứng dụng.
+   * Tuân thủ nguyên tắc Tối thiểu hóa Dữ liệu (Data Minimization):
+   * Do cơ sở dữ liệu hiện tại không lưu vết app-scoped provider của AppUser,
+   * trả về provider = null thay vì suy luận sai từ cấu hình app hoặc danh tính platform của User.
    */
   async getAppUsers(id: string, currentUser: JwtPayload) {
     await this.findById(id, currentUser);
-    return (this.prisma as any).appUser.findMany({
+    const appUsers = await this.prisma.appUser.findMany({
       where: { applicationId: id },
       orderBy: { createdAt: 'desc' },
-      include: {
-        identities: {
-          select: {
-            provider: true,
-            email: true,
-            createdAt: true,
-          },
-        },
-      },
     });
+
+    return appUsers.map((au) => ({
+      ...au,
+      provider: null,
+    }));
   }
 
   /**
