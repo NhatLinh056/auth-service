@@ -70,8 +70,12 @@ env.rar
 
 # Local tests and test utilities
 **/*.spec.ts
+!auth-service/src/tenants/tenants.service.spec.ts
+!auth-service/src/applications/applications.service.spec.ts
 **/test/
+!auth-service/test/
 **/vitest.config*.ts
+!auth-service/vitest.config.e2e.ts
 auth-service/scripts/security-check.mjs
 auth-service/scripts/phase2-phase3-full-test.mjs
 auth-service/scripts/check-secrets.mjs

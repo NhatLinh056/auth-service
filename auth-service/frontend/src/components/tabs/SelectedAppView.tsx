@@ -14,7 +14,7 @@ interface SelectedAppViewProps {
   onOpenConfigureProvider: (provider: SanitizedOAuthProvider) => void;
 }
 
-type SubTab = 'users' | 'settings' | 'providers';
+type SubTab = 'users' | 'settings' | 'providers' | 'integration';
 
 export const SelectedAppView: React.FC<SelectedAppViewProps> = ({
   app,
@@ -45,6 +45,7 @@ export const SelectedAppView: React.FC<SelectedAppViewProps> = ({
   const [providers, setProviders] = useState<SanitizedOAuthProvider[]>([]);
   const [providersLoading, setProvidersLoading] = useState(false);
   const [togglingProvider, setTogglingProvider] = useState<string | null>(null);
+  const [codeSnippetLang, setCodeSnippetLang] = useState<'nodejs' | 'python' | 'curl'>('nodejs');
 
   // Sync settings inputs when app prop changes
   useEffect(() => {
@@ -97,7 +98,7 @@ export const SelectedAppView: React.FC<SelectedAppViewProps> = ({
     return appUsers.filter((u) => {
       const name = (u.name || '').toLowerCase();
       const email = (u.email || '').toLowerCase();
-      const provider = (u.identities?.[0]?.provider || '').toLowerCase();
+      const provider = (u.provider || u.identities?.[0]?.provider || '').toLowerCase();
       return name.includes(q) || email.includes(q) || provider.includes(q);
     });
   }, [appUsers, userSearch]);
@@ -209,6 +210,68 @@ export const SelectedAppView: React.FC<SelectedAppViewProps> = ({
   };
 
   const isActive = app.status === 'ACTIVE';
+  const authOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+  const googleCallbackUrl = `${authOrigin}/auth/oauth/google/callback`;
+  const facebookCallbackUrl = `${authOrigin}/auth/oauth/facebook/callback`;
+  const envSnippet = `# Biến môi trường kết nối Auth Service
+AUTH_SERVICE_URL=${authOrigin}
+APP_ID=${app.appId}
+APP_TOKEN=${app.appToken || '<Xem_trong_tab_Cai_Dat>'}`;
+
+  const nodeSnippet = `// middleware/auth.js - Node.js / Express
+export async function authMiddleware(req, res, next) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ message: 'Missing Bearer token' });
+
+  try {
+    const response = await fetch(\`${authOrigin}/users/verify-app-user\`, {
+      headers: {
+        'Authorization': \`Bearer \${token}\`,
+        'X-App-Id': '${app.appId}',
+        'X-App-Token': '${app.appToken || '<YOUR_APP_TOKEN>'}',
+      },
+    });
+
+    if (!response.ok) throw new Error('Unauthorized');
+    req.user = await response.json(); // { id, email, name, role }
+    next();
+  } catch {
+    return res.status(401).json({ message: 'Invalid or expired token' });
+  }
+}
+
+// Áp dụng bảo vệ route trong Express:
+// app.get('/api/protected', authMiddleware, (req, res) => res.json(req.user));`;
+
+  const pythonSnippet = `# dependencies/auth.py - Python / FastAPI
+import httpx
+from fastapi import Security, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+security = HTTPBearer()
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)):
+    headers = {
+        "Authorization": f"Bearer {credentials.credentials}",
+        "X-App-Id": "${app.appId}",
+        "X-App-Token": "${app.appToken || '<YOUR_APP_TOKEN>'}",
+    }
+    async with httpx.AsyncClient() as client:
+        res = await client.get("${authOrigin}/users/verify-app-user", headers=headers)
+        if res.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        return res.json()
+
+# Áp dụng bảo vệ route trong FastAPI:
+# @app.get("/api/protected")
+# async def protected_route(user = Depends(get_current_user)):
+#     return user`;
+
+  const curlSnippet = `# Kiểm tra tính hợp lệ của Token qua cURL
+curl -X GET "${authOrigin}/users/verify-app-user" \\
+  -H "Authorization: Bearer <USER_ACCESS_TOKEN>" \\
+  -H "X-App-Id: ${app.appId}" \\
+  -H "X-App-Token: ${app.appToken || '<YOUR_APP_TOKEN>'}"`;
 
   return (
     <div className="tab-content active" id="selected-app-view">
@@ -310,6 +373,22 @@ export const SelectedAppView: React.FC<SelectedAppViewProps> = ({
             <span>{lang === 'vi' ? 'Sign-in Providers (Google/Facebook)' : 'Sign-in Providers'}</span>
           </span>
         </button>
+
+        <button
+          type="button"
+          className={`nav-tab ${activeSubTab === 'integration' ? 'active' : ''}`}
+          id="subtab-btn-integration"
+          onClick={() => setActiveSubTab('integration')}
+          style={{ padding: '10px 16px', borderBottom: activeSubTab === 'integration' ? '2px solid var(--primary, #3b82f6)' : 'none' }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+            <span>{lang === 'vi' ? 'Hướng Dẫn Tích Hợp (Quickstart)' : 'Integration Guide'}</span>
+          </span>
+        </button>
       </div>
 
       {/* ==================== SUB-TAB 1: USERS ==================== */}
@@ -350,11 +429,13 @@ export const SelectedAppView: React.FC<SelectedAppViewProps> = ({
           {usersError && (
             <div className="card" style={{ padding: 16, marginBottom: 16, borderLeft: '4px solid var(--danger, #ef4444)', background: 'rgba(239, 68, 68, 0.1)' }}>
               <div style={{ color: 'var(--danger, #ef4444)', fontWeight: 600 }}>{usersError}</div>
-              <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--text-dim)' }}>
-                {lang === 'vi'
-                  ? 'Bạn chỉ có quyền xem danh sách người dùng của các ứng dụng do bạn sở hữu hoặc khi là System Admin.'
-                  : 'You only have permission to view users of applications you own or as System Admin.'}
-              </p>
+              {(usersError.toLowerCase().includes('quyền') || usersError.includes('403')) && (
+                <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--text-dim)' }}>
+                  {lang === 'vi'
+                    ? 'Bạn chỉ có quyền xem danh sách người dùng của các ứng dụng do bạn sở hữu hoặc khi là System Admin.'
+                    : 'You only have permission to view users of applications you own or as System Admin.'}
+                </p>
+              )}
             </div>
           )}
 
@@ -392,7 +473,10 @@ export const SelectedAppView: React.FC<SelectedAppViewProps> = ({
                   </tr>
                 ) : (
                   filteredUsers.map((u) => {
-                    const primaryProvider = u.identities?.[0]?.provider || 'LOCAL_EMAIL';
+                    const rawProvider = u.provider || u.identities?.[0]?.provider || null;
+                    const displayProvider = rawProvider || (lang === 'vi' ? 'Không xác định' : 'UNKNOWN');
+                    const isGoogle = rawProvider ? rawProvider.toUpperCase().includes('GOOGLE') : false;
+                    const isFacebook = rawProvider ? rawProvider.toUpperCase().includes('FACEBOOK') : false;
                     const joinedDate = u.createdAt ? new Date(u.createdAt).toLocaleString() : '—';
                     return (
                       <tr key={u.id}>
@@ -406,19 +490,19 @@ export const SelectedAppView: React.FC<SelectedAppViewProps> = ({
                             style={{
                               textTransform: 'uppercase',
                               fontSize: 11,
-                              background: primaryProvider.includes('GOOGLE')
+                              background: isGoogle
                                 ? 'rgba(234, 67, 53, 0.15)'
-                                : primaryProvider.includes('FACEBOOK')
+                                : isFacebook
                                 ? 'rgba(24, 119, 242, 0.15)'
-                                : 'rgba(59, 130, 246, 0.15)',
-                              color: primaryProvider.includes('GOOGLE')
+                                : 'rgba(148, 163, 184, 0.15)',
+                              color: isGoogle
                                 ? '#ea4335'
-                                : primaryProvider.includes('FACEBOOK')
+                                : isFacebook
                                 ? '#1877f2'
-                                : '#3b82f6',
+                                : '#94a3b8',
                             }}
                           >
-                            {primaryProvider}
+                            {displayProvider}
                           </span>
                         </td>
                         <td>
@@ -510,6 +594,30 @@ export const SelectedAppView: React.FC<SelectedAppViewProps> = ({
                 {lang === 'vi'
                   ? 'Gắn vào header X-App-Id và X-App-Token khi gọi Auth Service.'
                   : 'Attach to X-App-Id and X-App-Token headers when calling Auth Service.'}
+              </div>
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: '10px 14px',
+                  background: 'rgba(59, 130, 246, 0.08)',
+                  borderRadius: 6,
+                  border: '1px solid rgba(59, 130, 246, 0.2)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <span style={{ fontSize: 13, color: 'var(--text-main, #e2e8f0)' }}>
+                  💡 {lang === 'vi' ? 'Cần mẫu kết nối cho ứng dụng ngoài?' : 'Need connection guide for client app?'}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-xs"
+                  onClick={() => setActiveSubTab('integration')}
+                  style={{ color: '#60a5fa' }}
+                >
+                  {lang === 'vi' ? 'Xem Hướng Dẫn Tích Hợp →' : 'View Quickstart Guide →'}
+                </button>
               </div>
             </div>
 
@@ -654,6 +762,280 @@ export const SelectedAppView: React.FC<SelectedAppViewProps> = ({
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ==================== SUB-TAB 4: INTEGRATION GUIDE ==================== */}
+      {activeSubTab === 'integration' && (
+        <div style={{ maxWidth: 840 }}>
+          {/* Header */}
+          <div className="page-header" style={{ marginBottom: 20 }}>
+            <div>
+              <h2 className="card-title" style={{ margin: 0, fontSize: 18, color: '#fff' }}>
+                {lang === 'vi' ? 'Hướng Dẫn Tích Hợp Ứng Dụng Khách' : 'Client Application Integration Guide'}
+              </h2>
+              <p className="card-subtitle" style={{ fontSize: 13, color: 'var(--text-dim)', margin: '4px 0 0 0' }}>
+                {lang === 'vi'
+                  ? 'Hướng dẫn từng bước kết nối backend hoặc frontend ứng dụng của bạn với Auth Service.'
+                  : 'Step-by-step instructions to connect your backend or frontend with Auth Service.'}
+              </p>
+            </div>
+            <a
+              href="/api"
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-secondary btn-sm"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
+              id="btn-open-swagger-docs"
+            >
+              <span>Swagger API Docs</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+            </a>
+          </div>
+
+          {/* Step 1: .env config */}
+          <div className="card" style={{ padding: 20, marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="status-pill status-pill-primary" style={{ fontSize: 11 }}>BƯỚC 1</span>
+                <strong style={{ fontSize: 15, color: '#fff' }}>
+                  {lang === 'vi' ? 'Cấu Hình Môi Trường (.env)' : 'Environment Variables (.env)'}
+                </strong>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-xs"
+                onClick={() => copyText(envSnippet, '.env configuration')}
+                id="btn-copy-env-snippet"
+              >
+                {lang === 'vi' ? 'Sao chép .env' : 'Copy .env'}
+              </button>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 12px 0' }}>
+              {lang === 'vi'
+                ? 'Thêm các biến sau vào file .env của dịch vụ backend ứng dụng (ví dụ: Express, NestJS, FastAPI):'
+                : 'Add the following variables to your client backend service .env file:'}
+            </p>
+            <pre
+              style={{
+                margin: 0,
+                padding: '12px 16px',
+                background: 'var(--bg-input, #0f172a)',
+                borderRadius: 6,
+                border: '1px solid var(--border-subtle, #334155)',
+                color: '#38bdf8',
+                fontSize: 13,
+                fontFamily: 'monospace',
+                lineHeight: 1.6,
+                overflowX: 'auto',
+              }}
+            >
+              {envSnippet}
+            </pre>
+          </div>
+
+          {/* Step 2: OAuth Provider Redirect Callback */}
+          <div className="card" style={{ padding: 20, marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <span className="status-pill status-pill-primary" style={{ fontSize: 11 }}>BƯỚC 2</span>
+              <strong style={{ fontSize: 15, color: '#fff' }}>
+                {lang === 'vi' ? 'Đăng Ký OAuth Callback URL Trên Google / Facebook' : 'Register OAuth Callback URLs'}
+              </strong>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 16px 0' }}>
+              {lang === 'vi'
+                ? 'Khi tạo Client ID trên Google Cloud hoặc Meta for Developers, hãy dán chính xác các URL chuyển hướng sau:'
+                : 'When creating OAuth Client IDs on Google Cloud or Meta, set these exact Authorized Redirect URIs:'}
+            </p>
+
+            {/* Google Callback */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#ea4335', marginBottom: 4 }}>
+                GOOGLE CLOUD CONSOLE (Authorized redirect URIs):
+              </div>
+              <div className="credential-row">
+                <span className="credential-value" style={{ fontSize: 12 }}>{googleCallbackUrl}</span>
+                <div className="credential-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => copyText(googleCallbackUrl, 'Google Callback URI')}
+                  >
+                    {lang === 'vi' ? 'Sao chép' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Facebook Callback */}
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#1877f2', marginBottom: 4 }}>
+                META / FACEBOOK DEVELOPERS (Valid OAuth Redirect URIs):
+              </div>
+              <div className="credential-row">
+                <span className="credential-value" style={{ fontSize: 12 }}>{facebookCallbackUrl}</span>
+                <div className="credential-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => copyText(facebookCallbackUrl, 'Facebook Callback URI')}
+                  >
+                    {lang === 'vi' ? 'Sao chép' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 3: Backend Token Verification */}
+          <div className="card" style={{ padding: 20, marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="status-pill status-pill-primary" style={{ fontSize: 11 }}>BƯỚC 3</span>
+                <strong style={{ fontSize: 15, color: '#fff' }}>
+                  {lang === 'vi' ? 'Xác Thực Token Phía Backend (Middleware / Guard)' : 'Backend Token Verification (Middleware / Guard)'}
+                </strong>
+              </div>
+
+              {/* Language Selector Tabs */}
+              <div style={{ display: 'flex', gap: 4, background: 'rgba(255, 255, 255, 0.05)', padding: 3, borderRadius: 6 }}>
+                <button
+                  type="button"
+                  className={`btn btn-xs ${codeSnippetLang === 'nodejs' ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setCodeSnippetLang('nodejs')}
+                  style={{ fontSize: 12, padding: '3px 8px' }}
+                >
+                  Node.js (Express)
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-xs ${codeSnippetLang === 'python' ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setCodeSnippetLang('python')}
+                  style={{ fontSize: 12, padding: '3px 8px' }}
+                >
+                  Python (FastAPI)
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-xs ${codeSnippetLang === 'curl' ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setCodeSnippetLang('curl')}
+                  style={{ fontSize: 12, padding: '3px 8px' }}
+                >
+                  cURL / HTTP
+                </button>
+              </div>
+            </div>
+
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 12px 0' }}>
+              {lang === 'vi'
+                ? 'Sử dụng Middleware hoặc Dependency sau để chặn và bảo vệ các API trên backend ứng dụng của bạn:'
+                : 'Use the following Middleware or Dependency to intercept and protect your backend APIs:'}
+            </p>
+
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-xs"
+                onClick={() => {
+                  const currentSnippet =
+                    codeSnippetLang === 'nodejs'
+                      ? nodeSnippet
+                      : codeSnippetLang === 'python'
+                      ? pythonSnippet
+                      : curlSnippet;
+                  copyText(currentSnippet, `${codeSnippetLang.toUpperCase()} snippet`);
+                }}
+                style={{ position: 'absolute', top: 8, right: 8, zIndex: 2 }}
+                id="btn-copy-code-snippet"
+              >
+                {lang === 'vi' ? 'Sao chép code' : 'Copy code'}
+              </button>
+              <pre
+                style={{
+                  margin: 0,
+                  padding: '16px 16px',
+                  background: 'var(--bg-input, #0f172a)',
+                  borderRadius: 6,
+                  border: '1px solid var(--border-subtle, #334155)',
+                  color: '#38bdf8',
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                  lineHeight: 1.5,
+                  overflowX: 'auto',
+                }}
+              >
+                {codeSnippetLang === 'nodejs'
+                  ? nodeSnippet
+                  : codeSnippetLang === 'python'
+                  ? pythonSnippet
+                  : curlSnippet}
+              </pre>
+            </div>
+          </div>
+
+          {/* Step 4: End-to-End Authentication Flow */}
+          <div className="card" style={{ padding: 20, marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <span className="status-pill status-pill-primary" style={{ fontSize: 11 }}>TỔNG QUAN</span>
+              <strong style={{ fontSize: 15, color: '#fff' }}>
+                {lang === 'vi' ? 'Quy Trình Đăng Nhập Hoàn Chỉnh (3 Bước)' : 'Complete Authentication Flow (3 Steps)'}
+              </strong>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
+              {/* Flow 1 */}
+              <div style={{ padding: 14, background: 'rgba(255, 255, 255, 0.02)', borderRadius: 6, border: '1px solid var(--border-subtle, #334155)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <span className="mono-tag" style={{ background: '#0284c7', color: '#fff', fontWeight: 700 }}>BƯỚC 1</span>
+                  <strong style={{ fontSize: 13, color: 'var(--text-main, #e2e8f0)' }}>
+                    {lang === 'vi' ? 'Khởi tạo đăng nhập' : 'Initialize Sign-in'}
+                  </strong>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+                  {lang === 'vi' ? 'Chuyển hướng người dùng đến:' : 'Redirect user to:'}
+                  <div style={{ fontFamily: 'monospace', color: '#38bdf8', marginTop: 4, wordBreak: 'break-all' }}>
+                    /auth/flows/:provider?app_id={app.appId}
+                  </div>
+                </div>
+              </div>
+
+              {/* Flow 2 */}
+              <div style={{ padding: 14, background: 'rgba(255, 255, 255, 0.02)', borderRadius: 6, border: '1px solid var(--border-subtle, #334155)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <span className="mono-tag" style={{ background: '#16a34a', color: '#fff', fontWeight: 700 }}>BƯỚC 2</span>
+                  <strong style={{ fontSize: 13, color: 'var(--text-main, #e2e8f0)' }}>
+                    {lang === 'vi' ? 'Đổi mã lấy Token' : 'Exchange Code for JWT'}
+                  </strong>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+                  {lang === 'vi' ? 'Backend đổi mã dùng một lần lấy App JWT:' : 'Backend exchanges code for JWT:'}
+                  <div style={{ fontFamily: 'monospace', color: '#38bdf8', marginTop: 4 }}>
+                    POST /auth/oauth/exchange
+                  </div>
+                </div>
+              </div>
+
+              {/* Flow 3 */}
+              <div style={{ padding: 14, background: 'rgba(255, 255, 255, 0.02)', borderRadius: 6, border: '1px solid var(--border-subtle, #334155)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <span className="mono-tag" style={{ background: '#8b5cf6', color: '#fff', fontWeight: 700 }}>BƯỚC 3</span>
+                  <strong style={{ fontSize: 13, color: 'var(--text-main, #e2e8f0)' }}>
+                    {lang === 'vi' ? 'Bảo vệ API' : 'Protect APIs'}
+                  </strong>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+                  {lang === 'vi' ? 'Xác thực Bearer Token qua Middleware:' : 'Verify Bearer token via middleware:'}
+                  <div style={{ fontFamily: 'monospace', color: '#38bdf8', marginTop: 4 }}>
+                    GET /users/verify-app-user
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -46,6 +46,7 @@ export interface AppUser {
   role: string;
   createdAt: string;
   updatedAt: string;
+  provider?: string | null;
   identities?: AppUserIdentity[];
   user?: {
     id: string;
