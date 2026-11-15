@@ -404,13 +404,33 @@ export class TenantsService {
   async delete(actorInput: TenantActorInput, tenantId: string) {
     return this.transaction(async db => {
       const actor = await this.actor(db, actorInput);
-      const tenant = await this.requireOwner(db, actor, tenantId);
+      if (actor.type === 'app_user') {
+        throw new ForbiddenException('Chỉ tài khoản nền tảng mới được thực hiện thao tác này');
+      }
+      const tenant = await db.tenant.findUnique({ where: { id: tenantId } });
+      if (!tenant) throw new NotFoundException('Không tìm thấy doanh nghiệp');
+
+      const isOwner = actor.id === tenant.ownerUserId;
+      const isPlatformAdmin = actor.isPlatformAdmin;
+
+      if (!isOwner && !isPlatformAdmin) {
+        throw new ForbiddenException('Chỉ chủ doanh nghiệp hoặc Super Admin mới có quyền xóa doanh nghiệp này');
+      }
+
       const members = await db.user.count({ where: { tenantId, id: { not: tenant.ownerUserId } } });
       if (members) throw new ConflictException('Doanh nghiệp còn thành viên. Cần xử lý thành viên trước khi xóa.');
+
       await db.user.updateMany({ where: { tenantId }, data: { tenantId: null } });
-      await db.tenantAuditLog.create({ data: {
-        tenantId, tenantName: tenant.name, actorUserId: actor.id, action: 'DELETED', fromOwnerId: tenant.ownerUserId,
-      } });
+      await db.tenantAuditLog.create({
+        data: {
+          tenantId,
+          tenantName: tenant.name,
+          actorUserId: actor.id,
+          action: 'DELETED',
+          fromOwnerId: tenant.ownerUserId,
+          reason: isPlatformAdmin && !isOwner ? 'Deleted by Platform Super Admin' : null,
+        },
+      });
       await db.tenant.delete({ where: { id: tenantId } });
       return { message: 'Đã xóa doanh nghiệp. Tài khoản người dùng được giữ nguyên.' };
     });
