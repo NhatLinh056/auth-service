@@ -207,8 +207,9 @@ export class ApplicationsService {
   /**
    * Xem danh sách người dùng cuối (khách hàng) của ứng dụng.
    * Tuân thủ nguyên tắc Tối thiểu hóa Dữ liệu (Data Minimization):
-   * Do cơ sở dữ liệu hiện tại không lưu vết app-scoped provider của AppUser,
-   * trả về provider = null thay vì suy luận sai từ cấu hình app hoặc danh tính platform của User.
+   * Lấy danh sách thành viên thuộc ứng dụng (AppUser).
+   * Trả về phương thức đăng nhập gần nhất thực tế (lastLoginMethod: GOOGLE, FACEBOOK, PASSWORD, PLATFORM_SESSION, hoặc null).
+   * Không làm lộ danh tính OAuth hoặc thông tin nhạy cảm cấp platform của User.
    */
   async getAppUsers(id: string, currentUser: JwtPayload) {
     await this.findById(id, currentUser);
@@ -219,7 +220,8 @@ export class ApplicationsService {
 
     return appUsers.map((au) => ({
       ...au,
-      provider: null,
+      provider: au.lastLoginMethod || null,
+      lastLoginMethod: au.lastLoginMethod || null,
     }));
   }
 

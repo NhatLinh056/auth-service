@@ -660,6 +660,7 @@ describe('ApplicationsService', () => {
       email: 'customer@external.com',
       role: Role.USER,
       avatarUrl: null,
+      lastLoginMethod: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -667,6 +668,7 @@ describe('ApplicationsService', () => {
     const expectedAppUser = {
       ...mockDbAppUser,
       provider: null,
+      lastLoginMethod: null,
     };
 
     it('should return app users with provider: null (data minimization) when caller is App Owner', async () => {
@@ -688,9 +690,33 @@ describe('ApplicationsService', () => {
         orderBy: { createdAt: 'desc' },
       });
       expect(result[0].provider).toBeNull();
+      expect(result[0].lastLoginMethod).toBeNull();
       expect(result[0]).not.toHaveProperty('user');
       expect(result[0]).not.toHaveProperty('application');
       expect(result[0]).not.toHaveProperty('identities');
+    });
+
+    it('should return app user with verified lastLoginMethod (e.g. GOOGLE)', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+        type: 'platform',
+      };
+
+      const oauthAppUser = {
+        ...mockDbAppUser,
+        id: 'app-user-oauth',
+        lastLoginMethod: 'GOOGLE',
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+      (mockPrismaService.appUser as any).findMany.mockResolvedValue([oauthAppUser]);
+
+      const result = await service.getAppUsers(mockApplication.id, currentUser);
+
+      expect(result[0].provider).toBe('GOOGLE');
+      expect(result[0].lastLoginMethod).toBe('GOOGLE');
     });
 
     it('should return app users when caller is System Admin', async () => {

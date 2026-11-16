@@ -47,6 +47,7 @@ export interface AppUser {
   createdAt: string;
   updatedAt: string;
   provider?: string | null;
+  lastLoginMethod?: string | null;
   identities?: AppUserIdentity[];
   user?: {
     id: string;

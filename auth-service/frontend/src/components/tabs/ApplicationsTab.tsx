@@ -6,6 +6,7 @@ import { applicationsService } from '../../services/applications.service';
 import type { Application, ApplicationStatus } from '../../types/application.types';
 import type { SanitizedOAuthProvider } from '../../types/provider.types';
 import { SelectedAppView } from './SelectedAppView';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 
 interface ApplicationsTabProps {
   applications: Application[];
@@ -35,6 +36,8 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
   const { showToast } = useToast();
 
   const [internalSelectedApp, setInternalSelectedApp] = useState<Application | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Application | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const currentSelectedApp = selectedApp !== undefined ? selectedApp : internalSelectedApp;
 
   const handleSelectApp = (app: Application | null) => {
@@ -106,16 +109,22 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
     }
   };
 
-  const handleDelete = async (app: Application) => {
-    const confirmMsg = `${t('toasts.confirm_delete')} "${app.name}"?`;
-    if (!window.confirm(confirmMsg)) return;
+  const handleDeleteClick = (app: Application) => {
+    setDeleteTarget(app);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
-      await applicationsService.delete(app.id);
-      showToast(`"${app.name}" ${t('toasts.app_deleted')}`);
+      await applicationsService.delete(deleteTarget.id);
+      showToast(`"${deleteTarget.name}" ${t('toasts.app_deleted')}`);
+      setDeleteTarget(null);
       onRefresh();
     } catch (err: any) {
       showToast(err.message || 'Failed to delete application', 'error');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -390,7 +399,7 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
                         <button
                           type="button"
                           className="btn btn-danger btn-sm"
-                          onClick={() => handleDelete(app)}
+                          onClick={() => handleDeleteClick(app)}
                         >
                           {t('table.delete')}
                         </button>
@@ -403,6 +412,23 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        title={lang === 'vi' ? 'Xác nhận xóa ứng dụng' : 'Delete Application'}
+        message={
+          lang === 'vi'
+            ? `Bạn có chắc chắn muốn xóa ứng dụng "${deleteTarget?.name}" không? Toàn bộ cấu hình và dữ liệu liên quan sẽ bị xóa vĩnh viễn.`
+            : `Are you sure you want to delete application "${deleteTarget?.name}"? All configuration and associated data will be permanently removed.`
+        }
+        confirmText={lang === 'vi' ? 'Xóa ứng dụng' : 'Delete'}
+        variant="danger"
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => {
+          if (!isDeleting) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 };

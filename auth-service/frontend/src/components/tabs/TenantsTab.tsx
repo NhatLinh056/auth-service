@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import {
   tenantsService,
   type TenantAuditLog,
@@ -45,6 +46,40 @@ export function TenantsTab() {
   // Reject Modal state
   const [rejectRequestId, setRejectRequestId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+
+  // Confirmation Modal state
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    action: () => Promise<void>;
+  } | null>(null);
+  const [isActionExecuting, setIsActionExecuting] = useState(false);
+
+  const requestConfirm = (config: {
+    title: string;
+    message: string;
+    confirmText?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    action: () => Promise<void>;
+  }) => {
+    setConfirmState({ ...config, isOpen: true });
+  };
+
+  const handleExecuteConfirm = async () => {
+    if (!confirmState) return;
+    setIsActionExecuting(true);
+    try {
+      await confirmState.action();
+      setConfirmState(null);
+    } catch (err: any) {
+      setFeedback({ text: err.message, error: true });
+    } finally {
+      setIsActionExecuting(false);
+    }
+  };
 
   const resetTransferForm = () => {
     setTransferUserId('');
@@ -145,26 +180,24 @@ export function TenantsTab() {
     }
   };
 
-  const handleDeleteTenantById = async (id: string, name: string) => {
-    if (
-      !window.confirm(
-        vi
-          ? `Xác nhận xóa doanh nghiệp "${name}"? Chỉ xóa được khi không còn thành viên nào khác.`
-          : `Delete tenant "${name}"? Only allowed if no other members exist.`
-      )
-    )
-      return;
-    try {
-      setFeedback(null);
-      await tenantsService.delete(id);
-      setFeedback({ text: vi ? `Đã xóa doanh nghiệp "${name}".` : `Tenant "${name}" deleted.` });
-      if (current?.id === id) {
-        setCurrent(null);
-      }
-      await loadData();
-    } catch (err: any) {
-      setFeedback({ text: err.message, error: true });
-    }
+  const handleDeleteTenantById = (id: string, name: string) => {
+    requestConfirm({
+      title: vi ? 'Xác nhận xóa doanh nghiệp' : 'Delete Tenant',
+      message: vi
+        ? `Xác nhận xóa doanh nghiệp "${name}"? Thao tác này chỉ thực hiện được khi không còn thành viên nào khác.`
+        : `Delete tenant "${name}"? Only allowed if no other members exist.`,
+      confirmText: vi ? 'Xóa doanh nghiệp' : 'Delete Tenant',
+      variant: 'danger',
+      action: async () => {
+        setFeedback(null);
+        await tenantsService.delete(id);
+        setFeedback({ text: vi ? `Đã xóa doanh nghiệp "${name}".` : `Tenant "${name}" deleted.` });
+        if (current?.id === id) {
+          setCurrent(null);
+        }
+        await loadData();
+      },
+    });
   };
 
   const handleApplyJoin = async (e: React.FormEvent) => {
@@ -185,16 +218,19 @@ export function TenantsTab() {
     }
   };
 
-  const handleCancelJoin = async (requestId: string) => {
-    if (!window.confirm(vi ? 'Bạn có chắc chắn muốn hủy yêu cầu gia nhập này không?' : 'Cancel this join request?')) return;
-    try {
-      setFeedback(null);
-      await tenantsService.cancelJoinRequest(requestId);
-      setFeedback({ text: vi ? 'Đã hủy yêu cầu gia nhập.' : 'Join request cancelled.' });
-      await loadData();
-    } catch (err: any) {
-      setFeedback({ text: err.message, error: true });
-    }
+  const handleCancelJoin = (requestId: string) => {
+    requestConfirm({
+      title: vi ? 'Hủy yêu cầu gia nhập' : 'Cancel Join Request',
+      message: vi ? 'Bạn có chắc chắn muốn hủy yêu cầu gia nhập này không?' : 'Are you sure you want to cancel this join request?',
+      confirmText: vi ? 'Hủy yêu cầu' : 'Cancel Request',
+      variant: 'warning',
+      action: async () => {
+        setFeedback(null);
+        await tenantsService.cancelJoinRequest(requestId);
+        setFeedback({ text: vi ? 'Đã hủy yêu cầu gia nhập.' : 'Join request cancelled.' });
+        await loadData();
+      },
+    });
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -211,33 +247,43 @@ export function TenantsTab() {
     }
   };
 
-  const handleTransfer = async (e: React.FormEvent) => {
+  const handleTransfer = (e: React.FormEvent) => {
     e.preventDefault();
     if (!current || !transferUserId) return;
-    if (!window.confirm(vi ? 'Chuyển quyền sở hữu cho người đã chọn? Chủ cũ sẽ trở thành thành viên thường.' : 'Transfer ownership to selected user?')) return;
-    try {
-      setFeedback(null);
-      await tenantsService.transfer(current.id, { userId: transferUserId, reason: transferReason.trim() || undefined });
-      setFeedback({ text: vi ? 'Đã chuyển quyền sở hữu thành công.' : 'Ownership transferred successfully.' });
-      setShowTransfer(false);
-      resetTransferForm();
-      await loadData(current.id);
-    } catch (err: any) {
-      setFeedback({ text: err.message, error: true });
-    }
+    requestConfirm({
+      title: vi ? 'Chuyển quyền sở hữu doanh nghiệp' : 'Transfer Ownership',
+      message: vi
+        ? 'Chuyển quyền sở hữu cho người đã chọn? Chủ cũ sẽ trở thành thành viên thường.'
+        : 'Transfer ownership to selected user? The current owner will become a regular member.',
+      confirmText: vi ? 'Chuyển quyền' : 'Transfer',
+      variant: 'warning',
+      action: async () => {
+        setFeedback(null);
+        await tenantsService.transfer(current.id, { userId: transferUserId, reason: transferReason.trim() || undefined });
+        setFeedback({ text: vi ? 'Đã chuyển quyền sở hữu thành công.' : 'Ownership transferred successfully.' });
+        setShowTransfer(false);
+        resetTransferForm();
+        await loadData(current.id);
+      },
+    });
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!current) return;
-    if (!window.confirm(vi ? 'Xác nhận xóa doanh nghiệp này? Chỉ xóa được khi không còn thành viên nào khác.' : 'Delete this tenant? Only allowed if no other members exist.')) return;
-    try {
-      setFeedback(null);
-      await tenantsService.delete(current.id);
-      setFeedback({ text: vi ? 'Đã xóa doanh nghiệp.' : 'Tenant deleted.' });
-      await loadData();
-    } catch (err: any) {
-      setFeedback({ text: err.message, error: true });
-    }
+    requestConfirm({
+      title: vi ? 'Xác nhận xóa doanh nghiệp' : 'Delete Tenant',
+      message: vi
+        ? `Xác nhận xóa doanh nghiệp "${current.name}"? Chỉ xóa được khi không còn thành viên nào khác.`
+        : `Delete tenant "${current.name}"? Only allowed if no other members exist.`,
+      confirmText: vi ? 'Xóa doanh nghiệp' : 'Delete Tenant',
+      variant: 'danger',
+      action: async () => {
+        setFeedback(null);
+        await tenantsService.delete(current.id);
+        setFeedback({ text: vi ? 'Đã xóa doanh nghiệp.' : 'Tenant deleted.' });
+        await loadData();
+      },
+    });
   };
 
   const handleApproveJoinRequest = async (requestId: string) => {
@@ -265,29 +311,35 @@ export function TenantsTab() {
     }
   };
 
-  const handleRemoveMember = async (userId: string, memberEmail: string) => {
+  const handleRemoveMember = (userId: string, memberEmail: string) => {
     if (!current) return;
-    if (!window.confirm(vi ? `Xác nhận loại thành viên ${memberEmail} khỏi doanh nghiệp?` : `Remove member ${memberEmail}?`)) return;
-    try {
-      setFeedback(null);
-      await tenantsService.removeMember(current.id, userId);
-      setFeedback({ text: vi ? 'Đã loại thành viên khỏi doanh nghiệp.' : 'Member removed.' });
-      await loadData(current.id);
-    } catch (err: any) {
-      setFeedback({ text: err.message, error: true });
-    }
+    requestConfirm({
+      title: vi ? 'Loại thành viên' : 'Remove Member',
+      message: vi ? `Xác nhận loại thành viên ${memberEmail} khỏi doanh nghiệp?` : `Remove member ${memberEmail} from this tenant?`,
+      confirmText: vi ? 'Loại thành viên' : 'Remove',
+      variant: 'danger',
+      action: async () => {
+        setFeedback(null);
+        await tenantsService.removeMember(current.id, userId);
+        setFeedback({ text: vi ? 'Đã loại thành viên khỏi doanh nghiệp.' : 'Member removed.' });
+        await loadData(current.id);
+      },
+    });
   };
 
-  const handleLeaveTenant = async () => {
-    if (!window.confirm(vi ? 'Bạn có chắc chắn muốn rời khỏi doanh nghiệp này không?' : 'Leave this tenant?')) return;
-    try {
-      setFeedback(null);
-      await tenantsService.leave();
-      setFeedback({ text: vi ? 'Bạn đã rời doanh nghiệp thành công.' : 'You have left the tenant.' });
-      await loadData();
-    } catch (err: any) {
-      setFeedback({ text: err.message, error: true });
-    }
+  const handleLeaveTenant = () => {
+    requestConfirm({
+      title: vi ? 'Rời khỏi doanh nghiệp' : 'Leave Tenant',
+      message: vi ? 'Bạn có chắc chắn muốn rời khỏi doanh nghiệp này không?' : 'Are you sure you want to leave this tenant?',
+      confirmText: vi ? 'Rời khỏi' : 'Leave',
+      variant: 'warning',
+      action: async () => {
+        setFeedback(null);
+        await tenantsService.leave();
+        setFeedback({ text: vi ? 'Bạn đã rời doanh nghiệp thành công.' : 'You have left the tenant.' });
+        await loadData();
+      },
+    });
   };
 
   const handleToggleGlobalAudit = async () => {
@@ -1410,6 +1462,20 @@ export function TenantsTab() {
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!confirmState?.isOpen}
+        title={confirmState?.title || ''}
+        message={confirmState?.message || ''}
+        confirmText={confirmState?.confirmText}
+        variant={confirmState?.variant || 'danger'}
+        isLoading={isActionExecuting}
+        onConfirm={handleExecuteConfirm}
+        onClose={() => {
+          if (!isActionExecuting) setConfirmState(null);
+        }}
+      />
     </div>
   );
 }

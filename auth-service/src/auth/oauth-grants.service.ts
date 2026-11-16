@@ -44,7 +44,7 @@ export class OAuthGrantsService {
     grant.busy = true;
     try {
       const user = grant.ready
-        ? { ...await this.identities.membershipForUser(grant.ready.userId, appId, grant.ready.id), provider: grant.ready.provider }
+        ? { ...await this.identities.membershipForUser(grant.ready.userId, appId, grant.ready.id, grant.ready.provider), provider: grant.ready.provider }
         : await this.identities.resolve(grant.result!, proof);
       const accessToken = await this.jwt.signAsync({
         sub: user.id, userId: user.userId, email: user.email, role: user.role,

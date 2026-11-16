@@ -160,6 +160,7 @@ model AppUser {
   name          String?
   avatarUrl     String?
   role          Role               @default(USER)
+  lastLoginMethod String?
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 
