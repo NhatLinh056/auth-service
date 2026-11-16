@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { Navbar, type TabType } from './components/layout/Navbar';
 import { AuthScreen } from './components/auth/AuthScreen';
 import { ClientSignIn } from './components/auth/ClientSignIn';
 import { ToastContainer } from './components/common/ToastContainer';
-import { OverviewTab } from './components/tabs/OverviewTab';
+import { AppShell } from './components/layout/AppShell';
+import { RoleDashboard } from './components/features/dashboard/RoleDashboard';
 import { ApplicationsTab } from './components/tabs/ApplicationsTab';
+import { QuickstartTab } from './components/tabs/QuickstartTab';
 import { UsersTab } from './components/tabs/UsersTab';
 import { AccountTab } from './components/tabs/AccountTab';
 import { TenantsTab } from './components/tabs/TenantsTab';
@@ -21,10 +23,37 @@ import type { Application } from './types/application.types';
 import type { User } from './types/auth.types';
 import type { SanitizedOAuthProvider } from './types/provider.types';
 
-export const App: React.FC = () => {
-  const { isAuthenticated, isAdmin, token } = useAuth();
+// Backward compatibility: detect legacy #account hash and redirect to /console/account
+const HashRedirect: React.FC = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (window.location.hash === '#account') {
+      window.location.hash = '';
+      navigate('/console/account', { replace: true });
+    }
+  }, [navigate]);
+  return null;
+};
 
-  const [activeTab, setActiveTab] = useState<TabType>(window.location.hash === '#account' ? 'account' : 'overview');
+// 403 Forbidden View for unauthorized routes
+const ForbiddenView: React.FC = () => (
+  <div style={{ padding: '32px 0' }}>
+    <div className="card" style={{ maxWidth: 640, borderLeft: '4px solid var(--danger)' }}>
+      <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 8px', color: 'var(--danger)' }}>
+        403 Forbidden — Quyền Truy Cập Bị Từ Chối
+      </h3>
+      <p style={{ margin: 0, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+        Chỉ Quản trị viên hệ thống (Super Admin) mới có quyền truy cập khu vực quản trị toàn cục này.
+        Vui lòng quay lại Bảng điều khiển hoặc liên hệ quản trị viên cấp cao.
+      </p>
+    </div>
+  </div>
+);
+
+const AppContent: React.FC = () => {
+  const { isAuthenticated, isAdmin, token } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // Application state
   const [applications, setApplications] = useState<Application[]>([]);
@@ -75,19 +104,19 @@ export const App: React.FC = () => {
     } else {
       setApplications([]);
       setUsers([]);
-      setActiveTab(window.location.hash === '#account' ? 'account' : 'overview');
     }
   }, [isAuthenticated, loadApplications]);
 
-  // Tab switching effect
+  // Auto-fetch data on route changes
   useEffect(() => {
     if (!isAuthenticated) return;
-    if (activeTab === 'users' && isAdmin) {
+    const path = location.pathname;
+    if (path.startsWith('/console/admin/users') && isAdmin) {
       loadUsers();
-    } else if (activeTab === 'apps' || activeTab === 'overview') {
+    } else if (path.startsWith('/console/applications') || path.startsWith('/console/dashboard') || path.startsWith('/console/quickstart')) {
       loadApplications();
     }
-  }, [activeTab, isAuthenticated, isAdmin, loadUsers, loadApplications]);
+  }, [location.pathname, isAuthenticated, isAdmin, loadUsers, loadApplications]);
 
   // Handlers
   const handleCreateAppSuccess = (newApp: Application) => {
@@ -111,68 +140,139 @@ export const App: React.FC = () => {
     setEditProvider(null);
   };
 
+  // Check centralized signin query
   const flowId = new URLSearchParams(window.location.search).get('signin');
   if (flowId) return <ClientSignIn flowId={flowId} />;
 
-  if (!isAuthenticated) {
-    return (
-      <>
-        <AuthScreen />
-        <ToastContainer />
-      </>
-    );
-  }
-
   return (
-    <div id="app-shell">
-      <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
+    <>
+      <HashRedirect />
+      <Routes>
+        {/* Root Route: AuthScreen if unauthenticated, redirect to /console/dashboard if authenticated */}
+        <Route
+          path="/"
+          element={
+            isAuthenticated ? (
+              <Navigate to="/console/dashboard" replace />
+            ) : (
+              <>
+                <AuthScreen />
+                <ToastContainer />
+              </>
+            )
+          }
+        />
 
-      <main className="main-content">
-        {activeTab === 'account' && <AccountTab />}
-        {activeTab === 'tenants' && <TenantsTab />}
-        {activeTab === 'overview' && (
-          <OverviewTab
-            applications={applications}
-            onGoToApps={() => setActiveTab('apps')}
-            onOpenAppDetail={setDetailApp}
-            onOpenCreateApp={() => setIsCreateAppOpen(true)}
-            onGoToTenants={() => setActiveTab('tenants')}
+        {/* Console Routes: Wrapped in AppShell */}
+        <Route
+          path="/console"
+          element={
+            isAuthenticated ? (
+              <AppShell />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        >
+          {/* Index under /console redirects to /console/dashboard */}
+          <Route index element={<Navigate to="/console/dashboard" replace />} />
+
+          {/* Dashboard */}
+          <Route
+            path="dashboard"
+            element={
+              <RoleDashboard
+                applications={applications}
+                onGoToApps={() => navigate('/console/applications')}
+                onOpenAppDetail={setDetailApp}
+                onOpenCreateApp={() => setIsCreateAppOpen(true)}
+                onGoToTenants={() => navigate('/console/my-tenant')}
+              />
+            }
           />
-        )}
 
-        {activeTab === 'apps' && (
-          <ApplicationsTab
-            applications={applications}
-            loading={appsLoading}
-            onRefresh={loadApplications}
-            onOpenCreateModal={() => setIsCreateAppOpen(true)}
-            onOpenDetailModal={setDetailApp}
-            onUpdateApp={handleUpdateApp}
-            onOpenConfigureProvider={setEditProvider}
+          {/* Applications list */}
+          <Route
+            path="applications"
+            element={
+              <ApplicationsTab
+                applications={applications}
+                loading={appsLoading}
+                onRefresh={loadApplications}
+                onOpenCreateModal={() => setIsCreateAppOpen(true)}
+                onOpenDetailModal={setDetailApp}
+                onUpdateApp={handleUpdateApp}
+                onOpenConfigureProvider={setEditProvider}
+              />
+            }
           />
-        )}
 
-        {activeTab === 'users' && isAdmin && (
-          <UsersTab
-            users={users}
-            loading={usersLoading}
-            onRefresh={loadUsers}
-            onOpenAssignRole={setAssignRoleUser}
+          {/* Applications detail sub-routes (placeholder fallback to applications view for P2) */}
+          <Route
+            path="applications/:appId/*"
+            element={
+              <ApplicationsTab
+                applications={applications}
+                loading={appsLoading}
+                onRefresh={loadApplications}
+                onOpenCreateModal={() => setIsCreateAppOpen(true)}
+                onOpenDetailModal={setDetailApp}
+                onUpdateApp={handleUpdateApp}
+                onOpenConfigureProvider={setEditProvider}
+              />
+            }
           />
-        )}
-        {activeTab === 'users' && !isAdmin && (
-          <div className="tab-content active" style={{ padding: '32px 0' }}>
-            <div className="tenant-notice is-error" style={{ maxWidth: 600 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 8px' }}>403 Forbidden</h3>
-              <p style={{ margin: 0 }}>
-                Chỉ Quản trị viên hệ thống (System Admin) mới có quyền truy cập trang quản lý người dùng toàn cục.
-              </p>
-            </div>
-          </div>
-        )}
-      </main>
 
-      {/* Modals */}
+          {/* Quickstart */}
+          <Route
+            path="quickstart"
+            element={<QuickstartTab applications={applications} />}
+          />
+
+          {/* My Tenant */}
+          <Route path="my-tenant" element={<TenantsTab />} />
+
+          {/* Admin: Users (protected by isAdmin) */}
+          <Route
+            path="admin/users"
+            element={
+              isAdmin ? (
+                <UsersTab
+                  users={users}
+                  loading={usersLoading}
+                  onRefresh={loadUsers}
+                  onOpenAssignRole={setAssignRoleUser}
+                />
+              ) : (
+                <ForbiddenView />
+              )
+            }
+          />
+
+          {/* Admin: Tenants (protected by isAdmin) */}
+          <Route
+            path="admin/tenants"
+            element={
+              isAdmin ? (
+                <TenantsTab />
+              ) : (
+                <ForbiddenView />
+              )
+            }
+          />
+
+          {/* My Account */}
+          <Route path="account" element={<AccountTab />} />
+        </Route>
+
+        {/* Wildcard Fallback */}
+        <Route
+          path="*"
+          element={<Navigate to={isAuthenticated ? '/console/dashboard' : '/'} replace />}
+        />
+      </Routes>
+
+      {/* Global Modals */}
       <CreateAppModal
         isOpen={isCreateAppOpen}
         onClose={() => setIsCreateAppOpen(false)}
@@ -202,7 +302,15 @@ export const App: React.FC = () => {
       />
 
       <ToastContainer />
-    </div>
+    </>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 };
 

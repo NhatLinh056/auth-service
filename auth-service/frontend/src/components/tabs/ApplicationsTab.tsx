@@ -7,6 +7,8 @@ import type { Application, ApplicationStatus } from '../../types/application.typ
 import type { SanitizedOAuthProvider } from '../../types/provider.types';
 import { SelectedAppView } from './SelectedAppView';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { Pagination } from '../common/Pagination';
+import { SkeletonTable } from '../common/SkeletonTable';
 
 interface ApplicationsTabProps {
   applications: Application[];
@@ -48,6 +50,8 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | ApplicationStatus>('ALL');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc'>('newest');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const filteredApplications = useMemo(() => {
     let list = [...applications];
@@ -77,10 +81,16 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
     return list;
   }, [applications, search, statusFilter, sortBy]);
 
+  const paginatedApplications = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredApplications.slice(start, start + pageSize);
+  }, [filteredApplications, currentPage, pageSize]);
+
   const clearFilters = () => {
     setSearch('');
     setStatusFilter('ALL');
     setSortBy('newest');
+    setCurrentPage(1);
   };
 
   const copyAppId = (appId: string) => {
@@ -241,11 +251,8 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
           <tbody id="apps-table-body">
             {loading ? (
               <tr>
-                <td
-                  colSpan={6}
-                  style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 32 }}
-                >
-                  {t('apps.loading')}
+                <td colSpan={6} style={{ padding: 0 }}>
+                  <SkeletonTable rows={4} columns={6} />
                 </td>
               </tr>
             ) : !isAuthenticated ? (
@@ -290,7 +297,7 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
                 </td>
               </tr>
             ) : (
-              filteredApplications.map((app) => {
+              paginatedApplications.map((app) => {
                 const isActive = app.status === 'ACTIVE';
                 const createdDate = app.createdAt
                   ? new Date(app.createdAt).toISOString().split('T')[0]
@@ -411,6 +418,20 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
             )}
           </tbody>
         </table>
+
+        {!loading && filteredApplications.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={filteredApplications.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setCurrentPage(1);
+            }}
+            pageSizeOptions={[10, 20, 50]}
+          />
+        )}
       </div>
 
       <ConfirmDialog
