@@ -108,9 +108,10 @@ export class AuthController {
   })
   getProviders(
     @Query('app_id') appId?: string,
+    @Query('appId') camelAppId?: string,
     @Headers('x-app-id') headerAppId?: string,
   ) {
-    const targetAppId = appId || headerAppId;
+    const targetAppId = appId || camelAppId || headerAppId;
     return this.authService.getPublicProviders(targetAppId);
   }
 

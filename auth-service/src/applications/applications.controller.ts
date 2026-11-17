@@ -124,4 +124,21 @@ export class ApplicationsController {
   ) {
     return this.applicationsService.getAppUsers(id, currentUser);
   }
+
+  @Delete(':id/users/:appUserId')
+  @Auth()
+  @ApiOperation({ summary: 'Xóa người dùng AppUser khỏi ứng dụng (chủ sở hữu hoặc ADMIN)' })
+  @ApiParam({ name: 'id', description: 'UUID của ứng dụng' })
+  @ApiParam({ name: 'appUserId', description: 'UUID của AppUser cần xóa' })
+  @ApiResponse({ status: 200, description: 'Xóa AppUser khỏi ứng dụng thành công' })
+  @ApiResponse({ status: 401, description: 'Chưa xác thực' })
+  @ApiResponse({ status: 403, description: 'Không có quyền xóa người dùng của ứng dụng người khác' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy ứng dụng hoặc người dùng' })
+  deleteAppUser(
+    @Param('id') id: string,
+    @Param('appUserId') appUserId: string,
+    @CurrentUser() currentUser: JwtPayload,
+  ) {
+    return this.applicationsService.deleteAppUser(id, appUserId, currentUser);
+  }
 }

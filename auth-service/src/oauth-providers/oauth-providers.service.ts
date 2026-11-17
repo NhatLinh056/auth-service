@@ -20,6 +20,7 @@ export interface SanitizedOAuthProvider {
   name: string;
   isEnabled: boolean;
   clientId: string | null;
+  clientSecret: string | null;
   callbackUrl: string | null;
   hasSecret: boolean;
   createdAt: Date;
@@ -79,13 +80,13 @@ export class OAuthProvidersService implements OnModuleInit {
         provider: OAuthProviderType.GOOGLE,
         name: 'Google',
         isEnabled: false,
-      callbackUrl: getOAuthCallbackUrl(OAuthProviderType.GOOGLE),
+        callbackUrl: getOAuthCallbackUrl(OAuthProviderType.GOOGLE),
       },
       {
         provider: OAuthProviderType.FACEBOOK,
         name: 'Facebook',
         isEnabled: false,
-      callbackUrl: getOAuthCallbackUrl(OAuthProviderType.FACEBOOK),
+        callbackUrl: getOAuthCallbackUrl(OAuthProviderType.FACEBOOK),
       },
     ];
 
@@ -141,8 +142,8 @@ export class OAuthProvidersService implements OnModuleInit {
   }
 
   /**
-   * Loại bỏ clientSecret trước khi trả kết quả ra ngoài API.
-   * Tuyệt đối không log và không trả clientSecret cho client/frontend.
+   * Chuẩn hóa dữ liệu provider trước khi trả kết quả ra ngoài API cho App Owner hoặc ADMIN.
+   * Trả về clientSecret để App Owner có thể xem lại và sao chép khi cấu hình.
    */
   private sanitize(provider: {
     id: string;
@@ -156,13 +157,12 @@ export class OAuthProvidersService implements OnModuleInit {
     createdAt: Date;
     updatedAt: Date;
   }): SanitizedOAuthProvider {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { clientSecret, ...rest } = provider;
     return {
-      ...rest,
+      ...provider,
+      clientSecret: provider.clientSecret || null,
       isEnabled: provider.isEnabled && hasOAuthCredentials(provider),
       callbackUrl: getOAuthCallbackUrl(provider.provider),
-      hasSecret: Boolean(clientSecret && clientSecret.length > 0),
+      hasSecret: Boolean(provider.clientSecret && provider.clientSecret.length > 0),
     };
   }
 

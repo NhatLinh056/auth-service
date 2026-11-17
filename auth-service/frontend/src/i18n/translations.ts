@@ -52,7 +52,7 @@ export const translations = {
     apps: {
       title: 'Applications',
       subtitle: 'Manage client application credentials for microservice inter-service authentication.',
-      create_btn: '+ Create Application',
+      create_btn: 'Create Application',
       loading: 'Loading applications...',
       empty: 'No applications found. Create your first application to generate credentials.',
       empty_unauth: 'Please sign in to view and manage registered applications.',
@@ -148,6 +148,11 @@ export const translations = {
       clear_filter: 'Clear Filters',
       filter_apps_select: 'Filter project...',
       apps_unit: 'apps',
+      view_mode: 'View Mode:',
+      view_mode_all: 'All Applications (Super Admin)',
+      view_mode_mine: 'My Applications (App Owner)',
+      manage_app: 'Manage App →',
+      you_tag: '(You)',
     },
     detail: {
       title: 'Application Details',
@@ -273,7 +278,7 @@ export const translations = {
     apps: {
       title: 'Quản Lý Ứng Dụng',
       subtitle: 'Quản lý thông tin định danh (AppID và AppToken) phục vụ giao tiếp bảo mật giữa các microservice.',
-      create_btn: '+ Tạo Ứng Dụng Mới',
+      create_btn: 'Tạo Ứng Dụng Mới',
       loading: 'Đang tải danh sách ứng dụng...',
       empty: 'Chưa có ứng dụng nào. Hãy tạo ứng dụng đầu tiên để sinh cặp khóa AppID và AppToken.',
       empty_unauth: 'Vui lòng đăng nhập để xem và quản lý danh sách ứng dụng của bạn.',
@@ -369,6 +374,11 @@ export const translations = {
       clear_filter: 'Xóa bộ lọc',
       filter_apps_select: 'Lọc nhanh dự án...',
       apps_unit: 'ứng dụng',
+      view_mode: 'Chế độ xem:',
+      view_mode_all: 'Tất cả Ứng dụng (Super Admin)',
+      view_mode_mine: 'Ứng dụng của tôi (App Owner)',
+      manage_app: 'Quản Lý App →',
+      you_tag: '(Bạn)',
     },
     detail: {
       title: 'Chi Tiết Ứng Dụng',

@@ -226,6 +226,32 @@ export class ApplicationsService {
   }
 
   /**
+   * Xóa một AppUser khỏi ứng dụng:
+   * - Kiểm tra quyền truy cập ứng dụng (chủ sở hữu hoặc ADMIN).
+   * - Tìm AppUser theo id và applicationId.
+   * - Xóa quan hệ AppUser, bảo toàn tài khoản User toàn hệ thống.
+   */
+  async deleteAppUser(id: string, appUserId: string, currentUser: JwtPayload) {
+    await this.findById(id, currentUser);
+
+    const appUser = await this.prisma.appUser.findFirst({
+      where: { id: appUserId, applicationId: id },
+    });
+
+    if (!appUser) {
+      throw new NotFoundException('Không tìm thấy người dùng này trong ứng dụng');
+    }
+
+    await this.prisma.appUser.delete({
+      where: { id: appUserId },
+    });
+
+    return {
+      message: 'Xóa người dùng khỏi ứng dụng thành công',
+    };
+  }
+
+  /**
    * Xóa ứng dụng:
    * - Ném 404 NotFoundException nếu không tìm thấy ứng dụng.
    * - Nếu là USER thường: chỉ được xóa ứng dụng của chính mình, ngược lại ném 403 ForbiddenException.

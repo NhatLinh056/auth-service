@@ -6,13 +6,13 @@ import { ClientSignIn } from './components/auth/ClientSignIn';
 import { ToastContainer } from './components/common/ToastContainer';
 import { AppShell } from './components/layout/AppShell';
 import { RoleDashboard } from './components/features/dashboard/RoleDashboard';
+import { AppDetailPage } from './components/features/applications/AppDetailPage';
 import { ApplicationsTab } from './components/tabs/ApplicationsTab';
-import { QuickstartTab } from './components/tabs/QuickstartTab';
+import { QuickstartPage } from './components/features/quickstart/QuickstartPage';
 import { UsersTab } from './components/tabs/UsersTab';
 import { AccountTab } from './components/tabs/AccountTab';
 import { TenantsTab } from './components/tabs/TenantsTab';
 import { CreateAppModal } from './components/modals/CreateAppModal';
-import { AppDetailModal } from './components/modals/AppDetailModal';
 import { AssignRoleModal } from './components/modals/AssignRoleModal';
 import { ProviderModal } from './components/modals/ProviderModal';
 
@@ -65,7 +65,6 @@ const AppContent: React.FC = () => {
 
   // Modals state
   const [isCreateAppOpen, setIsCreateAppOpen] = useState(false);
-  const [detailApp, setDetailApp] = useState<Application | null>(null);
   const [assignRoleUser, setAssignRoleUser] = useState<User | null>(null);
   const [editProvider, setEditProvider] = useState<SanitizedOAuthProvider | null>(null);
 
@@ -122,14 +121,11 @@ const AppContent: React.FC = () => {
   const handleCreateAppSuccess = (newApp: Application) => {
     setIsCreateAppOpen(false);
     setApplications(prev => [newApp, ...prev]);
-    setDetailApp(newApp);
+    navigate(`/console/applications/${newApp.id}`);
   };
 
   const handleUpdateApp = (updated: Application) => {
     setApplications(prev => prev.map(a => (a.id === updated.id ? updated : a)));
-    if (detailApp?.id === updated.id) {
-      setDetailApp(updated);
-    }
   };
 
   const handleAssignRoleSuccess = (updatedUser: User) => {
@@ -184,7 +180,7 @@ const AppContent: React.FC = () => {
               <RoleDashboard
                 applications={applications}
                 onGoToApps={() => navigate('/console/applications')}
-                onOpenAppDetail={setDetailApp}
+                onOpenAppDetail={(app) => navigate(`/console/applications/${app.id}`)}
                 onOpenCreateApp={() => setIsCreateAppOpen(true)}
                 onGoToTenants={() => navigate('/console/my-tenant')}
               />
@@ -200,25 +196,33 @@ const AppContent: React.FC = () => {
                 loading={appsLoading}
                 onRefresh={loadApplications}
                 onOpenCreateModal={() => setIsCreateAppOpen(true)}
-                onOpenDetailModal={setDetailApp}
+                onOpenDetailModal={(app) => navigate(`/console/applications/${app.id}`)}
                 onUpdateApp={handleUpdateApp}
                 onOpenConfigureProvider={setEditProvider}
               />
             }
           />
 
-          {/* Applications detail sub-routes (placeholder fallback to applications view for P2) */}
+          {/* Applications detail route & sub-tab routes */}
           <Route
-            path="applications/:appId/*"
+            path="applications/:appId"
             element={
-              <ApplicationsTab
-                applications={applications}
-                loading={appsLoading}
-                onRefresh={loadApplications}
-                onOpenCreateModal={() => setIsCreateAppOpen(true)}
-                onOpenDetailModal={setDetailApp}
-                onUpdateApp={handleUpdateApp}
-                onOpenConfigureProvider={setEditProvider}
+              <AppDetailPage
+                onUpdateAppList={handleUpdateApp}
+                onRemoveFromAppList={(deletedId) => {
+                  setApplications((prev) => prev.filter((a) => a.id !== deletedId));
+                }}
+              />
+            }
+          />
+          <Route
+            path="applications/:appId/:tab"
+            element={
+              <AppDetailPage
+                onUpdateAppList={handleUpdateApp}
+                onRemoveFromAppList={(deletedId) => {
+                  setApplications((prev) => prev.filter((a) => a.id !== deletedId));
+                }}
               />
             }
           />
@@ -226,7 +230,12 @@ const AppContent: React.FC = () => {
           {/* Quickstart */}
           <Route
             path="quickstart"
-            element={<QuickstartTab applications={applications} />}
+            element={
+              <QuickstartPage
+                applications={applications}
+                onOpenCreateApp={() => setIsCreateAppOpen(true)}
+              />
+            }
           />
 
           {/* My Tenant */}
@@ -277,13 +286,6 @@ const AppContent: React.FC = () => {
         isOpen={isCreateAppOpen}
         onClose={() => setIsCreateAppOpen(false)}
         onSuccess={handleCreateAppSuccess}
-      />
-
-      <AppDetailModal
-        app={detailApp}
-        isOpen={Boolean(detailApp)}
-        onClose={() => setDetailApp(null)}
-        onUpdateApp={handleUpdateApp}
       />
 
       <AssignRoleModal
