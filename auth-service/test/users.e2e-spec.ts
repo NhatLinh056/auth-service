@@ -311,16 +311,41 @@ describe('User API (e2e)', () => {
       expect(res.body).not.toHaveProperty('passwordHash');
     });
 
-    it('nên cập nhật password thành công và đăng nhập lại được với mật khẩu mới', async () => {
-      const newPassword = 'NewTestPass456!';
-
-      await request(app.getHttpServer())
+    it('nên từ chối 400 khi cố đổi mật khẩu qua PATCH /users/:id (bắt buộc dùng POST /auth/account/password)', async () => {
+      const res = await request(app.getHttpServer())
         .patch(`/users/${userId}`)
         .set('Authorization', `Bearer ${accessToken}`)
+        .send({ password: 'NewTestPass456!' })
+        .expect(400);
+
+      expect(res.body.message).toBeDefined();
+    });
+
+    it('nên đổi mật khẩu thành công qua POST /auth/account/password khi có mật khẩu hiện tại chính xác', async () => {
+      const newPassword = 'NewTestPass456!';
+
+      // 1. Thất bại nếu sai mật khẩu hiện tại (401)
+      await request(app.getHttpServer())
+        .post('/auth/account/password')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ currentPassword: 'WrongPassword123!', password: newPassword })
+        .expect(401);
+
+      // 2. Thất bại nếu thiếu mật khẩu hiện tại (401)
+      await request(app.getHttpServer())
+        .post('/auth/account/password')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({ password: newPassword })
+        .expect(401);
+
+      // 3. Đổi mật khẩu thành công khi cung cấp đúng mật khẩu hiện tại (200)
+      await request(app.getHttpServer())
+        .post('/auth/account/password')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ currentPassword: TEST_PASSWORD, password: newPassword })
         .expect(200);
 
-      // Đăng nhập lại với mật khẩu mới
+      // 4. Đăng nhập lại với mật khẩu mới thành công
       const loginRes = await request(app.getHttpServer())
         .post('/auth/login')
         .send({ email: TEST_EMAIL, password: newPassword })
@@ -328,28 +353,20 @@ describe('User API (e2e)', () => {
 
       expect(loginRes.body).toHaveProperty('accessToken');
 
-      // Cập nhật token và khôi phục mật khẩu gốc
+      // 5. Cập nhật token và khôi phục mật khẩu gốc để không ảnh hưởng test sau
       accessToken = loginRes.body.accessToken as string;
       await request(app.getHttpServer())
-        .patch(`/users/${userId}`)
+        .post('/auth/account/password')
         .set('Authorization', `Bearer ${accessToken}`)
-        .send({ password: TEST_PASSWORD })
+        .send({ currentPassword: newPassword, password: TEST_PASSWORD })
         .expect(200);
 
-      // Lấy token mới với mật khẩu gốc cho các test còn lại
+      // 6. Lấy token mới với mật khẩu gốc
       const restoreRes = await request(app.getHttpServer())
         .post('/auth/login')
         .send({ email: TEST_EMAIL, password: TEST_PASSWORD })
         .expect(200);
       accessToken = restoreRes.body.accessToken as string;
-    });
-
-    it('nên trả về 400 khi password quá ngắn', async () => {
-      await request(app.getHttpServer())
-        .patch(`/users/${userId}`)
-        .set('Authorization', `Bearer ${accessToken}`)
-        .send({ password: '123' })
-        .expect(400);
     });
 
     it('nên trả về 404 khi ID không tồn tại (ADMIN gọi)', async () => {
@@ -387,37 +404,22 @@ describe('User API (e2e)', () => {
         .expect(401);
     });
 
-    it('nên trả về 404 khi ID không tồn tại (ADMIN gọi)', async () => {
-      await request(app.getHttpServer())
-        .delete('/users/00000000-0000-0000-0000-000000000000')
+    it('nên từ chối 400 khi ADMIN cố xóa user (chức năng xóa bị vô hiệu hóa trong V2)', async () => {
+      const res = await request(app.getHttpServer())
+        .delete(`/users/${userId}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
-        .expect(404);
+        .expect(400);
+
+      expect(res.body.message).toContain('bị vô hiệu hóa');
     });
 
-    it('nên xóa user thành công và trả về thông tin user đã xóa (không có passwordHash)', async () => {
+    it('nên từ chối 400 khi USER tự xóa tài khoản của chính mình (chức năng xóa bị vô hiệu hóa trong V2)', async () => {
       const res = await request(app.getHttpServer())
         .delete(`/users/${userId}`)
         .set('Authorization', `Bearer ${accessToken}`)
-        .expect(200);
+        .expect(400);
 
-      expect(res.body).toHaveProperty('message');
-      expect(res.body).toHaveProperty('user');
-      expect(res.body.user.id).toBe(userId);
-      expect(res.body.user).not.toHaveProperty('passwordHash');
-    });
-
-    it('sau khi xóa: token cũ bị từ chối với 401', async () => {
-      await request(app.getHttpServer())
-        .get(`/users/${userId}`)
-        .set('Authorization', `Bearer ${accessToken}`)
-        .expect(401);
-    });
-
-    it('sau khi xóa: đăng nhập lại nên trả về 401', async () => {
-      await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({ email: TEST_EMAIL, password: TEST_PASSWORD })
-        .expect(401);
+      expect(res.body.message).toContain('bị vô hiệu hóa');
     });
   });
 

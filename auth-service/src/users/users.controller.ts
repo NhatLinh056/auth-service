@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   ForbiddenException,
   UseGuards,
@@ -15,7 +16,6 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import bcrypt from 'bcrypt';
 import { Role } from '../generated/prisma/enums.js';
 import { Auth, AuthOwnerOrAdmin } from '../common/decorators/auth.decorator.js';
 import { JwtPayload } from '../common/strategies/jwt.strategy.js';
@@ -119,25 +119,27 @@ export class UsersController {
   @AuthOwnerOrAdmin()
   @ApiOperation({ summary: 'Cập nhật thông tin người dùng theo ID (chủ sở hữu hoặc ADMIN)' })
   @ApiResponse({ status: 200, description: 'Cập nhật thông tin người dùng thành công' })
-  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
+  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ hoặc cố thay đổi trường không được phép (mật khẩu)' })
   @ApiResponse({ status: 403, description: 'Không có quyền thao tác trên tài khoản của người khác' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng với ID này' })
   async updateUser(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
   ) {
+    if ((updateUserDto as any).password !== undefined) {
+      throw new BadRequestException(
+        'Không được phép đổi mật khẩu qua endpoint này. Vui lòng sử dụng POST /auth/account/password để xác minh an toàn.',
+      );
+    }
+
     const existingUser = await this.usersService.findById(id, 'platform');
     if (!existingUser) {
       throw new NotFoundException(`Không tìm thấy người dùng với ID: ${id}`);
     }
 
-    const updateData: { name?: string; passwordHash?: string } = {};
+    const updateData: { name?: string } = {};
     if (updateUserDto.name !== undefined) {
       updateData.name = updateUserDto.name;
-    }
-    if (updateUserDto.password) {
-      const saltRounds = 10;
-      updateData.passwordHash = await bcrypt.hash(updateUserDto.password, saltRounds);
     }
 
     const updatedUser = await this.usersService.update(id, updateData);
@@ -146,25 +148,16 @@ export class UsersController {
     return safeUser;
   }
 
-  // DELETE /users/:id — Xóa tài khoản người dùng (chỉ chủ tài khoản hoặc ADMIN)
+  // DELETE /users/:id — Vô hiệu hóa xóa tài khoản người dùng theo chính sách V2
   @Delete(':id')
   @AuthOwnerOrAdmin()
-  @ApiOperation({ summary: 'Xóa tài khoản người dùng theo ID (chủ sở hữu hoặc ADMIN)' })
-  @ApiResponse({ status: 200, description: 'Xóa người dùng thành công' })
+  @ApiOperation({ summary: 'Xóa tài khoản người dùng theo ID (đã bị vô hiệu hóa trong V2)' })
+  @ApiResponse({ status: 400, description: 'Chức năng xóa người dùng đã bị vô hiệu hóa theo chính sách bảo mật V2' })
   @ApiResponse({ status: 403, description: 'Không có quyền thao tác trên tài khoản của người khác' })
-  @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng với ID này' })
   async deleteUser(@Param('id') id: string) {
-    const existingUser = await this.usersService.findById(id, 'platform');
-    if (!existingUser) {
-      throw new NotFoundException(`Không tìm thấy người dùng với ID: ${id}`);
-    }
-
-    const deletedUser = await this.usersService.delete(id);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { passwordHash: _, ...safeUser } = deletedUser;
-    return {
-      message: 'Xóa người dùng thành công',
-      user: safeUser,
-    };
+    void id;
+    throw new BadRequestException(
+      'Chức năng xóa người dùng đã bị vô hiệu hóa theo chính sách bảo mật V2.',
+    );
   }
 }

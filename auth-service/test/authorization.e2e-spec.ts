@@ -276,20 +276,13 @@ describe('Comprehensive Authorization Matrix (TODO 68 E2E)', () => {
       expect(res.body.message).toBe('Bạn không có quyền thao tác trên tài khoản của người khác');
     });
 
-    it('DELETE /users/:id -> ADMIN có toàn quyền xóa tài khoản của người khác thành công 200 OK', async () => {
+    it('DELETE /users/:id -> ADMIN cố xóa tài khoản bị chặn với 400 Bad Request (V2 vô hiệu hóa)', async () => {
       const res = await request(app.getHttpServer())
         .delete(`/users/${victimId}`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .expect(200);
+        .expect(400);
 
-      expect(res.body.user.id).toBe(victimId);
-    });
-
-    it('DELETE /users/:id -> sau khi bị ADMIN xóa, VICTIM không còn tồn tại trong hệ thống (404)', async () => {
-      await request(app.getHttpServer())
-        .get(`/users/${victimId}`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(404);
+      expect(res.body.message).toContain('bị vô hiệu hóa');
     });
   });
 

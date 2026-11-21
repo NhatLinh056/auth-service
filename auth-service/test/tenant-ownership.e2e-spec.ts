@@ -149,10 +149,10 @@ describe('Tenant ownership and authorization on isolated PostgreSQL', () => {
     expect(audit.body).toContainEqual(expect.objectContaining({ tenantId: tenant.id, action: 'DELETED' }));
   });
 
-  it('blocks account deletion while the user owns a tenant', async () => {
+  it('blocks account deletion while the user owns a tenant (and user deletion is disabled in V2)', async () => {
     const owner = await user();
     await create(owner);
-    await request(app.getHttpServer()).delete(`/users/${owner.id}`).auth(owner.token, { type: 'bearer' }).expect(409);
+    await request(app.getHttpServer()).delete(`/users/${owner.id}`).auth(owner.token, { type: 'bearer' }).expect(400);
     expect(await db.user.findUnique({ where: { id: owner.id } })).not.toBeNull();
   });
 

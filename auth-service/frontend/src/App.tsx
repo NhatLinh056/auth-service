@@ -10,7 +10,7 @@ import { AppDetailPage } from './components/features/applications/AppDetailPage'
 import { ApplicationsTab } from './components/tabs/ApplicationsTab';
 import { QuickstartPage } from './components/features/quickstart/QuickstartPage';
 import { UsersTab } from './components/tabs/UsersTab';
-import { AccountTab } from './components/tabs/AccountTab';
+import { MyAccountPage } from './components/features/account/MyAccountPage';
 import { TenantsTab } from './components/tabs/TenantsTab';
 import { CreateAppModal } from './components/modals/CreateAppModal';
 import { AssignRoleModal } from './components/modals/AssignRoleModal';
@@ -271,7 +271,7 @@ const AppContent: React.FC = () => {
           />
 
           {/* My Account */}
-          <Route path="account" element={<AccountTab />} />
+          <Route path="account" element={<MyAccountPage />} />
         </Route>
 
         {/* Wildcard Fallback */}
@@ -293,6 +293,7 @@ const AppContent: React.FC = () => {
         isOpen={Boolean(assignRoleUser)}
         onClose={() => setAssignRoleUser(null)}
         onSuccess={handleAssignRoleSuccess}
+        adminCount={users.filter(u => u.role === 'ADMIN').length}
       />
 
       <ProviderModal

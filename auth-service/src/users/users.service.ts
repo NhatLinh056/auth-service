@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import bcrypt from 'bcrypt';
 import { Prisma, User } from '../generated/prisma/client.js';
 import { Role } from '../generated/prisma/enums.js';
@@ -137,13 +137,9 @@ export class UsersService implements OnModuleInit {
   }
 
   async delete(id: string): Promise<User> {
-    try {
-      return await this.prisma.user.delete({ where: { id } });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
-        throw new ConflictException('Cần chuyển quyền sở hữu doanh nghiệp trước khi xóa tài khoản');
-      }
-      throw error;
-    }
+    void id;
+    throw new BadRequestException(
+      'Chức năng xóa người dùng đã bị vô hiệu hóa theo chính sách bảo mật V2.',
+    );
   }
 }
