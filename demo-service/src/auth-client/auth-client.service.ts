@@ -146,12 +146,15 @@ export class AuthClientService {
 
   /**
    * Lấy danh sách các phương thức đăng nhập OAuth khả dụng từ Auth Service
+   * Lưu ý: GET /auth/providers là Public Discovery Endpoint, không yêu cầu xác thực bằng X-App-Token.
    */
   async getAvailableProviders(): Promise<OAuthProviderInfo[]> {
     try {
       const response = await this.http.get<OAuthProviderInfo[]>('/auth/providers', {
         baseURL: appConfig.authServiceUrl,
-        headers: this.getServiceHeaders(),
+        headers: {
+          'X-App-Id': appConfig.appId,
+        },
       });
       return response.data;
     } catch (err: any) {

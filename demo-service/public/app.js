@@ -21,9 +21,17 @@ const translations = {
       subtitle: 'Fast and secure sign-in with your social account',
       btn_google: 'Sign in with Google',
       btn_facebook: 'Sign in with Facebook',
+      footer_note: 'Direct authentication via OAuth orchestrated by Auth Service.',
     },
     btn: {
       sign_out: 'Sign Out',
+    },
+    modal_logout: {
+      title: 'Confirm Sign Out',
+      body: 'Are you sure you want to sign out of <strong>Demo Order Service</strong>?',
+      note: 'Your session on this customer portal will end. This sign-out does not affect your active sessions on other applications.',
+      btn_cancel: 'Cancel (Esc)',
+      btn_confirm: 'Sign Out Now',
     },
     toasts: {
       oauth_redirect: 'Redirecting to sign-in provider...',
@@ -38,9 +46,10 @@ const translations = {
       offline: 'System Offline',
     },
     profile: {
-      title: 'Account Profile',
-      user_id: 'User ID:',
+      title: 'Customer Profile (AppUser)',
+      user_id: 'User ID (AppUser):',
       provider: 'Provider:',
+      role: 'Role:',
       auth_status: 'Auth Status:',
       verified: 'Verified',
       integration_notice_title: 'Integration Successful:',
@@ -63,9 +72,17 @@ const translations = {
       subtitle: 'Đăng nhập nhanh chóng và bảo mật qua mạng xã hội',
       btn_google: 'Đăng nhập bằng Google',
       btn_facebook: 'Đăng nhập bằng Facebook',
+      footer_note: 'Xác thực trực tiếp qua luồng OAuth do Auth Service điều phối.',
     },
     btn: {
       sign_out: 'Đăng Xuất',
+    },
+    modal_logout: {
+      title: 'Xác Nhận Đăng Xuất',
+      body: 'Bạn có chắc chắn muốn đăng xuất khỏi <strong>Demo Order Service</strong> không?',
+      note: 'Phiên đăng nhập trên cổng khách hàng này sẽ kết thúc. Việc đăng xuất này không làm mất phiên đăng nhập của bạn trên các ứng dụng khác.',
+      btn_cancel: 'Hủy Bỏ (Esc)',
+      btn_confirm: 'Đăng Xuất Ngay',
     },
     toasts: {
       oauth_redirect: 'Đang chuyển hướng sang trang đăng nhập...',
@@ -80,9 +97,10 @@ const translations = {
       offline: 'Ngoại Tuyến',
     },
     profile: {
-      title: 'Thông Tin Tài Khoản',
-      user_id: 'User ID:',
+      title: 'Thông Tin Khách Hàng (AppUser)',
+      user_id: 'User ID (AppUser):',
       provider: 'Phương Thức:',
+      role: 'Vai Trò:',
       auth_status: 'Xác Thực:',
       verified: 'Đã Xác Thực',
       integration_notice_title: 'Tích Hợp Thành Công:',
@@ -179,6 +197,27 @@ function updateAuthUI() {
     if (providerEl) {
       const p = (state.user.provider || 'OAuth').toUpperCase();
       providerEl.textContent = p;
+      if (p === 'GOOGLE') {
+        providerEl.className = 'badge badge-google';
+      } else if (p === 'FACEBOOK') {
+        providerEl.className = 'badge badge-facebook';
+      } else {
+        providerEl.className = 'badge';
+      }
+    }
+
+    const roleEl = document.getElementById('user-role-display');
+    const ownerEl = document.getElementById('user-owner-badge');
+    if (roleEl) {
+      const r = state.user.appRole || state.user.role || 'USER';
+      roleEl.textContent = r === 'ADMIN'
+        ? (state.lang === 'vi' ? 'ADMIN' : 'ADMIN')
+        : (state.lang === 'vi' ? 'USER (Khách hàng)' : 'USER (Customer)');
+    }
+    if (ownerEl) {
+      const isOwner = Boolean(state.user.isAppOwner);
+      ownerEl.style.display = isOwner ? 'inline-flex' : 'none';
+      ownerEl.textContent = state.lang === 'vi' ? 'Chủ Ứng Dụng' : 'App Owner';
     }
 
     if (avatarEl) {
@@ -276,6 +315,21 @@ async function handleUrlCallback() {
   } catch (error) {
     showToast(error.message || 'Không thể kết nối máy chủ.', 'error');
   }
+}
+
+function openLogoutModal() {
+  const modal = document.getElementById('logout-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeLogoutModal() {
+  const modal = document.getElementById('logout-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function confirmLogout() {
+  closeLogoutModal();
+  logout();
 }
 
 function logout() {
@@ -420,6 +474,8 @@ async function refreshProviders() {
 function renderProvidersList(providers) {
   const googleBtn = document.getElementById('btn-oauth-google');
   const fbBtn = document.getElementById('btn-oauth-facebook');
+  const googleNote = document.getElementById('google-disabled-note');
+  const fbNote = document.getElementById('facebook-disabled-note');
 
   const googleProv = (providers || []).find(p => (p.provider || '').toLowerCase() === 'google');
   const fbProv = (providers || []).find(p => (p.provider || '').toLowerCase() === 'facebook');
@@ -429,6 +485,9 @@ function renderProvidersList(providers) {
     googleBtn.disabled = !isGoogleEnabled;
     if (googleBtn.style) googleBtn.style.opacity = isGoogleEnabled ? '1' : '0.45';
     googleBtn.title = isGoogleEnabled ? t('auth.btn_google') : t('toasts.not_enabled');
+    if (googleNote) {
+      googleNote.style.display = isGoogleEnabled ? 'none' : 'block';
+    }
   }
 
   if (fbBtn) {
@@ -436,8 +495,17 @@ function renderProvidersList(providers) {
     fbBtn.disabled = !isFbEnabled;
     if (fbBtn.style) fbBtn.style.opacity = isFbEnabled ? '1' : '0.45';
     fbBtn.title = isFbEnabled ? t('auth.btn_facebook') : t('toasts.not_enabled');
+    if (fbNote) {
+      fbNote.style.display = isFbEnabled ? 'none' : 'block';
+    }
   }
 }
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeLogoutModal();
+  }
+});
 
 function updateHandshakeUI() {
   const dot = document.getElementById('handshake-dot');
