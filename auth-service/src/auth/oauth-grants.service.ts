@@ -46,9 +46,17 @@ export class OAuthGrantsService {
       const user = grant.ready
         ? { ...await this.identities.membershipForUser(grant.ready.userId, appId, grant.ready.id, grant.ready.provider), provider: grant.ready.provider }
         : await this.identities.resolve(grant.result!, proof);
+      const now = Date.now();
+      const effectiveProvider = user.provider || grant.result?.provider || (grant.ready as any)?.provider || 'GOOGLE';
       const accessToken = await this.jwt.signAsync({
-        sub: user.id, userId: user.userId, email: user.email, role: user.role,
-        type: 'app_user', appId,
+        sub: user.id,
+        userId: user.userId,
+        email: user.email,
+        role: user.role,
+        type: 'app_user',
+        appId,
+        provider: effectiveProvider,
+        iatMs: now,
       });
       this.grants.delete(code);
       return { accessToken, user };
