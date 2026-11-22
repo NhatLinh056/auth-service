@@ -1,5 +1,22 @@
 import { apiClient } from './api.client';
 
+export interface TenantMember {
+  id: string;
+  email: string;
+  name?: string;
+  createdAt?: string;
+  isOwner?: boolean;
+}
+
+export interface TenantLookupResult {
+  id: string;
+  name: string;
+  description?: string;
+  ownerEmail: string;
+  ownerName?: string;
+  memberCount: number;
+}
+
 export interface TenantSummary {
   id: string;
   name: string;
@@ -11,7 +28,7 @@ export interface TenantSummary {
   updatedAt: string;
   canManage?: boolean;
   isOwner?: boolean;
-  members?: Array<{ id: string; email: string; name?: string }>;
+  members?: TenantMember[];
 }
 
 export interface TenantJoinRequest {
@@ -64,7 +81,13 @@ export const tenantsService = {
     apiClient<TenantSummary>('/tenants', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: string, data: { name?: string; description?: string }) =>
     apiClient<TenantSummary>(`/tenants/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-  delete: (id: string) => apiClient<{ message: string }>(`/tenants/${id}`, { method: 'DELETE' }),
+  delete: (id: string, reason?: string) =>
+    apiClient<{ message: string }>(`/tenants/${id}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`, {
+      method: 'DELETE',
+      body: reason ? JSON.stringify({ reason }) : undefined,
+    }),
+  lookup: (id: string) => apiClient<TenantLookupResult>(`/tenants/lookup/${id}`),
+  getMembers: (tenantId: string) => apiClient<TenantMember[]>(`/tenants/${tenantId}/members`),
   transfer: (id: string, data: { userId: string; reason?: string }) =>
     apiClient<TenantSummary>(`/tenants/${id}/transfer`, { method: 'POST', body: JSON.stringify(data) }),
   applyJoin: (tenantId: string) =>

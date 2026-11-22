@@ -11,7 +11,8 @@ import { ApplicationsTab } from './components/tabs/ApplicationsTab';
 import { QuickstartPage } from './components/features/quickstart/QuickstartPage';
 import { UsersTab } from './components/tabs/UsersTab';
 import { MyAccountPage } from './components/features/account/MyAccountPage';
-import { TenantsTab } from './components/tabs/TenantsTab';
+import { MyTenantPage } from './components/features/my-tenant/MyTenantPage';
+import { AdminTenantsPage } from './components/features/admin/AdminTenantsPage';
 import { CreateAppModal } from './components/modals/CreateAppModal';
 import { AssignRoleModal } from './components/modals/AssignRoleModal';
 import { ProviderModal } from './components/modals/ProviderModal';
@@ -239,7 +240,7 @@ const AppContent: React.FC = () => {
           />
 
           {/* My Tenant */}
-          <Route path="my-tenant" element={<TenantsTab />} />
+          <Route path="my-tenant" element={<MyTenantPage />} />
 
           {/* Admin: Users (protected by isAdmin) */}
           <Route
@@ -263,7 +264,7 @@ const AppContent: React.FC = () => {
             path="admin/tenants"
             element={
               isAdmin ? (
-                <TenantsTab />
+                <AdminTenantsPage />
               ) : (
                 <ForbiddenView />
               )

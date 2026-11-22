@@ -1,9 +1,9 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import type { JwtPayload } from '../common/strategies/jwt.strategy.js';
-import { CreateTenantDto, JoinTenantDto, RejectJoinRequestDto, TransferTenantDto, UpdateTenantDto } from './tenant.dto.js';
+import { CreateTenantDto, DeleteTenantDto, JoinTenantDto, RejectJoinRequestDto, TransferTenantDto, UpdateTenantDto } from './tenant.dto.js';
 import { TenantsService, type TenantActor } from './tenants.service.js';
 
 @ApiTags('tenants')
@@ -23,6 +23,13 @@ export class TenantsController {
   @ApiOperation({ summary: 'Lấy thông tin Tenant hiện tại của người dùng đang đăng nhập' })
   @ApiResponse({ status: 200, description: 'Trả về thông tin Tenant hoặc null nếu chưa tham gia' })
   me(@CurrentUser() user: JwtPayload) { return this.tenants.me(this.actor(user)); }
+
+  @Get('lookup/:id')
+  @ApiOperation({ summary: 'Tra cứu thông tin cơ bản của Tenant theo UUID để xin gia nhập' })
+  @ApiParam({ name: 'id', description: 'UUID của Tenant' })
+  lookup(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) {
+    return this.tenants.lookup(this.actor(user), id);
+  }
 
   @Get('audit')
   @ApiOperation({ summary: 'Lấy nhật ký can thiệp (Audit Logs) của Tenant người dùng (hoặc toàn cục nếu Admin)' })
@@ -84,6 +91,13 @@ export class TenantsController {
   @ApiParam({ name: 'id', description: 'UUID của Tenant' })
   detail(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) { return this.tenants.detail(this.actor(user), id); }
 
+  @Get(':id/members')
+  @ApiOperation({ summary: 'Lấy danh sách thành viên doanh nghiệp (Thành viên hoặc Quản trị viên)' })
+  @ApiParam({ name: 'id', description: 'UUID của Tenant' })
+  getMembers(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) {
+    return this.tenants.getMembers(this.actor(user), id);
+  }
+
   @Get(':id/join-requests')
   @ApiOperation({ summary: 'Xem danh sách yêu cầu xin gia nhập của Tenant (Chỉ Tenant Owner)' })
   @ApiParam({ name: 'id', description: 'UUID của Tenant' })
@@ -104,7 +118,7 @@ export class TenantsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Cập nhật tên hoặc mô tả của Tenant (Chỉ Tenant Owner)' })
+  @ApiOperation({ summary: 'Cập nhật tên hoặc mô tả của Tenant (Tenant Owner hoặc Super Admin)' })
   @ApiParam({ name: 'id', description: 'UUID của Tenant' })
   update(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTenantDto) {
     return this.tenants.update(this.actor(user), id, dto);
@@ -120,7 +134,18 @@ export class TenantsController {
   @Delete(':id')
   @ApiOperation({ summary: 'Xóa hoàn toàn Tenant (Tenant Owner hoặc Platform Admin)' })
   @ApiParam({ name: 'id', description: 'UUID của Tenant' })
-  delete(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) { return this.tenants.delete(this.actor(user), id); }
+  delete(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body?: DeleteTenantDto,
+    @Query('reason') queryReason?: string,
+  ) {
+    const reason = body?.reason || queryReason;
+    if (reason) {
+      return this.tenants.delete(this.actor(user), id, { reason });
+    }
+    return this.tenants.delete(this.actor(user), id);
+  }
 
   @Get(':id/audit')
   @ApiOperation({ summary: 'Xem lịch sử nhật ký can thiệp của Tenant theo ID' })
