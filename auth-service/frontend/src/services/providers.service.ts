@@ -43,4 +43,13 @@ export const providersService = {
       },
     );
   },
+
+  async getPublicProviders(
+    appId?: string,
+  ): Promise<{ provider: string; name: string; enabled: boolean }[]> {
+    const query = appId ? `?appId=${encodeURIComponent(appId)}` : '';
+    return apiClient<{ provider: string; name: string; enabled: boolean }[]>(
+      `/auth/providers${query}`,
+    );
+  },
 };

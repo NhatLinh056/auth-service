@@ -73,22 +73,36 @@
 
       <div class="card-body" style="padding: 16px 24px 28px;">
         <div class="oauth-actions">
-          <button type="button" class="btn btn-oauth btn-oauth-google" id="btn-oauth-google" onclick="loginWithProvider('google')">
-            <svg width="18" height="18" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-            </svg>
-            <span data-i18n="auth.btn_google">Đăng nhập bằng Google</span>
-          </button>
-          <button type="button" class="btn btn-oauth btn-oauth-facebook" id="btn-oauth-facebook" onclick="loginWithProvider('facebook')">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-            </svg>
-            <span data-i18n="auth.btn_facebook">Đăng nhập bằng Facebook</span>
-          </button>
+          <div style="position: relative; width: 100%;">
+            <button type="button" class="btn btn-oauth btn-oauth-google" id="btn-oauth-google" onclick="loginWithProvider('google')">
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              </svg>
+              <span id="btn-google-text" data-i18n="auth.btn_google">Đăng nhập bằng Google</span>
+            </button>
+            <div id="google-disabled-note" style="display: none; text-align: center; font-size: 11px; color: var(--danger); margin-top: 4px; margin-bottom: 8px;">
+              ⚠️ Đang vô hiệu hóa trong Cài đặt Ứng dụng
+            </div>
+          </div>
+
+          <div style="position: relative; width: 100%;">
+            <button type="button" class="btn btn-oauth btn-oauth-facebook" id="btn-oauth-facebook" onclick="loginWithProvider('facebook')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              <span id="btn-fb-text" data-i18n="auth.btn_facebook">Đăng nhập bằng Facebook</span>
+            </button>
+            <div id="facebook-disabled-note" style="display: none; text-align: center; font-size: 11px; color: var(--danger); margin-top: 4px; margin-bottom: 8px;">
+              ⚠️ Đang vô hiệu hóa trong Cài đặt Ứng dụng
+            </div>
+          </div>
         </div>
+        <p style="text-align: center; font-size: 11px; color: var(--text-dim); margin-top: 12px;" data-i18n="auth.footer_note">
+          Xác thực trực tiếp qua luồng OAuth do Auth Service điều phối.
+        </p>
       </div>
     </div>
 
@@ -106,7 +120,7 @@
           </div>
         </div>
 
-        <button class="btn btn-danger btn-sm" onclick="logout()" data-i18n="btn.sign_out" style="padding: 6px 14px;">
+        <button class="btn btn-danger btn-sm" onclick="openLogoutModal()" data-i18n="btn.sign_out" style="padding: 6px 14px;">
           Đăng Xuất
         </button>
       </div>
@@ -114,14 +128,20 @@
       <div class="card-body" style="padding: 20px 24px;">
         <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 16px;">
           <h4 style="font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="profile.title">
-            Thông Tin Tài Khoản
+            Thông Tin Khách Hàng (AppUser)
           </h4>
-          <div style="display: grid; grid-template-columns: 130px 1fr; gap: 10px; font-size: 13px; line-height: 1.6;">
-            <span style="color: var(--text-dim);" data-i18n="profile.user_id">User ID:</span>
+          <div style="display: grid; grid-template-columns: 140px 1fr; gap: 10px; font-size: 13px; line-height: 1.6; align-items: center;">
+            <span style="color: var(--text-dim);" data-i18n="profile.user_id">User ID (AppUser):</span>
             <code id="user-id-display" class="meta-code" style="word-break: break-all; font-size: 12px;">...</code>
 
             <span style="color: var(--text-dim);" data-i18n="profile.provider">Phương Thức:</span>
-            <span id="user-provider-display" class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; width: fit-content; font-size: 11px;">OAUTH</span>
+            <span id="user-provider-display" class="badge badge-google" style="width: fit-content; font-size: 11px;">Google OAuth 2.0</span>
+
+            <span style="color: var(--text-dim);" data-i18n="profile.role">Vai Trò:</span>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <span id="user-role-display" class="badge" style="background: rgba(148, 163, 184, 0.15); color: #cbd5e1; width: fit-content; font-size: 11px;">USER (Khách hàng)</span>
+              <span id="user-owner-badge" class="badge badge-port" style="display: none; font-size: 11px;">Chủ Ứng Dụng</span>
+            </div>
 
             <span style="color: var(--text-dim);" data-i18n="profile.auth_status">Xác Thực:</span>
             <span class="badge badge-success" style="width: fit-content; font-size: 11px;" data-i18n="profile.verified">Đã Xác Thực</span>
@@ -159,6 +179,33 @@
     </div>
 
   </main>
+
+  <!-- Logout Confirmation Modal (Scene 13) -->
+  <div class="modal-backdrop" id="logout-modal" style="display: none;" onclick="if(event.target === this) closeLogoutModal()">
+    <div class="modal-content" style="max-width: 440px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; color: #fff;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span data-i18n="modal_logout.title">Xác Nhận Đăng Xuất</span>
+        </div>
+        <button type="button" onclick="closeLogoutModal()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 4px;" aria-label="Đóng">✕</button>
+      </div>
+      <div style="font-size: 13px; color: var(--text-main); line-height: 1.5; margin-bottom: 20px;">
+        <p data-i18n="modal_logout.body">Bạn có chắc chắn muốn đăng xuất khỏi <strong>Demo Order Service</strong> không?</p>
+        <p style="margin-top: 8px; font-size: 12px; color: var(--text-dim);" data-i18n="modal_logout.note">
+          Phiên đăng nhập trên cổng khách hàng này sẽ kết thúc. Việc đăng xuất này không làm mất phiên đăng nhập của bạn trên các ứng dụng khác.
+        </p>
+      </div>
+      <div class="modal-actions" style="margin-top: 0; display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeLogoutModal()" data-i18n="modal_logout.btn_cancel">Hủy Bỏ (Esc)</button>
+        <button type="button" class="btn btn-danger btn-sm" id="btn-confirm-logout" onclick="confirmLogout()" data-i18n="modal_logout.btn_confirm">Đăng Xuất Ngay</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toast-container"></div>

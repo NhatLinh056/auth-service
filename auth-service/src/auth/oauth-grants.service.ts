@@ -19,7 +19,7 @@ export class OAuthGrantsService {
     }
     if (this.grants.size >= 10000) throw new UnauthorizedException('Login capacity exceeded');
     const code = randomBytes(32).toString('base64url');
-    this.grants.set(code, { result, appId, challenge, expiresAt: Date.now() + 300000, attempts: 0, busy: false });
+    this.grants.set(code, { result, appId, challenge, expiresAt: Date.now() + 60000, attempts: 0, busy: false });
     return code;
   }
 
@@ -44,11 +44,19 @@ export class OAuthGrantsService {
     grant.busy = true;
     try {
       const user = grant.ready
-        ? { ...await this.identities.membershipForUser(grant.ready.userId, appId, grant.ready.id), provider: grant.ready.provider }
+        ? { ...await this.identities.membershipForUser(grant.ready.userId, appId, grant.ready.id, grant.ready.provider), provider: grant.ready.provider }
         : await this.identities.resolve(grant.result!, proof);
+      const now = Date.now();
+      const effectiveProvider = user.provider || grant.result?.provider || (grant.ready as any)?.provider || 'GOOGLE';
       const accessToken = await this.jwt.signAsync({
-        sub: user.id, userId: user.userId, email: user.email, role: user.role,
-        type: 'app_user', appId,
+        sub: user.id,
+        userId: user.userId,
+        email: user.email,
+        role: user.role,
+        type: 'app_user',
+        appId,
+        provider: effectiveProvider,
+        iatMs: now,
       });
       this.grants.delete(code);
       return { accessToken, user };

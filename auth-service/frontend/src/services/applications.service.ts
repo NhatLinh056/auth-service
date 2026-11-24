@@ -44,4 +44,10 @@ export const applicationsService = {
   async getAppUsers(id: string): Promise<AppUser[]> {
     return apiClient<AppUser[]>(`/applications/${id}/users`);
   },
+
+  async deleteAppUser(id: string, appUserId: string): Promise<{ message: string }> {
+    return apiClient<{ message: string }>(`/applications/${id}/users/${appUserId}`, {
+      method: 'DELETE',
+    });
+  },
 };

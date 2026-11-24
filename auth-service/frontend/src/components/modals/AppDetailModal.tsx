@@ -3,6 +3,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { applicationsService } from '../../services/applications.service';
 import type { Application } from '../../types/application.types';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 
 interface AppDetailModalProps {
   app: Application | null;
@@ -26,6 +27,7 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
   const [activeSdkTab, setActiveSdkTab] = useState<SdkTab>('env');
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [redirectUris, setRedirectUris] = useState('');
 
   React.useEffect(() => {
@@ -121,10 +123,7 @@ curl -X GET "${origin}/users/verify-app-user" \\
     });
   };
 
-  const handleRegenerateToken = async () => {
-    const confirmMsg = `${t('toasts.confirm_regenerate')} "${app.name}"?`;
-    if (!window.confirm(confirmMsg)) return;
-
+  const handleConfirmRegenerateToken = async () => {
     setActionLoading(true);
     try {
       const res = await applicationsService.regenerateToken(app.id);
@@ -132,6 +131,7 @@ curl -X GET "${origin}/users/verify-app-user" \\
       onUpdateApp(updatedApp);
       setIsTokenMasked(false);
       showToast(t('toasts.token_regenerated'));
+      setShowRegenerateConfirm(false);
     } catch (err: any) {
       showToast(err.message || 'Failed to regenerate token', 'error');
     } finally {
@@ -379,7 +379,7 @@ curl -X GET "${origin}/users/verify-app-user" \\
             <button
               type="button"
               className="btn btn-secondary btn-sm"
-              onClick={handleRegenerateToken}
+              onClick={() => setShowRegenerateConfirm(true)}
               disabled={actionLoading}
             >
               {t('detail.regenerate')}
@@ -402,6 +402,23 @@ curl -X GET "${origin}/users/verify-app-user" \\
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showRegenerateConfirm}
+        title={lang === 'vi' ? 'Tạo lại App Token' : 'Regenerate App Token'}
+        message={
+          lang === 'vi'
+            ? `Bạn có chắc chắn muốn tạo lại App Token cho ứng dụng "${app.name}" không? Token hiện tại sẽ mất hiệu lực ngay lập tức và các dịch vụ tích hợp cần cập nhật token mới.`
+            : `Are you sure you want to regenerate the App Token for "${app.name}"? The current token will be immediately invalidated.`
+        }
+        confirmText={lang === 'vi' ? 'Tạo lại Token' : 'Regenerate'}
+        variant="warning"
+        isLoading={actionLoading}
+        onConfirm={handleConfirmRegenerateToken}
+        onClose={() => {
+          if (!actionLoading) setShowRegenerateConfirm(false);
+        }}
+      />
     </div>
   );
 };

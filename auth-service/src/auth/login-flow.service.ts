@@ -89,7 +89,7 @@ export class LoginFlowService {
     if (flow.busy) throw new UnauthorizedException('Login request is being completed');
     flow.busy = true;
     try {
-      const member = await this.identities.membershipForUser(userId, flow.appId);
+      const member = await this.identities.membershipForUser(userId, flow.appId, undefined, provider);
       const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, name: true, role: true, tenantId: true } });
       if (!user) throw new UnauthorizedException('Account no longer exists');
       const accessToken = await this.jwt.signAsync({ sub: user.id, email: user.email, role: user.role, type: 'platform' });
@@ -104,10 +104,10 @@ export class LoginFlowService {
   async password(id: string, email: string, password: string) {
     await this.flow(id);
     const session = await this.auth.login({ email, password });
-    return this.finish(id, session.user.id);
+    return this.finish(id, session.user.id, 'PASSWORD');
   }
 
-  session(id: string, userId: string) { return this.finish(id, userId); }
+  session(id: string, userId: string) { return this.finish(id, userId, 'PLATFORM_SESSION'); }
 
   async oauthComplete(id: string, code: string, verifier: string, proof: AccountLinkProof = {}) {
     await this.flow(id);

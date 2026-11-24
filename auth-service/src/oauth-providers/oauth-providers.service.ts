@@ -20,6 +20,7 @@ export interface SanitizedOAuthProvider {
   name: string;
   isEnabled: boolean;
   clientId: string | null;
+  clientSecret: string | null;
   callbackUrl: string | null;
   hasSecret: boolean;
   createdAt: Date;
@@ -69,7 +70,8 @@ export class OAuthProvidersService implements OnModuleInit {
   }
 
   /**
-   * Khởi tạo 2 provider mặc định (Google: disabled, Facebook: disabled) cho 1 application cụ thể.
+   * Khởi tạo 2 provider mặc định cho 1 application cụ thể.
+   * Tự động bật (isEnabled: true) nếu platform có credentials toàn cục hợp lệ cho provider đó.
    * Cấu hình của mỗi Application là độc lập hoàn toàn.
    */
   async createDefaultProviders(applicationId: string, tx?: any) {
@@ -78,14 +80,14 @@ export class OAuthProvidersService implements OnModuleInit {
       {
         provider: OAuthProviderType.GOOGLE,
         name: 'Google',
-        isEnabled: false,
-      callbackUrl: getOAuthCallbackUrl(OAuthProviderType.GOOGLE),
+        isEnabled: hasOAuthCredentials(this.getPlatformCredentials(OAuthProviderType.GOOGLE)),
+        callbackUrl: getOAuthCallbackUrl(OAuthProviderType.GOOGLE),
       },
       {
         provider: OAuthProviderType.FACEBOOK,
         name: 'Facebook',
-        isEnabled: false,
-      callbackUrl: getOAuthCallbackUrl(OAuthProviderType.FACEBOOK),
+        isEnabled: hasOAuthCredentials(this.getPlatformCredentials(OAuthProviderType.FACEBOOK)),
+        callbackUrl: getOAuthCallbackUrl(OAuthProviderType.FACEBOOK),
       },
     ];
 
@@ -141,8 +143,8 @@ export class OAuthProvidersService implements OnModuleInit {
   }
 
   /**
-   * Loại bỏ clientSecret trước khi trả kết quả ra ngoài API.
-   * Tuyệt đối không log và không trả clientSecret cho client/frontend.
+   * Chuẩn hóa dữ liệu provider trước khi trả kết quả ra ngoài API cho App Owner hoặc ADMIN.
+   * Trả về clientSecret để App Owner có thể xem lại và sao chép khi cấu hình.
    */
   private sanitize(provider: {
     id: string;
@@ -156,13 +158,18 @@ export class OAuthProvidersService implements OnModuleInit {
     createdAt: Date;
     updatedAt: Date;
   }): SanitizedOAuthProvider {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { clientSecret, ...rest } = provider;
+    const platformCreds = this.getPlatformCredentials(provider.provider);
+    const hasCustom = hasOAuthCredentials(provider);
+    const hasPlatform = hasOAuthCredentials(platformCreds);
+    const hasCreds = hasCustom || hasPlatform;
+
     return {
-      ...rest,
-      isEnabled: provider.isEnabled && hasOAuthCredentials(provider),
+      ...provider,
+      clientSecret: hasCustom ? (provider.clientSecret || null) : null,
+      clientId: hasCustom ? provider.clientId : null,
+      isEnabled: provider.isEnabled && hasCreds,
       callbackUrl: getOAuthCallbackUrl(provider.provider),
-      hasSecret: Boolean(clientSecret && clientSecret.length > 0),
+      hasSecret: Boolean(hasCustom && provider.clientSecret && provider.clientSecret.length > 0),
     };
   }
 
@@ -252,7 +259,11 @@ export class OAuthProvidersService implements OnModuleInit {
       dataToUpdate.clientSecret = dto.clientSecret.trim();
     }
 
-    if ((dto.isEnabled ?? existing.isEnabled) && !hasOAuthCredentials({ ...existing, ...dataToUpdate })) {
+    const platformCreds = this.getPlatformCredentials(provider);
+    const merged = { ...existing, ...dataToUpdate };
+    const hasCreds = hasOAuthCredentials(merged) || hasOAuthCredentials(platformCreds);
+
+    if ((dto.isEnabled ?? existing.isEnabled) && !hasCreds) {
       throw new BadRequestException('Cần Client ID và Client Secret đầy đủ, không dùng giá trị mẫu, trước khi bật OAuth');
     }
 
@@ -296,8 +307,11 @@ export class OAuthProvidersService implements OnModuleInit {
       throw new NotFoundException(`Không tìm thấy cấu hình OAuth Provider: ${provider}`);
     }
 
-    const newStatus = !(existing.isEnabled && hasOAuthCredentials(existing));
-    if (newStatus && !hasOAuthCredentials(existing)) {
+    const platformCreds = this.getPlatformCredentials(provider);
+    const hasCreds = hasOAuthCredentials(existing) || hasOAuthCredentials(platformCreds);
+
+    const newStatus = !existing.isEnabled;
+    if (newStatus && !hasCreds) {
       throw new BadRequestException(
         `Không thể bật "${existing.name}" khi chưa cấu hình đầy đủ Client ID và Client Secret.`,
       );
@@ -317,6 +331,51 @@ export class OAuthProvidersService implements OnModuleInit {
       `Trạng thái Provider ${provider} của Application ${applicationId} đã đổi sang: ${newStatus ? 'ENABLED' : 'DISABLED'}`,
     );
     return this.sanitize(updated);
+  }
+
+  /**
+   * Lấy thông tin credentials nền tảng (Platform-level fallback) từ biến môi trường của Auth Service.
+   * Tuyệt đối không ghép nối Client ID từ nguồn này với Client Secret từ nguồn khác.
+   * Ưu tiên bộ credentials chính (GOOGLE hoặc FACEBOOK); chỉ fallback sang ACCOUNT nếu cả cặp đều đầy đủ hợp lệ.
+   */
+  getPlatformCredentials(provider: OAuthProviderType): { clientId: string | null; clientSecret: string | null } {
+    if (provider === OAuthProviderType.GOOGLE) {
+      const primary = {
+        clientId: process.env.GOOGLE_CLIENT_ID?.trim() || null,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET?.trim() || null,
+      };
+      if (hasOAuthCredentials(primary)) {
+        return primary;
+      }
+      const account = {
+        clientId: process.env.ACCOUNT_GOOGLE_CLIENT_ID?.trim() || null,
+        clientSecret: process.env.ACCOUNT_GOOGLE_CLIENT_SECRET?.trim() || null,
+      };
+      if (hasOAuthCredentials(account)) {
+        return account;
+      }
+      return { clientId: null, clientSecret: null };
+    }
+
+    if (provider === OAuthProviderType.FACEBOOK) {
+      const primary = {
+        clientId: process.env.FACEBOOK_CLIENT_ID?.trim() || null,
+        clientSecret: process.env.FACEBOOK_CLIENT_SECRET?.trim() || null,
+      };
+      if (hasOAuthCredentials(primary)) {
+        return primary;
+      }
+      const account = {
+        clientId: process.env.ACCOUNT_FACEBOOK_CLIENT_ID?.trim() || null,
+        clientSecret: process.env.ACCOUNT_FACEBOOK_CLIENT_SECRET?.trim() || null,
+      };
+      if (hasOAuthCredentials(account)) {
+        return account;
+      }
+      return { clientId: null, clientSecret: null };
+    }
+
+    return { clientId: null, clientSecret: null };
   }
 
   /**
@@ -351,8 +410,23 @@ export class OAuthProvidersService implements OnModuleInit {
       throw new NotFoundException(`OAuth Provider ${provider} chưa được cấu hình cho ứng dụng "${app.name}".`);
     }
 
+    const platformCreds = this.getPlatformCredentials(provider);
+    const hasCustomCreds = hasOAuthCredentials(found);
+    const hasPlatformCreds = hasOAuthCredentials(platformCreds);
+
+    let clientId = found.clientId;
+    let clientSecret = found.clientSecret;
+
+    if (!hasCustomCreds && hasPlatformCreds) {
+      clientId = platformCreds.clientId;
+      clientSecret = platformCreds.clientSecret;
+    }
+
     return {
       ...found,
+      clientId,
+      clientSecret,
+      isEnabled: found.isEnabled,
       application: app,
     };
   }
@@ -393,10 +467,14 @@ export class OAuthProvidersService implements OnModuleInit {
       });
     }
 
-    return list.map((p) => ({
-      provider: p.provider.toLowerCase(),
-      name: p.name,
-      enabled: p.isEnabled && hasOAuthCredentials(p),
-    }));
+    return list.map((p) => {
+      const platformCreds = this.getPlatformCredentials(p.provider);
+      const hasCreds = hasOAuthCredentials(p) || hasOAuthCredentials(platformCreds);
+      return {
+        provider: p.provider.toLowerCase(),
+        name: p.name,
+        enabled: p.isEnabled && hasCreds,
+      };
+    });
   }
 }

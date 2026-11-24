@@ -1,0 +1,2 @@
+export const AUTH_CLIENT = 'AUTH_CLIENT';
+export const AUTH_MODULE_OPTIONS = 'AUTH_MODULE_OPTIONS';

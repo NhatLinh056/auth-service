@@ -5,6 +5,7 @@ import { applicationsService } from '../../services/applications.service';
 import { providersService } from '../../services/providers.service';
 import type { Application, AppUser } from '../../types/application.types';
 import type { SanitizedOAuthProvider } from '../../types/provider.types';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 
 interface SelectedAppViewProps {
   app: Application;
@@ -40,6 +41,9 @@ export const SelectedAppView: React.FC<SelectedAppViewProps> = ({
   const [isTokenMasked, setIsTokenMasked] = useState(true);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isRegeneratingToken, setIsRegeneratingToken] = useState(false);
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeletingApp, setIsDeletingApp] = useState(false);
 
   // --- Providers State ---
   const [providers, setProviders] = useState<SanitizedOAuthProvider[]>([]);
@@ -150,14 +154,7 @@ export const SelectedAppView: React.FC<SelectedAppViewProps> = ({
   };
 
   // Regenerate AppToken
-  const handleRegenerateToken = async () => {
-    const confirmMsg =
-      lang === 'vi'
-        ? `CẢNH BÁO: Việc tạo lại AppToken sẽ lập tức vô hiệu hóa token cũ, khiến các dịch vụ backend đang kết nối bằng token cũ bị từ chối truy cập (401). Bạn có chắc chắn muốn tạo lại token cho "${app.name}"?`
-        : `WARNING: Regenerating the AppToken will immediately invalidate the current token, causing client microservices using the old token to fail with 401. Are you sure you want to proceed for "${app.name}"?`;
-
-    if (!window.confirm(confirmMsg)) return;
-
+  const handleConfirmRegenerateToken = async () => {
     setIsRegeneratingToken(true);
     try {
       const res = await applicationsService.regenerateToken(app.id);
@@ -165,6 +162,7 @@ export const SelectedAppView: React.FC<SelectedAppViewProps> = ({
       onUpdateApp(updated);
       showToast(t('toasts.token_regenerated'));
       setIsTokenMasked(false);
+      setShowRegenerateConfirm(false);
     } catch (err: any) {
       showToast(err.message || 'Lỗi tạo lại token', 'error');
     } finally {
@@ -173,21 +171,18 @@ export const SelectedAppView: React.FC<SelectedAppViewProps> = ({
   };
 
   // Delete App
-  const handleDeleteApp = async () => {
-    const confirmMsg =
-      lang === 'vi'
-        ? `XÁC NHẬN XÓA: Bạn có chắc chắn muốn xóa vĩnh viễn ứng dụng "${app.name}"? Mọi người dùng liên kết (AppUser) và cấu hình OAuth sẽ bị xóa.`
-        : `CONFIRM DELETE: Are you sure you want to permanently delete application "${app.name}"? All associated AppUsers and OAuth configs will be deleted.`;
-
-    if (!window.confirm(confirmMsg)) return;
-
+  const handleConfirmDeleteApp = async () => {
+    setIsDeletingApp(true);
     try {
       await applicationsService.delete(app.id);
       showToast(`"${app.name}" ${t('toasts.app_deleted')}`);
+      setShowDeleteConfirm(false);
       onDeleteApp(app.id);
       onBack();
     } catch (err: any) {
       showToast(err.message || 'Lỗi xóa ứng dụng', 'error');
+    } finally {
+      setIsDeletingApp(false);
     }
   };
 
@@ -445,7 +440,7 @@ curl -X GET "${authOrigin}/users/verify-app-user" \\
               <thead>
                 <tr>
                   <th>{lang === 'vi' ? 'Người dùng / Email' : 'User / Email'}</th>
-                  <th>{lang === 'vi' ? 'Provider Đăng Nhập' : 'Sign-in Provider'}</th>
+                  <th>{lang === 'vi' ? 'Phương thức đăng nhập gần nhất' : 'Last Login Method'}</th>
                   <th>{lang === 'vi' ? 'AppUser ID' : 'AppUser ID'}</th>
                   <th>{lang === 'vi' ? 'Vai trò App' : 'App Role'}</th>
                   <th>{lang === 'vi' ? 'Ngày tham gia' : 'Joined App At'}</th>
@@ -473,10 +468,34 @@ curl -X GET "${authOrigin}/users/verify-app-user" \\
                   </tr>
                 ) : (
                   filteredUsers.map((u) => {
-                    const rawProvider = u.provider || u.identities?.[0]?.provider || null;
-                    const displayProvider = rawProvider || (lang === 'vi' ? 'Không xác định' : 'UNKNOWN');
-                    const isGoogle = rawProvider ? rawProvider.toUpperCase().includes('GOOGLE') : false;
-                    const isFacebook = rawProvider ? rawProvider.toUpperCase().includes('FACEBOOK') : false;
+                    const rawMethod = u.lastLoginMethod || u.provider || u.identities?.[0]?.provider || null;
+                    const isGoogle = rawMethod ? rawMethod.toUpperCase().includes('GOOGLE') : false;
+                    const isFacebook = rawMethod ? rawMethod.toUpperCase().includes('FACEBOOK') : false;
+                    const isPassword = rawMethod ? rawMethod.toUpperCase().includes('PASSWORD') : false;
+                    const isPlatformSession = rawMethod ? rawMethod.toUpperCase().includes('PLATFORM_SESSION') : false;
+
+                    let displayMethod = lang === 'vi' ? 'Chưa xác định' : 'UNKNOWN';
+                    let badgeBg = 'rgba(148, 163, 184, 0.15)';
+                    let badgeColor = '#94a3b8';
+
+                    if (isGoogle) {
+                      displayMethod = 'Google';
+                      badgeBg = 'rgba(234, 67, 53, 0.15)';
+                      badgeColor = '#ea4335';
+                    } else if (isFacebook) {
+                      displayMethod = 'Facebook';
+                      badgeBg = 'rgba(24, 119, 242, 0.15)';
+                      badgeColor = '#1877f2';
+                    } else if (isPassword) {
+                      displayMethod = lang === 'vi' ? 'Mật khẩu' : 'Password';
+                      badgeBg = 'rgba(168, 85, 247, 0.15)';
+                      badgeColor = '#c084fc';
+                    } else if (isPlatformSession) {
+                      displayMethod = lang === 'vi' ? 'Phiên nền tảng' : 'Platform Session';
+                      badgeBg = 'rgba(56, 189, 248, 0.15)';
+                      badgeColor = '#38bdf8';
+                    }
+
                     const joinedDate = u.createdAt ? new Date(u.createdAt).toLocaleString() : '—';
                     return (
                       <tr key={u.id}>
@@ -488,21 +507,14 @@ curl -X GET "${authOrigin}/users/verify-app-user" \\
                           <span
                             className="status-pill status-pill-primary"
                             style={{
-                              textTransform: 'uppercase',
+                              textTransform: isGoogle || isFacebook ? 'none' : 'none',
                               fontSize: 11,
-                              background: isGoogle
-                                ? 'rgba(234, 67, 53, 0.15)'
-                                : isFacebook
-                                ? 'rgba(24, 119, 242, 0.15)'
-                                : 'rgba(148, 163, 184, 0.15)',
-                              color: isGoogle
-                                ? '#ea4335'
-                                : isFacebook
-                                ? '#1877f2'
-                                : '#94a3b8',
+                              fontWeight: 600,
+                              background: badgeBg,
+                              color: badgeColor,
                             }}
                           >
-                            {displayProvider}
+                            {displayMethod}
                           </span>
                         </td>
                         <td>
@@ -579,7 +591,7 @@ curl -X GET "${authOrigin}/users/verify-app-user" \\
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"
-                    onClick={handleRegenerateToken}
+                    onClick={() => setShowRegenerateConfirm(true)}
                     disabled={isRegeneratingToken}
                     style={{ color: 'var(--warning, #f59e0b)', borderColor: 'rgba(245, 158, 11, 0.3)' }}
                     id="btn-regenerate-token"
@@ -659,7 +671,7 @@ curl -X GET "${authOrigin}/users/verify-app-user" \\
                 ? 'Hành động xóa ứng dụng là vĩnh viễn và không thể hoàn tác. Mọi AppUser và cấu hình OAuth liên kết sẽ bị xóa.'
                 : 'Deleting an application is permanent and cannot be undone. All associated AppUsers and OAuth configs will be removed.'}
             </p>
-            <button type="button" className="btn btn-danger btn-sm" onClick={handleDeleteApp} id="btn-delete-app">
+            <button type="button" className="btn btn-danger btn-sm" onClick={() => setShowDeleteConfirm(true)} id="btn-delete-app">
               {lang === 'vi' ? 'Xóa Ứng Dụng Này' : 'Delete Application'}
             </button>
           </div>
@@ -1039,6 +1051,41 @@ curl -X GET "${authOrigin}/users/verify-app-user" \\
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialogs */}
+      <ConfirmDialog
+        isOpen={showRegenerateConfirm}
+        title={lang === 'vi' ? 'Tạo lại AppToken' : 'Regenerate AppToken'}
+        message={
+          lang === 'vi'
+            ? `CẢNH BÁO: Việc tạo lại AppToken sẽ lập tức vô hiệu hóa token cũ, khiến các dịch vụ backend đang kết nối bằng token cũ bị từ chối truy cập (401). Bạn có chắc chắn muốn tạo lại token cho "${app.name}"?`
+            : `WARNING: Regenerating the AppToken will immediately invalidate the current token, causing client microservices using the old token to fail with 401. Are you sure you want to proceed for "${app.name}"?`
+        }
+        confirmText={lang === 'vi' ? 'Tạo lại Token' : 'Regenerate Token'}
+        variant="warning"
+        isLoading={isRegeneratingToken}
+        onConfirm={handleConfirmRegenerateToken}
+        onClose={() => {
+          if (!isRegeneratingToken) setShowRegenerateConfirm(false);
+        }}
+      />
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title={lang === 'vi' ? 'Xác nhận xóa ứng dụng' : 'Delete Application'}
+        message={
+          lang === 'vi'
+            ? `XÁC NHẬN XÓA: Bạn có chắc chắn muốn xóa vĩnh viễn ứng dụng "${app.name}"? Mọi người dùng liên kết (AppUser) và cấu hình OAuth sẽ bị xóa vĩnh viễn.`
+            : `CONFIRM DELETE: Are you sure you want to permanently delete application "${app.name}"? All associated AppUsers and OAuth configs will be deleted.`
+        }
+        confirmText={lang === 'vi' ? 'Xóa Ứng Dụng' : 'Delete App'}
+        variant="danger"
+        isLoading={isDeletingApp}
+        onConfirm={handleConfirmDeleteApp}
+        onClose={() => {
+          if (!isDeletingApp) setShowDeleteConfirm(false);
+        }}
+      />
     </div>
   );
 };

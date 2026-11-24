@@ -23,6 +23,20 @@ describe('AppController (e2e)', () => {
       .expect('Hello World!');
   });
 
+  it('/console (GET) serves SPA index.html', () => {
+    return request(app.getHttpServer())
+      .get('/console')
+      .expect(200)
+      .expect('Content-Type', /html/);
+  });
+
+  it('/console/* (GET) serves SPA index.html on deep links', () => {
+    return request(app.getHttpServer())
+      .get('/console/applications/demo-app-id/settings')
+      .expect(200)
+      .expect('Content-Type', /html/);
+  });
+
   afterEach(async () => {
     await app.close();
   });

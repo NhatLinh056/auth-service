@@ -571,17 +571,21 @@ describe('Application Management Lifecycle & Security Matrix (TODO 77 E2E)', () 
         .expect(201);
       const tempAppId = tempAppRes.body.id;
 
-      // Xóa User qua Admin API
+      // Xóa User qua Admin API bị chặn trong V2
       await request(app.getHttpServer())
         .delete(`/users/${tempUserId}`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .expect(200);
+        .expect(400);
 
-      // Xác minh Application cũng tự động biến mất khỏi PostgreSQL
+      // Xác minh User và Application vẫn còn nguyên
+      const userCheck = await prisma.user.findUnique({
+        where: { id: tempUserId },
+      });
+      expect(userCheck).not.toBeNull();
       const appCheck = await prisma.application.findUnique({
         where: { id: tempAppId },
       });
-      expect(appCheck).toBeNull();
+      expect(appCheck).not.toBeNull();
     });
   });
 

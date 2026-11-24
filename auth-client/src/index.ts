@@ -1,0 +1,18 @@
+export {
+  AuthClient,
+  createAuthClient,
+  signTransaction,
+  verifyTransaction,
+  AuthClientError,
+  AuthClientConfigError,
+  AuthClientSecurityError,
+  AuthClientHttpError,
+  AuthClientVerificationError,
+  type AuthClientOptions,
+  type VerifyServiceResult,
+  type LoginTransaction,
+  type BeginLoginOptions,
+  type AppUserProfile,
+  type OAuthProviderInfo,
+  type CookieOptions,
+} from './client.js';

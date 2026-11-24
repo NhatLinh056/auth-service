@@ -54,3 +54,11 @@ export class RejectJoinRequestDto {
   @MaxLength(500)
   reason?: string;
 }
+
+export class DeleteTenantDto {
+  @ValidateIf((_object, value) => value !== undefined)
+  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}

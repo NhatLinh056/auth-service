@@ -217,6 +217,92 @@ describe('Roles Module (e2e)', () => {
         .send({ userId, role: Role.ADMIN })
         .expect(403);
     });
+
+    it('nên từ chối 400 khi ADMIN tự hạ quyền chính mình', async () => {
+      const adminInDb = await prisma.user.findUnique({ where: { email: ADMIN_EMAIL } });
+      const res = await request(app.getHttpServer())
+        .post('/roles/assign')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ userId: adminInDb!.id, role: Role.USER })
+        .expect(400);
+
+      expect(res.body.message).toContain('Không thể tự hạ quyền');
+    });
+
+    it('nên từ chối 400 khi cố gắng hạ quyền Admin cuối cùng của hệ thống', async () => {
+      // Tạo một admin thứ hai
+      const secondAdmin = await prisma.user.create({
+        data: {
+          email: 'second_admin_e2e@test.invalid',
+          passwordHash: '$2b$10$abcdefghijklmnopqrstuv',
+          name: 'Second Admin',
+          role: Role.ADMIN,
+        },
+      });
+
+      // Tạm thời đưa tất cả admin khác (nếu có) về USER để chỉ còn ADMIN_EMAIL và secondAdmin
+      const otherAdmins = await prisma.user.findMany({
+        where: {
+          role: Role.ADMIN,
+          id: { notIn: [secondAdmin.id] },
+        },
+      });
+      // Giữ lại 1 admin khác là ADMIN_EMAIL
+      const mainAdmin = otherAdmins.find((a) => a.email === ADMIN_EMAIL);
+      const extraAdmins = otherAdmins.filter((a) => a.email !== ADMIN_EMAIL);
+      for (const extra of extraAdmins) {
+        await prisma.user.update({ where: { id: extra.id }, data: { role: Role.USER } });
+      }
+
+      // Lúc này có 2 admin: ADMIN_EMAIL và secondAdmin. Hạ quyền secondAdmin -> thành công
+      await request(app.getHttpServer())
+        .post('/roles/assign')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ userId: secondAdmin.id, role: Role.USER })
+        .expect(200);
+
+      // Bây giờ secondAdmin là USER. Tạo thirdAdmin là ADMIN duy nhất khác để thử hạ khi chỉ còn 1 admin
+      // Giả lập thử hạ quyền mainAdmin từ thirdAdmin (khi adminCount = 1)
+      const count = await prisma.user.count({ where: { role: Role.ADMIN } });
+      expect(count).toBe(1);
+
+      // Thử hạ quyền admin duy nhất còn lại
+      // Tạo third admin login token
+      const thirdAdmin = await prisma.user.create({
+        data: {
+          email: 'third_admin_e2e@test.invalid',
+          passwordHash: mainAdmin!.passwordHash,
+          name: 'Third Admin',
+          role: Role.ADMIN,
+        },
+      });
+      const thirdLogin = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: 'third_admin_e2e@test.invalid', password: PASSWORD })
+        .expect(200);
+      const thirdToken = thirdLogin.body.accessToken;
+
+      // Xóa thirdAdmin khỏi role ADMIN trực tiếp trong DB để chỉ còn mainAdmin
+      await prisma.user.update({ where: { id: thirdAdmin.id }, data: { role: Role.USER } });
+      expect(await prisma.user.count({ where: { role: Role.ADMIN } })).toBe(1);
+
+      // thirdToken vẫn mang quyền ADMIN trong JWT, cố gắng hạ quyền mainAdmin -> Bị chặn 400 Admin cuối cùng!
+      const res = await request(app.getHttpServer())
+        .post('/roles/assign')
+        .set('Authorization', `Bearer ${thirdToken}`)
+        .send({ userId: mainAdmin!.id, role: Role.USER })
+        .expect(400);
+
+      expect(res.body.message).toContain('cuối cùng');
+
+      // Dọn dẹp
+      await prisma.user.deleteMany({
+        where: { email: { in: ['second_admin_e2e@test.invalid', 'third_admin_e2e@test.invalid'] } },
+      });
+      for (const extra of extraAdmins) {
+        await prisma.user.update({ where: { id: extra.id }, data: { role: Role.ADMIN } });
+      }
+    });
   });
 
   describe('Role API Edge Cases & Security Validations', () => {

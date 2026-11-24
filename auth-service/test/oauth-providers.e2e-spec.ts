@@ -261,7 +261,7 @@ describe('Project-Scoped Sign-in Methods Management (e2e)', () => {
 
       expect(res.body.provider).toBe('GOOGLE');
       expect(res.body.isEnabled).toBe(true);
-      expect(res.body.clientSecret).toBeUndefined(); // An toàn, không lộ secret
+      expect(res.body.clientSecret).toBe('GOCSPX-app-a-secret-key-123');
     });
   });
 

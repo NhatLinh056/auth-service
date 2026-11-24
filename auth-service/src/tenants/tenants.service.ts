@@ -3,7 +3,7 @@ import { Prisma, Role, TenantJoinRequestStatus } from '../generated/prisma/clien
 import { PrismaService } from '../prisma/prisma.service.js';
 import { isTransactionConflict } from '../prisma/transaction-errors.js';
 import { setTimeout as retryDelay } from 'node:timers/promises';
-import { CreateTenantDto, JoinTenantDto, RejectJoinRequestDto, TransferTenantDto, UpdateTenantDto } from './tenant.dto.js';
+import { CreateTenantDto, DeleteTenantDto, JoinTenantDto, RejectJoinRequestDto, TransferTenantDto, UpdateTenantDto } from './tenant.dto.js';
 
 const summary = {
   owner: { select: { id: true, email: true, name: true } },
@@ -57,6 +57,12 @@ export class TenantsService {
     return this.transaction(async db => {
       const actor = await this.actor(db, actorInput);
       if (actor.tenantId) throw new ConflictException('Bạn đã thuộc một doanh nghiệp');
+      const existingPending = await db.tenantJoinRequest.findFirst({
+        where: { userId: actor.id, status: TenantJoinRequestStatus.PENDING },
+      });
+      if (existingPending) {
+        throw new ConflictException('Bạn đang có một yêu cầu gia nhập chờ phê duyệt. Vui lòng hủy yêu cầu trước khi tạo doanh nghiệp mới.');
+      }
       const tenant = await db.tenant.create({ data: { name: dto.name, description: dto.description, ownerUserId: actor.id } });
       await db.user.update({ where: { id: actor.id }, data: { tenantId: tenant.id } });
       await db.tenantJoinRequest.updateMany({
@@ -68,6 +74,59 @@ export class TenantsService {
       } });
       return tenant;
     });
+  }
+
+  async lookup(actorInput: TenantActorInput, tenantId: string) {
+    await this.actor(this.prisma, actorInput);
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        owner: { select: { id: true, email: true, name: true } },
+        _count: { select: { users: true } },
+      },
+    });
+    if (!tenant) throw new NotFoundException('Không tìm thấy doanh nghiệp với Tenant ID này');
+
+    // Protect personal privacy by masking owner email
+    const maskEmail = (email: string) => {
+      const atIdx = email.indexOf('@');
+      if (atIdx <= 1) return '***@' + (email.split('@')[1] || '');
+      const user = email.substring(0, atIdx);
+      const domain = email.substring(atIdx + 1);
+      const maskedUser = user.length <= 2 ? user[0] + '***' : user[0] + '***' + user[user.length - 1];
+      return `${maskedUser}@${domain}`;
+    };
+
+    return {
+      id: tenant.id,
+      name: tenant.name,
+      description: tenant.description,
+      ownerEmail: maskEmail(tenant.owner.email),
+      ownerName: tenant.owner.name,
+      memberCount: tenant._count.users,
+    };
+  }
+
+  async getMembers(actorInput: TenantActorInput, tenantId: string) {
+    const actor = await this.actor(this.prisma, actorInput);
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new NotFoundException('Không tìm thấy doanh nghiệp');
+    const isOwner = tenant.ownerUserId === actor.id;
+    const isMember = actor.tenantId === tenant.id;
+    const canAccess = isOwner || isMember || actor.isPlatformAdmin;
+    if (!canAccess) throw new ForbiddenException('Không được truy cập danh sách thành viên của doanh nghiệp khác');
+    const users = await this.prisma.user.findMany({
+      where: { tenantId },
+      select: { id: true, email: true, name: true, createdAt: true },
+      orderBy: { email: 'asc' },
+    });
+    return users.map(u => ({
+      ...u,
+      isOwner: u.id === tenant.ownerUserId,
+    }));
   }
 
   async me(actorInput: TenantActorInput) {
@@ -360,11 +419,32 @@ export class TenantsService {
     if (dto.name === undefined && dto.description === undefined) throw new BadRequestException('Không có thông tin cần cập nhật');
     return this.transaction(async db => {
       const actor = await this.actor(db, actorInput);
-      const tenant = await this.requireOwner(db, actor, tenantId);
-      const updated = await db.tenant.update({ where: { id: tenantId }, data: dto });
-      await db.tenantAuditLog.create({ data: {
-        tenantId, tenantName: tenant.name, actorUserId: actor.id, action: 'UPDATED',
-      } });
+      const tenant = await db.tenant.findUnique({ where: { id: tenantId } });
+      if (!tenant) throw new NotFoundException('Không tìm thấy doanh nghiệp');
+
+      const isOwner = actor.id === tenant.ownerUserId;
+      if (!isOwner && !actor.isPlatformAdmin) {
+        throw new ForbiddenException('Chỉ chủ doanh nghiệp hoặc Super Admin mới có quyền cập nhật thông tin doanh nghiệp');
+      }
+
+      const updated = await db.tenant.update({
+        where: { id: tenantId },
+        data: {
+          ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+          ...(dto.description !== undefined ? { description: dto.description?.trim() || null } : {}),
+        },
+      });
+
+      const intervention = actor.isPlatformAdmin && !isOwner;
+      await db.tenantAuditLog.create({
+        data: {
+          tenantId,
+          tenantName: updated.name,
+          actorUserId: actor.id,
+          action: intervention ? 'ADMIN_UPDATED' : 'UPDATED',
+          reason: intervention ? 'Super Admin cập nhật thông tin doanh nghiệp' : null,
+        },
+      });
       return updated;
     });
   }
@@ -384,8 +464,7 @@ export class TenantsService {
       const target = await db.user.findUnique({ where: { id: dto.userId } });
       if (!target) throw new NotFoundException('Không tìm thấy người nhận quyền');
       if (target.tenantId !== tenantId) {
-        if (!intervention || target.tenantId) throw new ConflictException('Người nhận phải là thành viên của doanh nghiệp này');
-        await db.user.update({ where: { id: target.id }, data: { tenantId } });
+        throw new ConflictException('Người nhận phải là thành viên của doanh nghiệp này');
       }
       const updated = await db.tenant.update({ where: { id: tenantId }, data: { ownerUserId: target.id } });
       await db.tenantJoinRequest.updateMany({
@@ -401,7 +480,7 @@ export class TenantsService {
     });
   }
 
-  async delete(actorInput: TenantActorInput, tenantId: string) {
+  async delete(actorInput: TenantActorInput, tenantId: string, dto?: DeleteTenantDto) {
     return this.transaction(async db => {
       const actor = await this.actor(db, actorInput);
       if (actor.type === 'app_user') {
@@ -418,9 +497,22 @@ export class TenantsService {
       }
 
       const members = await db.user.count({ where: { tenantId, id: { not: tenant.ownerUserId } } });
-      if (members) throw new ConflictException('Doanh nghiệp còn thành viên. Cần xử lý thành viên trước khi xóa.');
+      if (!isPlatformAdmin && members > 0) {
+        throw new ConflictException('Doanh nghiệp còn thành viên. Cần xử lý thành viên trước khi xóa.');
+      }
+
+      const reason = dto?.reason?.trim();
+      if (isPlatformAdmin && !isOwner && !reason) {
+        throw new BadRequestException('Super Admin cần nhập lý do khi xóa doanh nghiệp');
+      }
+
+      await db.tenantJoinRequest.updateMany({
+        where: { tenantId, status: TenantJoinRequestStatus.PENDING },
+        data: { status: TenantJoinRequestStatus.CANCELLED },
+      });
 
       await db.user.updateMany({ where: { tenantId }, data: { tenantId: null } });
+
       await db.tenantAuditLog.create({
         data: {
           tenantId,
@@ -428,9 +520,10 @@ export class TenantsService {
           actorUserId: actor.id,
           action: 'DELETED',
           fromOwnerId: tenant.ownerUserId,
-          reason: isPlatformAdmin && !isOwner ? 'Deleted by Platform Super Admin' : null,
+          reason: isPlatformAdmin && !isOwner ? (reason || 'Deleted by Platform Super Admin') : (reason || null),
         },
       });
+
       await db.tenant.delete({ where: { id: tenantId } });
       return { message: 'Đã xóa doanh nghiệp. Tài khoản người dùng được giữ nguyên.' };
     });

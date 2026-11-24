@@ -102,6 +102,28 @@ describe('TenantsService (Unit)', () => {
       await expect(service.create('user-1', { name: 'New Tenant' })).rejects.toThrow(ConflictException);
       expect(mockPrisma.tenant.create).not.toHaveBeenCalled();
     });
+
+    it('throws ConflictException if user has an active PENDING join request', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ ...mockUser, tenantId: null });
+      mockPrisma.tenantJoinRequest.findFirst.mockResolvedValueOnce({
+        id: 'req-pending-1',
+        userId: 'user-1',
+        status: TenantJoinRequestStatus.PENDING,
+      });
+
+      await expect(service.create('user-1', { name: 'Blocked Tenant' })).rejects.toThrow(
+        'Bạn đang có một yêu cầu gia nhập chờ phê duyệt. Vui lòng hủy yêu cầu trước khi tạo doanh nghiệp mới.',
+      );
+      expect(mockPrisma.tenant.create).not.toHaveBeenCalled();
+    });
+
+    it('throws ConflictException if user has a pending join request', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ ...mockUser, tenantId: null });
+      mockPrisma.tenantJoinRequest.findFirst.mockResolvedValueOnce({ id: 'pending-1', status: TenantJoinRequestStatus.PENDING });
+
+      await expect(service.create('user-1', { name: 'New Tenant' })).rejects.toThrow(ConflictException);
+      expect(mockPrisma.tenant.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('detail', () => {
@@ -162,13 +184,20 @@ describe('TenantsService (Unit)', () => {
       await expect(service.update('user-2', mockTenant.id, { name: 'Hacked' })).rejects.toThrow(ForbiddenException);
     });
 
-    it('blocks Super Admin who is not the tenant owner from updating tenant', async () => {
+    it('allows Super Admin who is not the tenant owner to update tenant', async () => {
       mockPrisma.user.findUnique.mockResolvedValueOnce({ id: 'admin-1', role: Role.ADMIN });
       mockPrisma.tenant.findUnique.mockResolvedValueOnce(mockTenant);
+      mockPrisma.tenant.update.mockResolvedValueOnce({ ...mockTenant, name: 'Admin Renamed Corp' });
+      mockPrisma.tenantAuditLog.create.mockResolvedValueOnce({});
 
-      await expect(service.update('admin-1', mockTenant.id, { name: 'Admin Update' })).rejects.toThrow(
-        ForbiddenException,
-      );
+      const result = await service.update('admin-1', mockTenant.id, { name: 'Admin Renamed Corp' });
+      expect(result.name).toBe('Admin Renamed Corp');
+      expect(mockPrisma.tenantAuditLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          action: 'ADMIN_UPDATED',
+          reason: 'Super Admin cập nhật thông tin doanh nghiệp',
+        }),
+      });
     });
   });
 
@@ -199,7 +228,7 @@ describe('TenantsService (Unit)', () => {
       expect(mockPrisma.tenant.delete).toHaveBeenCalledWith({ where: { id: mockTenant.id } });
     });
 
-    it('allows Super Admin who is not the tenant owner to delete tenant when no other members remain', async () => {
+    it('allows Super Admin who is not the tenant owner to delete tenant when reason is provided', async () => {
       mockPrisma.user.findUnique.mockResolvedValueOnce({ id: 'admin-1', role: Role.ADMIN });
       mockPrisma.tenant.findUnique.mockResolvedValueOnce(mockTenant);
       mockPrisma.user.count.mockResolvedValueOnce(0);
@@ -207,16 +236,29 @@ describe('TenantsService (Unit)', () => {
       mockPrisma.tenantAuditLog.create.mockResolvedValueOnce({});
       mockPrisma.tenant.delete.mockResolvedValueOnce(mockTenant);
 
-      const result = await service.delete({ id: 'admin-1', type: 'platform' }, mockTenant.id);
+      const result = await service.delete({ id: 'admin-1', type: 'platform' }, mockTenant.id, {
+        reason: 'Admin xóa doanh nghiệp không còn hoạt động',
+      });
       expect(result.message).toContain('Đã xóa doanh nghiệp');
       expect(mockPrisma.tenantAuditLog.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           action: 'DELETED',
           fromOwnerId: mockTenant.ownerUserId,
-          reason: 'Deleted by Platform Super Admin',
+          reason: 'Admin xóa doanh nghiệp không còn hoạt động',
         }),
       });
       expect(mockPrisma.tenant.delete).toHaveBeenCalledWith({ where: { id: mockTenant.id } });
+    });
+
+    it('blocks Super Admin from deleting tenant if reason is missing', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ id: 'admin-1', role: Role.ADMIN });
+      mockPrisma.tenant.findUnique.mockResolvedValueOnce(mockTenant);
+      mockPrisma.user.count.mockResolvedValueOnce(0);
+
+      await expect(service.delete({ id: 'admin-1', type: 'platform' }, mockTenant.id)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockPrisma.tenant.delete).not.toHaveBeenCalled();
     });
 
     it('blocks regular user who is not owner from deleting tenant', async () => {
@@ -234,15 +276,64 @@ describe('TenantsService (Unit)', () => {
       );
     });
 
-    it('blocks Super Admin if tenant still has other members', async () => {
+    it('blocks Super Admin if tenant still has other members and reason is missing', async () => {
       mockPrisma.user.findUnique.mockResolvedValueOnce({ id: 'admin-1', role: Role.ADMIN });
       mockPrisma.tenant.findUnique.mockResolvedValueOnce(mockTenant);
       mockPrisma.user.count.mockResolvedValueOnce(3);
 
       await expect(service.delete({ id: 'admin-1', type: 'platform' }, mockTenant.id)).rejects.toThrow(
-        ConflictException,
+        BadRequestException,
       );
       expect(mockPrisma.tenant.delete).not.toHaveBeenCalled();
+    });
+
+    it('allows Super Admin to delete tenant even if members remain when reason is provided', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ id: 'admin-1', role: Role.ADMIN });
+      mockPrisma.tenant.findUnique.mockResolvedValueOnce(mockTenant);
+      mockPrisma.user.count.mockResolvedValueOnce(3);
+      mockPrisma.tenantJoinRequest.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.user.updateMany.mockResolvedValueOnce({ count: 4 });
+      mockPrisma.tenantAuditLog.create.mockResolvedValueOnce({});
+      mockPrisma.tenant.delete.mockResolvedValueOnce(mockTenant);
+
+      const result = await service.delete({ id: 'admin-1', type: 'platform' }, mockTenant.id, {
+        reason: 'Quyết định giải tán do vi phạm',
+      });
+      expect(result.message).toContain('Đã xóa doanh nghiệp');
+      expect(mockPrisma.tenantAuditLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          action: 'DELETED',
+          reason: 'Quyết định giải tán do vi phạm',
+        }),
+      });
+      expect(mockPrisma.tenant.delete).toHaveBeenCalledWith({ where: { id: mockTenant.id } });
+    });
+
+    it('preserves Users, Applications, and AppUsers when tenant is deleted (only sets User.tenantId = null)', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ id: 'admin-1', role: Role.ADMIN });
+      mockPrisma.tenant.findUnique.mockResolvedValueOnce(mockTenant);
+      mockPrisma.user.count.mockResolvedValueOnce(2);
+      mockPrisma.tenantJoinRequest.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.user.updateMany.mockResolvedValueOnce({ count: 3 });
+      mockPrisma.tenantAuditLog.create.mockResolvedValueOnce({});
+      mockPrisma.tenant.delete.mockResolvedValueOnce(mockTenant);
+
+      await service.delete({ id: 'admin-1', type: 'platform' }, mockTenant.id, {
+        reason: 'Thu hồi giấy phép kinh doanh',
+      });
+
+      // Detaches members
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: { tenantId: mockTenant.id },
+        data: { tenantId: null },
+      });
+      // Cancels pending join requests
+      expect(mockPrisma.tenantJoinRequest.updateMany).toHaveBeenCalledWith({
+        where: { tenantId: mockTenant.id, status: TenantJoinRequestStatus.PENDING },
+        data: { status: TenantJoinRequestStatus.CANCELLED },
+      });
+      // Deletes only tenant record
+      expect(mockPrisma.tenant.delete).toHaveBeenCalledWith({ where: { id: mockTenant.id } });
     });
   });
 
@@ -289,45 +380,53 @@ describe('TenantsService (Unit)', () => {
       await expect(service.transfer('admin-1', mockTenant.id, { userId: 'user-2', reason: '' })).rejects.toThrow(BadRequestException);
     });
 
-    it('allows Super Admin to transfer to a user without a tenant and auto-assigns tenantId with required reason', async () => {
+    it('allows Super Admin to transfer ownership to an existing member with required reason', async () => {
       const adminActor = { id: 'admin-1', role: Role.ADMIN, tenantId: null };
-      const unassignedUser = { id: 'user-free', email: 'free@example.com', tenantId: null };
+      const existingMember = { id: 'user-2', email: 'member@example.com', tenantId: mockTenant.id };
       mockPrisma.user.findUnique
         .mockResolvedValueOnce(adminActor)
-        .mockResolvedValueOnce(unassignedUser);
+        .mockResolvedValueOnce(existingMember);
       mockPrisma.tenant.findUnique.mockResolvedValueOnce(mockTenant);
-      mockPrisma.user.update.mockResolvedValueOnce({ ...unassignedUser, tenantId: mockTenant.id });
-      mockPrisma.tenant.update.mockResolvedValueOnce({ ...mockTenant, ownerUserId: 'user-free' });
+      mockPrisma.tenant.update.mockResolvedValueOnce({ ...mockTenant, ownerUserId: 'user-2' });
       mockPrisma.tenantJoinRequest.updateMany.mockResolvedValueOnce({ count: 1 });
       mockPrisma.tenantAuditLog.create.mockResolvedValueOnce({});
 
       const result = await service.transfer('admin-1', mockTenant.id, {
-        userId: 'user-free',
+        userId: 'user-2',
         reason: 'Quyết định bổ nhiệm quản trị viên mới',
       });
 
-      expect(result.ownerUserId).toBe('user-free');
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'user-free' },
-        data: { tenantId: mockTenant.id },
-      });
+      expect(result.ownerUserId).toBe('user-2');
       expect(mockPrisma.tenant.update).toHaveBeenCalledWith({
         where: { id: mockTenant.id },
-        data: { ownerUserId: 'user-free' },
-      });
-      expect(mockPrisma.tenantJoinRequest.updateMany).toHaveBeenCalledWith({
-        where: { userId: 'user-free', status: TenantJoinRequestStatus.PENDING },
-        data: { status: TenantJoinRequestStatus.CANCELLED },
+        data: { ownerUserId: 'user-2' },
       });
       expect(mockPrisma.tenantAuditLog.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           action: 'ADMIN_OWNERSHIP_TRANSFERRED',
           actorUserId: 'admin-1',
           fromOwnerId: 'user-1',
-          toOwnerId: 'user-free',
+          toOwnerId: 'user-2',
           reason: 'Quyết định bổ nhiệm quản trị viên mới',
         }),
       });
+    });
+
+    it('blocks Super Admin from transferring to a user who is not a member of the tenant', async () => {
+      const adminActor = { id: 'admin-1', role: Role.ADMIN, tenantId: null };
+      const unassignedUser = { id: 'user-free', email: 'free@example.com', tenantId: null };
+      mockPrisma.user.findUnique
+        .mockResolvedValueOnce(adminActor)
+        .mockResolvedValueOnce(unassignedUser);
+      mockPrisma.tenant.findUnique.mockResolvedValueOnce(mockTenant);
+
+      await expect(
+        service.transfer('admin-1', mockTenant.id, {
+          userId: 'user-free',
+          reason: 'Bổ nhiệm',
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(mockPrisma.tenant.update).not.toHaveBeenCalled();
     });
 
     it('blocks Super Admin from transferring to someone who already belongs to another tenant', async () => {
@@ -908,7 +1007,7 @@ describe('TenantsService (Unit)', () => {
       mockPrisma.tenant.findUnique.mockResolvedValueOnce(mockTenant);
 
       await expect(service.update(appOwnerUser.id, mockTenant.id, { name: 'Hacked Name' })).rejects.toThrow(
-        new ForbiddenException('Chỉ chủ doanh nghiệp được thực hiện thao tác này'),
+        new ForbiddenException('Chỉ chủ doanh nghiệp hoặc Super Admin mới có quyền cập nhật thông tin doanh nghiệp'),
       );
 
       mockPrisma.user.findUnique.mockResolvedValueOnce(appOwnerUser);
@@ -948,24 +1047,78 @@ describe('TenantsService (Unit)', () => {
       expect(result).toEqual([mockTenant]);
     });
 
-    it('System Admin cannot bypass Tenant Owner to update tenant info or remove members directly', async () => {
+    it('System Admin can update tenant info, but cannot bypass Tenant Owner to remove members directly', async () => {
       const adminUser = { id: 'admin-1', role: Role.ADMIN, tenantId: null };
 
-      // Try update
+      // Update is allowed for Super Admin
       mockPrisma.user.findUnique.mockResolvedValueOnce(adminUser);
       mockPrisma.tenant.findUnique.mockResolvedValueOnce(mockTenant);
+      mockPrisma.tenant.update.mockResolvedValueOnce({ ...mockTenant, name: 'Admin Renamed' });
+      mockPrisma.tenantAuditLog.create.mockResolvedValueOnce({});
 
-      await expect(service.update(adminUser.id, mockTenant.id, { name: 'Admin Renamed' })).rejects.toThrow(
-        new ForbiddenException('Chỉ chủ doanh nghiệp được thực hiện thao tác này'),
-      );
+      const updated = await service.update(adminUser.id, mockTenant.id, { name: 'Admin Renamed' });
+      expect(updated.name).toBe('Admin Renamed');
 
-      // Try remove member
+      // Try remove member directly (only owner can remove)
       mockPrisma.user.findUnique.mockResolvedValueOnce(adminUser);
       mockPrisma.tenant.findUnique.mockResolvedValueOnce(mockTenant);
 
       await expect(service.removeMember(adminUser.id, mockTenant.id, 'user-2')).rejects.toThrow(
         new ForbiddenException('Chỉ chủ doanh nghiệp được thực hiện thao tác này'),
       );
+    });
+  });
+
+  describe('lookup', () => {
+    it('returns basic tenant info when found', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ ...mockUser, tenantId: null });
+      mockPrisma.tenant.findUnique.mockResolvedValueOnce({
+        id: 'tenant-1',
+        name: 'Acme Corp',
+        description: 'Tech company',
+        owner: { id: 'owner-1', email: 'owner@example.com', name: 'Owner' },
+        _count: { users: 5 },
+      });
+
+      const result = await service.lookup('user-1', 'tenant-1');
+      expect(result).toEqual({
+        id: 'tenant-1',
+        name: 'Acme Corp',
+        description: 'Tech company',
+        ownerEmail: 'o***r@example.com',
+        ownerName: 'Owner',
+        memberCount: 5,
+      });
+    });
+
+    it('throws NotFoundException when tenant is not found', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ ...mockUser, tenantId: null });
+      mockPrisma.tenant.findUnique.mockResolvedValueOnce(null);
+
+      await expect(service.lookup('user-1', 'nonexistent')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getMembers', () => {
+    it('allows a tenant member to view the member list', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ ...mockUser, tenantId: 'tenant-1' });
+      mockPrisma.tenant.findUnique.mockResolvedValueOnce({ id: 'tenant-1', ownerUserId: 'owner-1' });
+      mockPrisma.user.findMany.mockResolvedValueOnce([
+        { id: 'owner-1', email: 'owner@example.com', name: 'Owner', createdAt: new Date() },
+        { id: 'user-1', email: 'user1@example.com', name: 'User One', createdAt: new Date() },
+      ]);
+
+      const result = await service.getMembers('user-1', 'tenant-1');
+      expect(result).toHaveLength(2);
+      expect(result[0].isOwner).toBe(true);
+      expect(result[1].isOwner).toBe(false);
+    });
+
+    it('rejects an outsider from viewing tenant members', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ ...mockUser, tenantId: 'other-tenant', role: Role.USER });
+      mockPrisma.tenant.findUnique.mockResolvedValueOnce({ id: 'tenant-1', ownerUserId: 'owner-1' });
+
+      await expect(service.getMembers('user-1', 'tenant-1')).rejects.toThrow(ForbiddenException);
     });
   });
 });

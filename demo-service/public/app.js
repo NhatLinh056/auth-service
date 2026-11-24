@@ -21,15 +21,24 @@ const translations = {
       subtitle: 'Fast and secure sign-in with your social account',
       btn_google: 'Sign in with Google',
       btn_facebook: 'Sign in with Facebook',
+      footer_note: 'Direct authentication via OAuth orchestrated by Auth Service.',
     },
     btn: {
       sign_out: 'Sign Out',
+    },
+    modal_logout: {
+      title: 'Confirm Sign Out',
+      body: 'Are you sure you want to sign out of <strong>Demo Order Service</strong>?',
+      note: 'Your session on this customer portal will end. This sign-out does not affect your active sessions on other applications.',
+      btn_cancel: 'Cancel (Esc)',
+      btn_confirm: 'Sign Out Now',
     },
     toasts: {
       oauth_redirect: 'Redirecting to sign-in provider...',
       signed_in: 'Welcome back,',
       signed_out: 'Signed out successfully.',
       not_enabled: 'This sign-in method is currently disabled. Please contact the administrator.',
+      sync_error: 'Failed to verify session with server. Please retry.',
     },
     status: {
       online: 'System Online',
@@ -38,9 +47,10 @@ const translations = {
       offline: 'System Offline',
     },
     profile: {
-      title: 'Account Profile',
-      user_id: 'User ID:',
+      title: 'Customer Profile (AppUser)',
+      user_id: 'User ID (AppUser):',
       provider: 'Provider:',
+      role: 'Role:',
       auth_status: 'Auth Status:',
       verified: 'Verified',
       integration_notice_title: 'Integration Successful:',
@@ -63,15 +73,24 @@ const translations = {
       subtitle: 'Đăng nhập nhanh chóng và bảo mật qua mạng xã hội',
       btn_google: 'Đăng nhập bằng Google',
       btn_facebook: 'Đăng nhập bằng Facebook',
+      footer_note: 'Xác thực trực tiếp qua luồng OAuth do Auth Service điều phối.',
     },
     btn: {
       sign_out: 'Đăng Xuất',
+    },
+    modal_logout: {
+      title: 'Xác Nhận Đăng Xuất',
+      body: 'Bạn có chắc chắn muốn đăng xuất khỏi <strong>Demo Order Service</strong> không?',
+      note: 'Phiên đăng nhập trên cổng khách hàng này sẽ kết thúc. Việc đăng xuất này không làm mất phiên đăng nhập của bạn trên các ứng dụng khác.',
+      btn_cancel: 'Hủy Bỏ (Esc)',
+      btn_confirm: 'Đăng Xuất Ngay',
     },
     toasts: {
       oauth_redirect: 'Đang chuyển hướng sang trang đăng nhập...',
       signed_in: 'Chào mừng trở lại,',
       signed_out: 'Đã đăng xuất thành công.',
       not_enabled: 'Phương thức này hiện chưa được mở. Vui lòng liên hệ quản trị viên.',
+      sync_error: 'Không thể xác thực phiên đăng nhập với máy chủ. Vui lòng thử lại.',
     },
     status: {
       online: 'Hệ Thống Trực Tuyến',
@@ -80,9 +99,10 @@ const translations = {
       offline: 'Ngoại Tuyến',
     },
     profile: {
-      title: 'Thông Tin Tài Khoản',
-      user_id: 'User ID:',
+      title: 'Thông Tin Khách Hàng (AppUser)',
+      user_id: 'User ID (AppUser):',
       provider: 'Phương Thức:',
+      role: 'Vai Trò:',
       auth_status: 'Xác Thực:',
       verified: 'Đã Xác Thực',
       integration_notice_title: 'Tích Hợp Thành Công:',
@@ -96,10 +116,15 @@ const translations = {
   }
 };
 
+// Evict any legacy token or cached user profile so it never interferes with session cookie authentication
+try {
+  localStorage.removeItem('demo_token');
+  localStorage.removeItem('demo_user');
+} catch {}
+
 const state = {
   lang: localStorage.getItem('demo_lang') || 'vi',
-  token: localStorage.getItem('demo_token') || null,
-  user: JSON.parse(localStorage.getItem('demo_user') || 'null'),
+  user: null, // Fail-closed: always initialize unauthenticated; authenticated state is rendered only after successful GET /auth/me with cookie
   providers: [],
   handshake: null,
   handshakeStatus: null,
@@ -161,7 +186,7 @@ function updateAuthUI() {
   const unauthView = document.getElementById('unauth-view');
   const authView = document.getElementById('auth-view');
 
-  if (state.token && state.user) {
+  if (state.user) {
     if (unauthView) unauthView.style.display = 'none';
     if (authView) authView.style.display = 'block';
 
@@ -179,6 +204,27 @@ function updateAuthUI() {
     if (providerEl) {
       const p = (state.user.provider || 'OAuth').toUpperCase();
       providerEl.textContent = p;
+      if (p === 'GOOGLE') {
+        providerEl.className = 'badge badge-google';
+      } else if (p === 'FACEBOOK') {
+        providerEl.className = 'badge badge-facebook';
+      } else {
+        providerEl.className = 'badge';
+      }
+    }
+
+    const roleEl = document.getElementById('user-role-display');
+    const ownerEl = document.getElementById('user-owner-badge');
+    if (roleEl) {
+      const r = state.user.appRole || state.user.role || 'USER';
+      roleEl.textContent = r === 'ADMIN'
+        ? (state.lang === 'vi' ? 'ADMIN' : 'ADMIN')
+        : (state.lang === 'vi' ? 'USER (Khách hàng)' : 'USER (Customer)');
+    }
+    if (ownerEl) {
+      const isOwner = Boolean(state.user.isAppOwner);
+      ownerEl.style.display = isOwner ? 'inline-flex' : 'none';
+      ownerEl.textContent = state.lang === 'vi' ? 'Chủ Ứng Dụng' : 'App Owner';
     }
 
     if (avatarEl) {
@@ -208,92 +254,107 @@ function updateAuthUI() {
 }
 
 /**
- * Synchronize user profile with Project 2 backend
+ * Synchronize user profile with Project 2 backend.
+ * Renders user as authenticated ONLY after successful GET /auth/me with cookie.
+ * On any failure (401, 5xx, or network error), keeps state unauthenticated (fail-closed).
  */
 async function syncUserProfile() {
-  if (!state.token) return;
-
   try {
     const res = await fetch(`${API_BASE}/auth/me`, {
-      headers: {
-        'Authorization': `Bearer ${state.token}`
-      }
+      credentials: 'include',
     });
 
     if (res.ok) {
       const data = await res.json();
       if (data && data.user) {
-        state.user = {
-          ...state.user,
-          ...data.user,
-        };
-        localStorage.setItem('demo_user', JSON.stringify(state.user));
+        state.user = data.user;
         updateAuthUI();
+        return state.user;
       }
     }
+
+    // Fail-closed: 401 (unauthenticated guest), 403, or 5xx server failure
+    state.user = null;
+    try {
+      localStorage.removeItem('demo_user');
+    } catch {}
+    updateAuthUI();
+
+    if (res.status >= 500) {
+      showToast(t('toasts.sync_error'), 'error');
+    }
+    return null;
   } catch (err) {
     console.warn('Failed to sync profile with Project 2:', err.message);
+    state.user = null;
+    try {
+      localStorage.removeItem('demo_user');
+    } catch {}
+    updateAuthUI();
+    showToast(t('toasts.sync_error'), 'error');
+    return null;
   }
 }
 
 async function handleUrlCallback() {
   const params = new URLSearchParams(window.location.search);
-  const code = params.get('code');
-  if (!code && !params.has('error')) return;
-  const expectedState = sessionStorage.getItem('login_state');
-  const verifier = sessionStorage.getItem('oauth_verifier');
-  sessionStorage.removeItem('login_state');
-  sessionStorage.removeItem('oauth_verifier');
-  window.history.replaceState({}, document.title, window.location.pathname);
   if (params.has('error')) {
     const err = params.get('error');
+    window.history.replaceState({}, document.title, window.location.pathname);
     showToast(
       err === 'oauth_cancelled'
         ? (state.lang === 'vi' ? 'Đã hủy đăng nhập qua nhà cung cấp.' : 'Sign-in cancelled by user.')
-        : (state.lang === 'vi' ? 'Đăng nhập qua nhà cung cấp thất bại.' : 'Sign-in failed.'),
+        : (state.lang === 'vi' ? `Đăng nhập qua nhà cung cấp thất bại: ${err}` : `Sign-in failed: ${err}`),
       'error'
     );
-    return;
-  }
-  if (!code || !expectedState || params.get('state') !== expectedState || !verifier) {
-    showToast('Phiên đăng nhập không hợp lệ. Vui lòng thử lại.', 'error');
-    return;
-  }
-  try {
-    const response = await fetch(`${API_BASE}/auth/exchange`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, verifier }),
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.message || 'Không thể hoàn tất đăng nhập.');
-    state.token = result.accessToken;
-    state.user = result.user;
-    localStorage.setItem('demo_token', state.token);
-    localStorage.setItem('demo_user', JSON.stringify(state.user));
-    await syncUserProfile();
-    updateAuthUI();
-    showToast(t('toasts.signed_in'));
-  } catch (error) {
-    showToast(error.message || 'Không thể kết nối máy chủ.', 'error');
   }
 }
 
-function logout() {
-  state.token = null;
-  state.user = null;
-  localStorage.removeItem('demo_token');
-  localStorage.removeItem('demo_user');
+function openLogoutModal() {
+  const modal = document.getElementById('logout-modal');
+  if (modal) modal.style.display = 'flex';
+}
 
-  const resultEl = document.getElementById('api-test-result');
-  const statusEl = document.getElementById('api-test-status');
-  if (resultEl) {
-    resultEl.style.display = 'none';
-    resultEl.textContent = '';
+function closeLogoutModal() {
+  const modal = document.getElementById('logout-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function confirmLogout() {
+  closeLogoutModal();
+  return logout();
+}
+
+async function logout() {
+  try {
+    const res = await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.message || (state.lang === 'vi' ? 'Đăng xuất thất bại.' : 'Sign out failed.'));
+    }
+
+    state.user = null;
+    localStorage.removeItem('demo_user');
+    localStorage.removeItem('demo_token');
+
+    const resultEl = document.getElementById('api-test-result');
+    const statusEl = document.getElementById('api-test-status');
+    if (resultEl) {
+      resultEl.style.display = 'none';
+      resultEl.textContent = '';
+    }
+    if (statusEl) statusEl.textContent = '';
+
+    updateAuthUI();
+    showToast(t('toasts.signed_out'));
+  } catch (err) {
+    console.warn('Logout request failed:', err.message);
+    showToast(err.message || (state.lang === 'vi' ? 'Đăng xuất thất bại.' : 'Sign out failed.'), 'error');
   }
-  if (statusEl) statusEl.textContent = '';
-
-  updateAuthUI();
-  showToast(t('toasts.signed_out'));
 }
 
 async function testProtectedApi() {
@@ -301,7 +362,7 @@ async function testProtectedApi() {
   const resultEl = document.getElementById('api-test-result');
   const btn = document.getElementById('btn-test-protected-api');
 
-  if (!state.token) {
+  if (!state.user) {
     showToast(state.lang === 'vi' ? 'Vui lòng đăng nhập trước.' : 'Please sign in first.', 'error');
     return;
   }
@@ -311,9 +372,7 @@ async function testProtectedApi() {
 
   try {
     const res = await fetch(`${API_BASE}/auth/protected`, {
-      headers: {
-        'Authorization': `Bearer ${state.token}`
-      }
+      credentials: 'include',
     });
 
     const data = await res.json().catch(() => ({}));
@@ -377,23 +436,9 @@ async function loginWithProvider(provider = 'google') {
   if (googleBtn) googleBtn.disabled = true;
   if (fbBtn) fbBtn.disabled = true;
   try {
-    if (!crypto?.subtle) throw new Error('Cần sử dụng HTTPS hoặc localhost để đăng nhập.');
-    const random = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
-    const verifier = random();
-    const clientState = random();
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
-    const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    sessionStorage.setItem('oauth_verifier', verifier);
-    sessionStorage.setItem('login_state', clientState);
-    const response = await fetch(`${API_BASE}/auth/start`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider, codeChallenge, state: clientState }),
-    });
-    const result = await response.json();
-    if (!response.ok || !result.authorizeUrl) throw new Error(result.message || 'Không thể mở trang đăng nhập.');
-    window.location.assign(result.authorizeUrl);
+    showToast(t('toasts.oauth_redirect'));
+    window.location.assign(`${API_BASE}/auth/login/${encodeURIComponent(provider.toLowerCase())}`);
   } catch (error) {
-    sessionStorage.removeItem('oauth_verifier'); sessionStorage.removeItem('login_state');
     state.oauthBusy = false;
     if (button) button.disabled = false;
     renderProvidersList(state.providers);
@@ -420,6 +465,8 @@ async function refreshProviders() {
 function renderProvidersList(providers) {
   const googleBtn = document.getElementById('btn-oauth-google');
   const fbBtn = document.getElementById('btn-oauth-facebook');
+  const googleNote = document.getElementById('google-disabled-note');
+  const fbNote = document.getElementById('facebook-disabled-note');
 
   const googleProv = (providers || []).find(p => (p.provider || '').toLowerCase() === 'google');
   const fbProv = (providers || []).find(p => (p.provider || '').toLowerCase() === 'facebook');
@@ -429,6 +476,9 @@ function renderProvidersList(providers) {
     googleBtn.disabled = !isGoogleEnabled;
     if (googleBtn.style) googleBtn.style.opacity = isGoogleEnabled ? '1' : '0.45';
     googleBtn.title = isGoogleEnabled ? t('auth.btn_google') : t('toasts.not_enabled');
+    if (googleNote) {
+      googleNote.style.display = isGoogleEnabled ? 'none' : 'block';
+    }
   }
 
   if (fbBtn) {
@@ -436,8 +486,17 @@ function renderProvidersList(providers) {
     fbBtn.disabled = !isFbEnabled;
     if (fbBtn.style) fbBtn.style.opacity = isFbEnabled ? '1' : '0.45';
     fbBtn.title = isFbEnabled ? t('auth.btn_facebook') : t('toasts.not_enabled');
+    if (fbNote) {
+      fbNote.style.display = isFbEnabled ? 'none' : 'block';
+    }
   }
 }
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeLogoutModal();
+  }
+});
 
 function updateHandshakeUI() {
   const dot = document.getElementById('handshake-dot');
@@ -501,7 +560,5 @@ window.addEventListener('DOMContentLoaded', async () => {
   updateAuthUI();
   await checkHandshake();
   await refreshProviders();
-  if (state.token) {
-    await syncUserProfile();
-  }
+  await syncUserProfile();
 });

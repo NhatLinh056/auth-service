@@ -14,6 +14,8 @@ import {
 } from '@nestjs/swagger';
 import { Role } from '../generated/prisma/enums.js';
 import { Auth } from '../common/decorators/auth.decorator.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import type { JwtPayload } from '../common/strategies/jwt.strategy.js';
 import { AssignRoleDto } from './dto/assign-role.dto.js';
 import { RolesService } from './roles.service.js';
 
@@ -38,11 +40,14 @@ export class RolesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Gán hoặc thay đổi vai trò của người dùng (Chỉ Platform ADMIN)' })
   @ApiResponse({ status: 200, description: 'Gán vai trò thành công' })
-  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ (role sai hoặc userId không phải UUID)' })
+  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ hoặc vi phạm quy tắc an toàn (tự hạ quyền, hạ admin cuối)' })
   @ApiResponse({ status: 401, description: 'Chưa xác thực' })
   @ApiResponse({ status: 403, description: 'Không có quyền truy cập (chỉ dành cho Platform ADMIN)' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng với ID này' })
-  assignRole(@Body() assignRoleDto: AssignRoleDto) {
-    return this.rolesService.assignRole(assignRoleDto);
+  assignRole(
+    @Body() assignRoleDto: AssignRoleDto,
+    @CurrentUser() currentUser: JwtPayload,
+  ) {
+    return this.rolesService.assignRole(assignRoleDto, currentUser);
   }
 }

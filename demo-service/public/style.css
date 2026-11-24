@@ -775,6 +775,18 @@ body {
   border: 1px solid rgba(99, 102, 241, 0.25);
 }
 
+.badge-google {
+  background: rgba(66, 133, 244, 0.15);
+  color: #4285f4;
+  border: 1px solid rgba(66, 133, 244, 0.3);
+}
+
+.badge-facebook {
+  background: rgba(24, 119, 242, 0.15);
+  color: #1877f2;
+  border: 1px solid rgba(24, 119, 242, 0.3);
+}
+
 .badge-success {
   background: var(--success-subtle);
   color: var(--success);

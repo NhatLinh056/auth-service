@@ -55,6 +55,8 @@ describe('ApplicationsService', () => {
     },
     appUser: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
+      delete: vi.fn(),
     },
   };
 
@@ -577,7 +579,7 @@ describe('ApplicationsService', () => {
       };
 
       mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
-      mockPrismaService.application.update.mockImplementation(({ where, data }) =>
+      mockPrismaService.application.update.mockImplementation(({ where: _where, data }) =>
         Promise.resolve({
           ...mockApplication,
           appToken: data.appToken,
@@ -606,7 +608,7 @@ describe('ApplicationsService', () => {
       };
 
       mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
-      mockPrismaService.application.update.mockImplementation(({ where, data }) =>
+      mockPrismaService.application.update.mockImplementation(({ where: _where, data }) =>
         Promise.resolve({
           ...mockApplication,
           appToken: data.appToken,
@@ -660,6 +662,7 @@ describe('ApplicationsService', () => {
       email: 'customer@external.com',
       role: Role.USER,
       avatarUrl: null,
+      lastLoginMethod: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -667,6 +670,7 @@ describe('ApplicationsService', () => {
     const expectedAppUser = {
       ...mockDbAppUser,
       provider: null,
+      lastLoginMethod: null,
     };
 
     it('should return app users with provider: null (data minimization) when caller is App Owner', async () => {
@@ -688,9 +692,33 @@ describe('ApplicationsService', () => {
         orderBy: { createdAt: 'desc' },
       });
       expect(result[0].provider).toBeNull();
+      expect(result[0].lastLoginMethod).toBeNull();
       expect(result[0]).not.toHaveProperty('user');
       expect(result[0]).not.toHaveProperty('application');
       expect(result[0]).not.toHaveProperty('identities');
+    });
+
+    it('should return app user with verified lastLoginMethod (e.g. GOOGLE)', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+        type: 'platform',
+      };
+
+      const oauthAppUser = {
+        ...mockDbAppUser,
+        id: 'app-user-oauth',
+        lastLoginMethod: 'GOOGLE',
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+      (mockPrismaService.appUser as any).findMany.mockResolvedValue([oauthAppUser]);
+
+      const result = await service.getAppUsers(mockApplication.id, currentUser);
+
+      expect(result[0].provider).toBe('GOOGLE');
+      expect(result[0].lastLoginMethod).toBe('GOOGLE');
     });
 
     it('should return app users when caller is System Admin', async () => {
@@ -742,6 +770,72 @@ describe('ApplicationsService', () => {
       ).rejects.toThrow(NotFoundException);
 
       expect(mockPrismaService.appUser.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteAppUser', () => {
+    const mockDbAppUser = {
+      id: 'app-user-uuid-1',
+      applicationId: mockApplication.id,
+      userId: mockUser.id,
+      email: 'customer@example.com',
+      name: 'Customer One',
+      role: Role.USER,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('should delete app user successfully when authorized', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+        type: 'platform',
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+      (mockPrismaService.appUser as any).findFirst.mockResolvedValue(mockDbAppUser);
+      (mockPrismaService.appUser as any).delete.mockResolvedValue(mockDbAppUser);
+
+      const result = await service.deleteAppUser(mockApplication.id, mockDbAppUser.id, currentUser);
+
+      expect(result).toEqual({ message: 'Xóa người dùng khỏi ứng dụng thành công' });
+      expect((mockPrismaService.appUser as any).delete).toHaveBeenCalledWith({
+        where: { id: mockDbAppUser.id },
+      });
+    });
+
+    it('should throw NotFoundException if appUser is not in the application', async () => {
+      const currentUser: JwtPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        role: Role.USER,
+        type: 'platform',
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+      (mockPrismaService.appUser as any).findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.deleteAppUser(mockApplication.id, 'non-existent-user', currentUser),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException if user is not application owner and not admin', async () => {
+      const otherUser: JwtPayload = {
+        sub: 'other-user-uuid',
+        email: 'other@example.com',
+        role: Role.USER,
+        type: 'platform',
+      };
+
+      mockPrismaService.application.findUnique.mockResolvedValue(mockApplication);
+
+      await expect(
+        service.deleteAppUser(mockApplication.id, mockDbAppUser.id, otherUser),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect((mockPrismaService.appUser as any).delete).not.toHaveBeenCalled();
     });
   });
 });

@@ -16,7 +16,7 @@ export interface AccountLinkProof {
 export class SharedIdentityService {
   constructor(private readonly prisma: PrismaService, private readonly jwt: JwtService) {}
 
-  async membershipForUser(userId: string, appId: string, expectedMembershipId?: string) {
+  async membershipForUser(userId: string, appId: string, expectedMembershipId?: string, loginMethod?: string) {
     for (let attempt = 0; ; attempt++) {
       try {
         return await this.prisma.$transaction(async db => {
@@ -29,11 +29,21 @@ export class SharedIdentityService {
           if (!member) {
             const legacy = await db.appUser.findUnique({ where: { applicationId_email: { applicationId: app.id, email: user.email } } });
             if (legacy) throw new ConflictException('Cần đăng nhập bằng phương thức OAuth ban đầu để xác minh thành viên cũ');
-            member = await db.appUser.create({ data: { applicationId: app.id, userId, email: user.email, name: user.name, role } });
-          } else if (member.role !== Role.USER) {
-            member = await db.appUser.update({ where: { id: member.id }, data: { role: Role.USER } });
+            member = await db.appUser.create({ data: { applicationId: app.id, userId, email: user.email, name: user.name, role, lastLoginMethod: loginMethod || null } });
+          } else {
+            const updateData: { role?: Role; lastLoginMethod?: string } = {};
+            if (member.role !== Role.USER) updateData.role = Role.USER;
+            if (loginMethod && member.lastLoginMethod !== loginMethod) updateData.lastLoginMethod = loginMethod;
+            if (Object.keys(updateData).length > 0) {
+              member = await db.appUser.update({ where: { id: member.id }, data: updateData });
+            }
           }
-          return { id: member.id, userId, email: user.email, name: user.name, role: Role.USER, avatarUrl: member.avatarUrl, tenantId: user.tenantId };
+          return {
+            id: member.id, userId, email: user.email, name: user.name, role: Role.USER,
+            avatarUrl: member.avatarUrl, tenantId: user.tenantId,
+            lastLoginMethod: member.lastLoginMethod || loginMethod || null,
+            provider: member.lastLoginMethod || loginMethod || null,
+          };
         }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
       } catch (error) {
         if (attempt < 3 && (isTransactionConflict(error) || error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) {
@@ -132,14 +142,16 @@ export class SharedIdentityService {
           }
           const role = Role.USER;
           membership = membership
-            ? await tx.appUser.update({ where: { id: membership.id }, data: { userId: user.id, role: Role.USER } })
+            ? await tx.appUser.update({ where: { id: membership.id }, data: { userId: user.id, role: Role.USER, lastLoginMethod: provider } })
             : await tx.appUser.create({ data: {
               applicationId: app.id, userId: user.id, email: user.email,
               name: user.name, avatarUrl: profile.avatarUrl, role: Role.USER,
+              lastLoginMethod: provider,
             } });
           return {
             id: membership.id, userId: user.id, email: user.email, name: user.name,
             role, avatarUrl: profile.avatarUrl || membership.avatarUrl, provider,
+            lastLoginMethod: membership.lastLoginMethod || provider,
           };
         }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 });
       } catch (error) {
