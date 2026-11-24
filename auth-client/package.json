@@ -1,0 +1,58 @@
+{
+  "name": "auth-service-client",
+  "version": "1.1.0",
+  "description": "Lightweight Node.js client SDK for Auth Service integration",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./nest": {
+      "types": "./dist/nest/index.d.ts",
+      "import": "./dist/nest/index.js",
+      "default": "./dist/nest/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:smoke": "node test-quickstart-nest-smoke.mjs",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "auth",
+    "oauth",
+    "microservices",
+    "sdk"
+  ],
+  "author": "",
+  "license": "ISC",
+  "peerDependencies": {
+    "@nestjs/common": "^10.0.0 || ^11.0.0 || ^12.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/common": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@nestjs/common": "^12.6.0",
+    "@nestjs/core": "^12.6.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.0.0",
+    "express": "^5.3.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
+  }
+}

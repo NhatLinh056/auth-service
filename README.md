@@ -23,7 +23,7 @@ Kiến trúc định danh tập trung (Centralized Identity Provider) và ứng 
 | **Quản lý Ứng dụng** | Port 3000 | `/applications`, `/applications/:id/auth-methods` (Google / Facebook) | [App API](auth-service/README.md#3-quản-lý-cấu-hình-ứng-dụng-khách-developer-applications) |
 | **Doanh nghiệp (Multi-tenant)** | Port 3000 | `/tenants`, `/tenants/:id/transfer`, `/tenants/join`, `/tenants/audit` | [Tenant API](auth-service/README.md#4-quản-lý-doanh-nghiệp--thành-viên-multi-tenant--memberships) |
 | **Quản trị Nền tảng** | Port 3000 | `/users`, `/tenants/:id/admin-transfer`, `/tenants/audit` | [Admin API](auth-service/README.md#5-quản-trị-hệ-thống-system-admin-platform-control) |
-| **Ứng dụng Khách Demo** | Port 3001 | `/status`, `/auth/providers`, `/auth/start`, `/auth/exchange`, `/auth/protected` | [Demo API](demo-service/README.md#bảng-tra-cứu-api) |
+| **Ứng dụng Khách Demo** | Port 3001 | `/status`, `/auth/providers`, `/auth/start`, `/auth/exchange`, `/auth/protected` | [Demo API](demo-service/README.md#1-hiện-trạng-vận-hành-hiện-tại-current-as-is) |
 
 ---
 

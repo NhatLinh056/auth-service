@@ -1,28 +1,43 @@
 # Demo Service
 
-Ứng dụng khách (Client Microservice) tích hợp xác thực ủy quyền với Auth Service (Project 1). Dịch vụ không lưu database người dùng riêng hay mật khẩu.
+Ứng dụng khách mẫu độc lập (Canonical Independent NestJS Sample) tích hợp xác thực ủy quyền với Auth Service (Project 1) bằng bộ SDK chính thức `auth-service-client/nest`.
+
+Dịch vụ tuân thủ nghiêm ngặt Hiến pháp kiến trúc v2.0: **hoàn toàn không lưu database người dùng riêng**, không lưu mật khẩu, không có logic nghiệp vụ thương mại giả lập (0 mock commerce), và không lặp lại mã HTTP/axios thủ công.
 
 - **Portal:** http://localhost:3001
 - **Handshake Status:** http://localhost:3001/status
-- **API Bảo vệ minh họa:** `GET /auth/protected` (Yêu cầu Bearer JWT)
+- **API Bảo vệ minh họa:** `GET /auth/protected` (Bảo vệ bằng `AuthGuard` từ SDK, chấp nhận Bearer JWT hoặc session cookie)
 
-## Bảng Tra cứu API
+---
 
-| Phương thức | Endpoint | Xác thực | Chức năng |
-|---|---|---|---|
-| `GET` | `/status` | Public | Handshake xác thực kết nối Microservice với Auth Service (`X-App-Id`, `X-App-Token`) |
-| `GET` | `/auth/providers` | Public | Lấy danh sách phương thức OAuth đang bật từ Auth Service |
-| `POST` | `/auth/start` | Public | Khởi tạo phiên đăng nhập OAuth kèm PKCE challenge và state |
-| `POST` | `/auth/exchange` | Public | Đổi mã dùng một lần (code + verifier) lấy JWT phiên ứng dụng |
-| `GET` | `/auth/protected` | Bearer (App User) | API bảo vệ minh họa xác thực token qua `UserAuthGuard` |
+## 1. Kiến trúc Tích hợp NestJS Mẫu
 
-## Đặc tả Kỹ thuật Cốt lõi
+Ứng dụng tiêu thụ trực tiếp adapter NestJS chính thức từ SDK (`auth-service-client/nest`):
+- **Đăng ký Module:** `AuthModule.forRootAsync({ ... })` nạp cấu hình `appId`, `appToken`, `authServiceUrl`, và origin tin cậy `publicAppUrl`.
+- **Bảo vệ API:** Sử dụng `@UseGuards(AuthGuard)` và decorator `@CurrentUser()`. Hỗ trợ cả Bearer token (miễn nhiễm CSRF) lẫn cookie phiên (tự động kiểm tra Origin / Fetch Metadata trên các thao tác đột biến).
+- **Handshake Microservice:** Gọi trực tiếp `authClient.verifyService()` để xác thực trạng thái kết nối server-to-server (`GET /status`).
+- **Direct OAuth Broker & Logout Tự động:** Các route direct login (`/auth/login/google`, `/auth/login/facebook`), callback (`/auth/callback`), và đăng xuất an toàn (`POST /auth/logout`) được tự động cung cấp bởi adapter SDK.
 
-- **Delegated Authentication (Xác thực ủy quyền):** Mọi thao tác kiểm tra chữ ký token và định danh người dùng đều được ủy thác cho Auth Service qua `auth-client` module.
-- **Bảo mật OAuth 2.0:** Sử dụng PKCE S256 và browser-bound state chống tấn công CSRF và chặn bắt mã ủy quyền; tuyệt đối không truyền JWT qua URL.
-- **Service-to-Service Trust:** Giao tiếp nội bộ được bảo vệ bởi cặp khóa `AppID` và `AppToken` (256-bit entropy).
+---
 
-## Khởi chạy
+## 2. Bảng Tra cứu API
+
+| Phương thức | Endpoint | Xác thực | Nguồn cung cấp | Chức năng |
+|---|---|---|---|---|
+| `GET` | `/status` | Public | `DemoController` | Handshake kiểm tra kết nối với Auth Service qua `authClient.verifyService()` |
+| `GET` | `/auth/providers` | Public | `DemoController` | Lấy danh sách provider OAuth đang bật qua `authClient.getProviders()` |
+| `GET` | `/auth/login/google` | Public | SDK `AuthCallbackController` | Direct OAuth Broker: chuyển hướng thẳng tới Google |
+| `GET` | `/auth/login/facebook` | Public | SDK `AuthCallbackController` | Direct OAuth Broker: chuyển hướng thẳng tới Facebook |
+| `GET` | `/auth/callback` | Public | SDK `AuthCallbackController` | Callback trao đổi mã authorization code và cấp cookie `app_session` |
+| `POST` | `/auth/logout` | Public (Chống CSRF) | SDK `AuthCallbackController` | Đăng xuất an toàn: kiểm tra Origin, xóa cookie phiên `app_session` và `auth_tx` |
+| `POST` | `/auth/start` | Public | `DemoController` | Khởi tạo phiên đăng nhập OAuth cho giao diện web portal |
+| `POST` | `/auth/exchange` | Public | `DemoController` | Đổi mã code lấy token cho giao diện web portal |
+| `GET` | `/auth/protected` | `AuthGuard` | `DemoController` | API bảo vệ minh họa xác thực token trực tuyến qua Auth Service (Fail-closed) |
+| `GET` | `/auth/me` | `AuthGuard` | `DemoController` | Lấy thông tin tài khoản người dùng hiện hành qua decorator `@CurrentUser()` |
+
+---
+
+## 3. Khởi chạy Ứng dụng
 
 ```powershell
 # Cài phụ thuộc và tạo file .env

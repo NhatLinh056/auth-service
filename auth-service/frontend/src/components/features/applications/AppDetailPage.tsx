@@ -220,7 +220,7 @@ export const AppDetailPage: React.FC<AppDetailPageProps> = ({
         <button
           type="button"
           className="btn btn-secondary btn-sm"
-          onClick={() => navigate(`/console/quickstart?appId=${app.id}`)}
+          onClick={() => navigate(`/console/quickstart?appId=${app.appId || app.id}`)}
           id="btn-go-to-quickstart"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32 }}
         >

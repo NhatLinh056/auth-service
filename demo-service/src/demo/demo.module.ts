@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { OrdersController } from './orders.controller.js';
+import { DemoController } from './demo.controller.js';
 import { AuthClientModule } from '../auth-client/auth-client.module.js';
 
 @Module({
   imports: [AuthClientModule],
-  controllers: [OrdersController],
+  controllers: [DemoController],
 })
-export class OrdersModule {}
+export class DemoModule {}

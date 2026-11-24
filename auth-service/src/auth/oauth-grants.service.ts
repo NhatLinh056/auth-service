@@ -19,7 +19,7 @@ export class OAuthGrantsService {
     }
     if (this.grants.size >= 10000) throw new UnauthorizedException('Login capacity exceeded');
     const code = randomBytes(32).toString('base64url');
-    this.grants.set(code, { result, appId, challenge, expiresAt: Date.now() + 300000, attempts: 0, busy: false });
+    this.grants.set(code, { result, appId, challenge, expiresAt: Date.now() + 60000, attempts: 0, busy: false });
     return code;
   }
 

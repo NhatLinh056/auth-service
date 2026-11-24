@@ -50,26 +50,27 @@ export class UsersController {
     return safeUser;
   }
 
-  // GET /users — Lấy danh sách tất cả người dùng (dành riêng cho ADMIN)
+  // GET /users/verify-app-user
   @Get('verify-app-user')
   @UseGuards(JwtAuthGuard, AppAuthGuard)
   async verifyAppUser(@Request() req: RequestWithUser & { application: any }) {
     const app = req.application;
     const identity = req.user;
-    if (identity.type === 'app_user' && identity.appId !== app.appId) {
+    if (identity.type !== 'app_user') {
+      throw new ForbiddenException('Application-scoped token required');
+    }
+    if (identity.appId !== app.appId) {
       throw new ForbiddenException('Token belongs to another application');
     }
     const user = await this.usersService.findById(identity.sub, identity.type);
     if (!user) throw new NotFoundException('User not found');
-    if (identity.type === 'app_user' && user.appId !== app.appId) {
+    if (user.appId !== app.appId) {
       throw new ForbiddenException('User belongs to another application');
     }
     const email = (user.email || '').trim().toLowerCase();
     void email;
     // Password registration does not verify email ownership.
-    const isOwner = identity.type === 'platform'
-      ? user.id === app.userId
-      : user.userId === app.userId;
+    const isOwner = user.userId === app.userId;
     const { passwordHash, ...profile } = user;
     void passwordHash;
     // AppUser role is scoped; do NOT auto-grant ADMIN from App Owner or adminEmails
