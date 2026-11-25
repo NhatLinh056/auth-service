@@ -1,16 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { apiClient } from '../../services/api.client';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 import { StatusPill } from '../common/StatusPill';
 import { PasswordInput } from '../common/PasswordInput';
+import { IconBrandMark } from '../common/Icons';
 
 export const AuthScreen: React.FC = () => {
   const { login, register } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   const [mode, setMode] = useState<'signin' | 'register'>('signin');
   const [loading, setLoading] = useState(false);
+  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+
+  useEffect(() => {
+    let active = true;
+    apiClient<{ status: string }>('/health')
+      .then((res) => {
+        if (active) setApiStatus(res?.status === 'ok' ? 'online' : 'offline');
+      })
+      .catch(() => {
+        if (active) setApiStatus('offline');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Form states
   const [loginEmail, setLoginEmail] = useState('');
@@ -52,27 +69,26 @@ export const AuthScreen: React.FC = () => {
     <div id="auth-view" className="auth-screen">
       {/* Top-Right Bar: Status & Language Switcher */}
       <div className="auth-topbar">
-        <StatusPill label={t('nav.api_online')} />
+        <StatusPill
+          label={
+            apiStatus === 'checking'
+              ? (lang === 'vi' ? 'Đang kiểm tra…' : 'Checking…')
+              : apiStatus === 'online'
+              ? t('nav.api_online')
+              : (lang === 'vi' ? 'Mất kết nối' : 'Offline')
+          }
+          variant={apiStatus === 'online' ? 'success' : apiStatus === 'offline' ? 'danger' : 'warning'}
+        />
         <LanguageSwitcher idPrefix="auth" />
       </div>
 
       {/* Centered Auth Card */}
-      <div className="auth-card">
+      <div className="auth-card page-enter">
+        {loading && <div className="card-loading-bar" aria-hidden="true" />}
         {/* Brand Header */}
         <div className="auth-header">
-          <div className="auth-brand-icon">
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
+          <div className="auth-brand-icon" aria-hidden="true">
+            <IconBrandMark size={22} strokeWidth={2} />
           </div>
           <h1 className="auth-title">Auth Service</h1>
           <p className="auth-subtitle">{t('auth_screen.subtitle')}</p>
@@ -84,6 +100,7 @@ export const AuthScreen: React.FC = () => {
             type="button"
             className={`auth-tab ${mode === 'signin' ? 'active' : ''}`}
             id="auth-tab-signin"
+            disabled={loading}
             onClick={() => setMode('signin')}
           >
             {t('auth_screen.tab_signin')}
@@ -92,6 +109,7 @@ export const AuthScreen: React.FC = () => {
             type="button"
             className={`auth-tab ${mode === 'register' ? 'active' : ''}`}
             id="auth-tab-register"
+            disabled={loading}
             onClick={() => setMode('register')}
           >
             {t('auth_screen.tab_register')}
@@ -102,7 +120,7 @@ export const AuthScreen: React.FC = () => {
         {mode === 'signin' && (
           <form id="auth-signin-form" onSubmit={handleLoginSubmit}>
             <div className="form-group">
-              <label className="form-label">{t('login.email')}</label>
+              <label className="form-label" htmlFor="auth-login-email">{t('login.email')}</label>
               <input
                 type="email"
                 className="form-control"
@@ -116,13 +134,14 @@ export const AuthScreen: React.FC = () => {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">{t('login.password')}</label>
+              <label className="form-label" htmlFor="auth-login-password">{t('login.password')}</label>
               <PasswordInput
                 id="auth-login-password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 required
                 autoComplete="current-password"
+                disabled={loading}
               />
             </div>
             <button
@@ -131,8 +150,10 @@ export const AuthScreen: React.FC = () => {
               className="btn btn-primary btn-block"
               style={{ marginTop: 18 }}
               disabled={loading}
+              aria-busy={loading}
             >
-              <span>{loading ? '...' : t('auth_screen.signin_btn')}</span>
+              {loading && <span className="btn-spinner" aria-hidden="true" />}
+              <span>{loading ? t('auth_screen.signing_in') : t('auth_screen.signin_btn')}</span>
             </button>
           </form>
         )}
@@ -141,7 +162,7 @@ export const AuthScreen: React.FC = () => {
         {mode === 'register' && (
           <form id="auth-register-form" onSubmit={handleRegisterSubmit}>
             <div className="form-group">
-              <label className="form-label">{t('register.name')}</label>
+              <label className="form-label" htmlFor="auth-reg-name">{t('register.name')}</label>
               <input
                 type="text"
                 className="form-control"
@@ -154,7 +175,7 @@ export const AuthScreen: React.FC = () => {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">{t('login.email')}</label>
+              <label className="form-label" htmlFor="auth-reg-email">{t('login.email')}</label>
               <input
                 type="email"
                 className="form-control"
@@ -168,7 +189,7 @@ export const AuthScreen: React.FC = () => {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">{t('register.password')}</label>
+              <label className="form-label" htmlFor="auth-reg-password">{t('register.password')}</label>
               <PasswordInput
                 id="auth-reg-password"
                 value={regPassword}
@@ -176,6 +197,7 @@ export const AuthScreen: React.FC = () => {
                 required
                 minLength={6}
                 autoComplete="new-password"
+                disabled={loading}
               />
             </div>
             <button
@@ -184,8 +206,10 @@ export const AuthScreen: React.FC = () => {
               className="btn btn-primary btn-block"
               style={{ marginTop: 18 }}
               disabled={loading}
+              aria-busy={loading}
             >
-              <span>{loading ? '...' : t('auth_screen.register_btn')}</span>
+              {loading && <span className="btn-spinner" aria-hidden="true" />}
+              <span>{loading ? t('auth_screen.registering') : t('auth_screen.register_btn')}</span>
             </button>
           </form>
         )}

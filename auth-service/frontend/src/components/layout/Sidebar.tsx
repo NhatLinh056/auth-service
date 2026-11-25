@@ -2,22 +2,33 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { IconBrandMark, IconShield, IconUser, IconX } from '../common/Icons';
 
 interface SidebarProps {
   collapsed: boolean;
+  mobileOpen?: boolean;
   onToggleCollapse: () => void;
+  onCloseMobile?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  collapsed,
+  mobileOpen = false,
+  onToggleCollapse,
+  onCloseMobile,
+}) => {
   const { user, isAdmin } = useAuth();
   const { t } = useLanguage();
+  const isCompactDesktop = collapsed && !mobileOpen;
 
   return (
-    <aside className={`app-sidebar ${collapsed ? 'collapsed' : ''}`} id="app-sidebar">
+    <aside className={`app-sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`} id="app-sidebar">
       {/* Brand Header */}
       <div className="sidebar-brand">
-        <div className="sidebar-logo">AS</div>
-        {!collapsed && (
+        <div className="sidebar-logo" aria-hidden="true">
+          <IconBrandMark size={17} strokeWidth={2} />
+        </div>
+        {!isCompactDesktop && (
           <div className="sidebar-brand-text">
             <span>Auth Service</span>
             <span className="brand-badge">{t('nav.console')}</span>
@@ -45,6 +56,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
             <polyline points="18 17 13 12 18 7" />
           </svg>
         </button>
+        <button
+          type="button"
+          className="sidebar-mobile-close-btn"
+          onClick={onCloseMobile}
+          aria-label={t('modal.close')}
+        >
+          <IconX size={16} />
+        </button>
       </div>
 
       {/* Navigation Menu */}
@@ -55,8 +74,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
         <NavLink
           to="/console/dashboard"
           className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
-          title={collapsed ? t('nav.dashboard') : undefined}
+          title={isCompactDesktop ? t('nav.dashboard') : undefined}
           id="nav-link-dashboard"
+          onClick={() => onCloseMobile?.()}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="7" height="7" />
@@ -70,8 +90,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
         <NavLink
           to="/console/applications"
           className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
-          title={collapsed ? t('nav.apps') : undefined}
+          title={isCompactDesktop ? t('nav.apps') : undefined}
           id="nav-link-applications"
+          onClick={() => onCloseMobile?.()}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
@@ -82,8 +103,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
         <NavLink
           to="/console/quickstart"
           className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
-          title={collapsed ? t('nav.quickstart') : undefined}
+          title={isCompactDesktop ? t('nav.quickstart') : undefined}
           id="nav-link-quickstart"
+          onClick={() => onCloseMobile?.()}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
@@ -95,8 +117,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
         <NavLink
           to="/console/my-tenant"
           className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
-          title={collapsed ? t('nav.tenants') : undefined}
+          title={isCompactDesktop ? t('nav.tenants') : undefined}
           id="nav-link-my-tenant"
+          onClick={() => onCloseMobile?.()}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -113,8 +136,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
             <NavLink
               to="/console/admin/users"
               className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
-              title={collapsed ? t('nav.admin_users') : undefined}
+              title={isCompactDesktop ? t('nav.admin_users') : undefined}
               id="nav-link-admin-users"
+              onClick={() => onCloseMobile?.()}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -128,8 +152,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
             <NavLink
               to="/console/admin/tenants"
               className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
-              title={collapsed ? t('nav.admin_tenants') : undefined}
+              title={isCompactDesktop ? t('nav.admin_tenants') : undefined}
               id="nav-link-admin-tenants"
+              onClick={() => onCloseMobile?.()}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
@@ -145,8 +170,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
         <NavLink
           to="/console/account"
           className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
-          title={collapsed ? t('nav.account') : undefined}
+          title={isCompactDesktop ? t('nav.account') : undefined}
           id="nav-link-account"
+          onClick={() => onCloseMobile?.()}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -160,11 +186,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
       {user && (
         <div className="sidebar-footer">
           <div className={`sidebar-role-badge ${isAdmin ? 'is-admin' : ''}`}>
-            {collapsed ? (
-              <span title={isAdmin ? 'Super Admin' : 'User'}>{isAdmin ? '★' : '●'}</span>
+            {isCompactDesktop ? (
+              isAdmin ? <IconShield size={14} ariaLabel="Super Admin" /> : <IconUser size={14} ariaLabel="User" />
             ) : (
               <>
-                <span className="role-dot" />
+                <span className="role-dot" aria-hidden="true" />
                 <span className="role-text">{isAdmin ? 'SUPER ADMIN' : 'USER'}</span>
               </>
             )}

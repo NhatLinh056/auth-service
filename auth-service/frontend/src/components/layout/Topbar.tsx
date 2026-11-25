@@ -4,15 +4,23 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 import { StatusPill } from '../common/StatusPill';
+import { IconMenu } from '../common/Icons';
 import { apiClient } from '../../services/api.client';
 
 interface TopbarProps {
   sidebarCollapsed: boolean;
+  mobileOpen?: boolean;
   onToggleSidebar: () => void;
+  isLoading?: boolean;
 }
 
-export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed, onToggleSidebar }) => {
-  const { user, isAdmin, logout } = useAuth();
+export const Topbar: React.FC<TopbarProps> = ({
+  sidebarCollapsed,
+  mobileOpen = false,
+  onToggleSidebar,
+  isLoading = false,
+}) => {
+  const { user, isAdmin, logout, loggingOut } = useAuth();
   const { t, lang } = useLanguage();
   const location = useLocation();
 
@@ -63,6 +71,7 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed, onToggleSideba
 
   return (
     <header className="app-topbar" id="app-topbar">
+      {isLoading && <div className="topbar-progress-bar" role="progressbar" aria-label="Loading" />}
       {/* Left: Sidebar Toggle + Dynamic Breadcrumbs */}
       <div className="topbar-left">
         <button
@@ -71,12 +80,10 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed, onToggleSideba
           onClick={onToggleSidebar}
           title={sidebarCollapsed ? t('nav.expand_sidebar') : t('nav.collapse_sidebar')}
           aria-label={sidebarCollapsed ? t('nav.expand_sidebar') : t('nav.collapse_sidebar')}
+          aria-expanded={mobileOpen ? true : !sidebarCollapsed}
+          aria-controls="app-sidebar"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
+          <IconMenu size={18} />
         </button>
 
         <nav className="breadcrumbs" aria-label="Breadcrumbs">
@@ -110,7 +117,7 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed, onToggleSideba
               ? t('nav.api_online')
               : (lang === 'vi' ? 'Mất kết nối' : 'Offline')
           }
-          variant={isOnline ? 'success' : 'default'}
+          variant={isOnline === true ? 'success' : isOnline === false ? 'danger' : 'warning'}
         />
         <LanguageSwitcher idPrefix="topbar" />
 
@@ -130,8 +137,11 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed, onToggleSideba
               className="btn btn-secondary btn-sm"
               onClick={logout}
               id="btn-logout"
+              disabled={loggingOut}
+              aria-busy={loggingOut}
             >
-              {t('nav.logout')}
+              {loggingOut && <span className="btn-spinner" aria-hidden="true" />}
+              <span>{loggingOut ? t('nav.logging_out') : t('nav.logout')}</span>
             </button>
           </div>
         )}

@@ -2,6 +2,7 @@ import React from 'react';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import type { Application } from '../../../types/application.types';
 import { DataTable, type Column } from '../../common/DataTable';
+import { IconLayers, IconPlus } from '../../common/Icons';
 
 interface AppOwnerOverviewProps {
   applications: Application[];
@@ -28,14 +29,14 @@ export const AppOwnerOverview: React.FC<AppOwnerOverviewProps> = ({
       key: 'name',
       header: t('table.app_name'),
       render: (app) => (
-        <span style={{ fontWeight: 600, color: '#fff' }}>{app.name}</span>
+        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{app.name}</span>
       ),
     },
     {
       key: 'appId',
       header: t('table.appid'),
       render: (app) => (
-        <span className="mono-tag" style={{ fontSize: 12 }}>{app.appId}</span>
+        <span className="mono-tag">{app.appId}</span>
       ),
     },
     {
@@ -76,70 +77,32 @@ export const AppOwnerOverview: React.FC<AppOwnerOverviewProps> = ({
   ];
 
   return (
-    <div className="card" style={{ marginTop: 24 }}>
-      <div
-        className="card-header"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 12,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 'var(--radius-sm)',
-              background: 'rgba(79, 70, 229, 0.15)',
-              color: '#818cf8',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-            </svg>
+    <div className="card-panel">
+      <div className="panel-header">
+        <div className="card-header-left">
+          <div className="icon-well">
+            <IconLayers size={18} />
           </div>
           <div>
-            <h2 className="card-title" style={{ margin: 0, fontSize: 16 }}>
-              {lang === 'vi' ? 'Ứng Dụng Đã Tạo (Client Applications)' : 'Client Applications'}
+            <h2 className="panel-title">
+              {lang === 'vi' ? 'Ứng Dụng Gần Đây' : 'Recent Applications'}
             </h2>
-            <p className="card-subtitle" style={{ fontSize: 13, color: 'var(--text-dim)', margin: '2px 0 0' }}>
+            <p className="card-subtitle">
               {lang === 'vi'
-                ? `Bạn đang sở hữu ${applications.length} ứng dụng (${activeApps.length} đang hoạt động)`
-                : `You own ${applications.length} applications (${activeApps.length} active)`}
+                ? `${applications.length} ứng dụng (${activeApps.length} đang hoạt động)`
+                : `${applications.length} applications (${activeApps.length} active)`}
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
-          {onOpenCreateApp && (
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={onOpenCreateApp}
-              id="appowner-btn-create"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 4 }}>
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              <span>{lang === 'vi' ? 'Tạo Ứng Dụng Mới' : 'New App'}</span>
-            </button>
-          )}
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={onGoToApps}
-            id="appowner-btn-view-all"
-          >
-            <span>{lang === 'vi' ? 'Xem Tất Cả →' : 'View All →'}</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={onGoToApps}
+          id="appowner-btn-view-all"
+        >
+          <span>{lang === 'vi' ? 'Xem Tất Cả' : 'View All'}</span>
+        </button>
       </div>
 
       <DataTable
@@ -160,7 +123,8 @@ export const AppOwnerOverview: React.FC<AppOwnerOverviewProps> = ({
               className="btn btn-primary btn-sm"
               onClick={onOpenCreateApp}
             >
-              {lang === 'vi' ? '+ Tạo Ứng Dụng Đầu Tiên' : '+ Create Your First App'}
+              <IconPlus size={14} />
+              <span>{lang === 'vi' ? 'Tạo Ứng Dụng Đầu Tiên' : 'Create Your First App'}</span>
             </button>
           )
         }

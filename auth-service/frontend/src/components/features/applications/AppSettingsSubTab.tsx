@@ -5,6 +5,7 @@ import { useToast } from '../../../contexts/ToastContext';
 import { applicationsService } from '../../../services/applications.service';
 import type { Application, ApplicationStatus } from '../../../types/application.types';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
+import { IconAlertTriangle, IconCheck } from '../../common/Icons';
 
 export interface AppSettingsSubTabProps {
   app: Application;
@@ -135,74 +136,41 @@ export const AppSettingsSubTab: React.FC<AppSettingsSubTabProps> = ({
   };
 
   return (
-    <div id="app-view-settings" style={{ width: '100%', maxWidth: 780 }}>
+    <div id="app-view-settings" className="page-container card-stack" style={{ maxWidth: 780, margin: 0 }}>
       {/* 1. App Credentials Card (AppID + AppToken Unified Block) */}
-      <div
-        className="card"
-        style={{
-          background: 'var(--bg-surface, #111827)',
-          border: '1px solid var(--border-subtle, #1e293b)',
-          borderRadius: 8,
-          padding: '20px 24px',
-          marginBottom: 20,
-        }}
-      >
-        <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border-subtle, #1e293b)' }}>
-          <h2 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: '#fff' }}>
-            {lang === 'vi' ? 'Thông Tin Định Danh & Kết Nối (API Credentials)' : 'Application API Credentials'}
-          </h2>
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted, #94a3b8)', lineHeight: 1.4 }}>
-            {lang === 'vi'
-              ? 'Thông tin định danh dùng để kết nối và xác thực giữa microservice của bạn và Auth Service.'
-              : 'Credentials used to connect and authenticate between your client service and Auth Service.'}
-          </p>
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">
+              {lang === 'vi' ? 'Thông Tin Định Danh & Kết Nối (API Credentials)' : 'Application API Credentials'}
+            </h2>
+            <p className="card-subtitle">
+              {lang === 'vi'
+                ? 'Thông tin định danh dùng để kết nối và xác thực giữa microservice của bạn và Auth Service.'
+                : 'Credentials used to connect and authenticate between your client service and Auth Service.'}
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="card-stack" style={{ gap: 16 }}>
           {/* 1. Application ID (AppID) */}
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 6, display: 'block' }}>
+            <label className="form-label" htmlFor="display-app-id">
               Application ID (AppID)
             </label>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                maxWidth: 580,
-                background: 'var(--bg-input, #0f172a)',
-                border: '1px solid var(--border-medium, #334155)',
-                borderRadius: 6,
-                padding: '0 8px 0 12px',
-                height: 36,
-                boxSizing: 'border-box',
-              }}
-            >
-              <span
-                id="display-app-id"
-                style={{
-                  flex: 1,
-                  fontSize: 13,
-                  fontFamily: 'monospace',
-                  color: '#38bdf8',
-                  fontWeight: 600,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
+            <div className="field-copy-box">
+              <span id="display-app-id" className="field-copy-value field-copy-value--accent">
                 {app.appId}
               </span>
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
+                className="btn btn-secondary btn-xs"
                 onClick={() => copyText(app.appId, 'AppID')}
-                style={{ height: 26, fontSize: 11, padding: '0 10px', whiteSpace: 'nowrap' }}
               >
                 {lang === 'vi' ? 'Sao chép' : 'Copy'}
               </button>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-dim, #64748b)', marginTop: 4 }}>
+            <div className="form-hint">
               {lang === 'vi'
                 ? 'Dùng trong tham số app_id khi bắt đầu luồng đăng nhập OAuth hoặc header X-App-Id.'
                 : 'Used in app_id query parameter when initiating OAuth login or X-App-Id header.'}
@@ -212,46 +180,23 @@ export const AppSettingsSubTab: React.FC<AppSettingsSubTabProps> = ({
           {/* 2. App Token (X-App-Token) */}
           <div className="form-group" style={{ marginBottom: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <label className="form-label" style={{ fontSize: 13, fontWeight: 600, color: '#fff', margin: 0 }}>
+              <label className="form-label" htmlFor="app-settings-token" style={{ marginBottom: 0 }}>
                 App Token (X-App-Token Header)
               </label>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: app.appToken ? 'var(--success, #10b981)' : 'var(--text-dim, #64748b)',
-                }}
-              >
-                {app.appToken ? `✓ ${lang === 'vi' ? 'Đã cấp token' : 'Token issued'}` : `○ ${lang === 'vi' ? 'Chưa có token' : 'No token'}`}
+              <span className={`badge ${app.appToken ? 'badge-success' : 'badge-neutral'}`}>
+                {app.appToken && <IconCheck size={11} />}
+                <span>
+                  {app.appToken
+                    ? (lang === 'vi' ? 'Đã cấp token' : 'Token issued')
+                    : (lang === 'vi' ? 'Chưa có token' : 'No token')}
+                </span>
               </span>
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                maxWidth: 580,
-                background: 'var(--bg-input, #0f172a)',
-                border: '1px solid var(--border-medium, #334155)',
-                borderRadius: 6,
-                padding: '0 8px 0 12px',
-                height: 36,
-                boxSizing: 'border-box',
-              }}
-            >
+            <div className="field-copy-box">
               <span
                 id="app-settings-token"
-                style={{
-                  flex: 1,
-                  fontSize: 13,
-                  fontFamily: 'monospace',
-                  color: showToken ? '#fff' : 'var(--text-dim, #64748b)',
-                  letterSpacing: showToken ? 'normal' : '2px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
+                className={`field-copy-value ${showToken ? '' : 'field-copy-value--muted'}`}
               >
                 {showToken ? (app.appToken || '—') : '••••••••••••••••••••••••••••••••••••••••••••••••'}
               </span>
@@ -260,17 +205,15 @@ export const AppSettingsSubTab: React.FC<AppSettingsSubTabProps> = ({
                 <>
                   <button
                     type="button"
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-secondary btn-xs"
                     onClick={() => setShowToken(!showToken)}
-                    style={{ height: 26, fontSize: 11, padding: '0 8px', whiteSpace: 'nowrap' }}
                   >
                     {showToken ? (lang === 'vi' ? 'Ẩn' : 'Hide') : (lang === 'vi' ? 'Hiện' : 'Show')}
                   </button>
                   <button
                     type="button"
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-secondary btn-xs"
                     onClick={() => copyText(app.appToken || '', 'AppToken')}
-                    style={{ height: 26, fontSize: 11, padding: '0 8px', whiteSpace: 'nowrap' }}
                   >
                     {lang === 'vi' ? 'Sao chép' : 'Copy'}
                   </button>
@@ -280,25 +223,17 @@ export const AppSettingsSubTab: React.FC<AppSettingsSubTabProps> = ({
               <button
                 type="button"
                 id="btn-regenerate-token"
-                className="btn btn-secondary btn-sm"
+                className="btn btn-warning btn-xs"
                 onClick={() => setShowRegenConfirm(true)}
                 disabled={isRegenerating}
-                style={{
-                  height: 26,
-                  fontSize: 11,
-                  padding: '0 8px',
-                  whiteSpace: 'nowrap',
-                  color: 'var(--warning, #f59e0b)',
-                  borderColor: 'rgba(245, 158, 11, 0.4)',
-                }}
               >
                 {isRegenerating
-                  ? (lang === 'vi' ? 'Đang tạo...' : 'Generating...')
+                  ? (lang === 'vi' ? 'Đang tạo…' : 'Generating…')
                   : (lang === 'vi' ? 'Cấp lại Token' : 'Regenerate')}
               </button>
             </div>
 
-            <div style={{ fontSize: 12, color: 'var(--text-dim, #64748b)', marginTop: 4 }}>
+            <div className="form-hint">
               {lang === 'vi'
                 ? 'Dùng trong header X-App-Token ở backend microservice khi gọi verify token. Tuyệt đối không nhúng token này vào frontend client.'
                 : 'Used in X-App-Token header on your backend microservice. Never expose this secret to frontend clients.'}
@@ -308,31 +243,24 @@ export const AppSettingsSubTab: React.FC<AppSettingsSubTabProps> = ({
       </div>
 
       {/* 2. Main Settings Card */}
-      <div
-        className="card"
-        style={{
-          background: 'var(--bg-surface, #111827)',
-          border: '1px solid var(--border-subtle, #1e293b)',
-          borderRadius: 8,
-          padding: '20px 24px',
-          marginBottom: 20,
-        }}
-      >
-        <div style={{ marginBottom: 18, paddingBottom: 12, borderBottom: '1px solid var(--border-subtle, #1e293b)' }}>
-          <h2 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: '#fff' }}>
-            {lang === 'vi' ? 'Cài Đặt Ứng Dụng' : 'Application Settings'}
-          </h2>
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted, #94a3b8)', lineHeight: 1.4 }}>
-            {lang === 'vi'
-              ? 'Cấu hình tên hiển thị, trạng thái hoạt động và danh sách URL được phép chuyển hướng sau xác thực.'
-              : 'Configure application name, operational status, and allowed redirect URIs.'}
-          </p>
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">
+              {lang === 'vi' ? 'Cài Đặt Ứng Dụng' : 'Application Settings'}
+            </h2>
+            <p className="card-subtitle">
+              {lang === 'vi'
+                ? 'Cấu hình tên hiển thị, trạng thái hoạt động và danh sách URL được phép chuyển hướng sau xác thực.'
+                : 'Configure application name, operational status, and allowed redirect URIs.'}
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <form onSubmit={handleSaveSettings} className="card-stack" style={{ gap: 16 }}>
           {/* App Name */}
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 6, display: 'block' }}>
+            <label className="form-label" htmlFor="app-settings-name">
               {lang === 'vi' ? 'Tên Ứng Dụng' : 'Application Name'}
             </label>
             <input
@@ -342,24 +270,13 @@ export const AppSettingsSubTab: React.FC<AppSettingsSubTabProps> = ({
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
               required
-              style={{
-                width: '100%',
-                maxWidth: 420,
-                height: 36,
-                fontSize: 13,
-                background: 'var(--bg-input, #0f172a)',
-                border: '1px solid var(--border-medium, #334155)',
-                color: '#fff',
-                borderRadius: 6,
-                padding: '0 12px',
-                boxSizing: 'border-box',
-              }}
+              style={{ maxWidth: 420 }}
             />
           </div>
 
           {/* Status Dropdown */}
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 6, display: 'block' }}>
+            <label className="form-label" htmlFor="app-settings-status">
               {lang === 'vi' ? 'Trạng Thái Hoạt Động' : 'Operational Status'}
             </label>
             <select
@@ -367,23 +284,12 @@ export const AppSettingsSubTab: React.FC<AppSettingsSubTabProps> = ({
               className="form-control"
               value={statusInput}
               onChange={(e) => setStatusInput(e.target.value as ApplicationStatus)}
-              style={{
-                width: '100%',
-                maxWidth: 280,
-                height: 36,
-                fontSize: 13,
-                background: 'var(--bg-input, #0f172a)',
-                border: '1px solid var(--border-medium, #334155)',
-                color: '#fff',
-                borderRadius: 6,
-                padding: '0 10px',
-                boxSizing: 'border-box',
-              }}
+              style={{ maxWidth: 280 }}
             >
               <option value="ACTIVE">{lang === 'vi' ? 'ACTIVE (Đang hoạt động)' : 'ACTIVE (Operational)'}</option>
               <option value="INACTIVE">{lang === 'vi' ? 'INACTIVE (Tạm ngừng kích hoạt)' : 'INACTIVE (Suspended)'}</option>
             </select>
-            <div style={{ fontSize: 12, color: 'var(--text-dim, #64748b)', marginTop: 4 }}>
+            <div className="form-hint">
               {lang === 'vi'
                 ? 'Khi chuyển sang INACTIVE: chặn các lượt đăng nhập mới qua ứng dụng này.'
                 : 'When set to INACTIVE: new sign-ins through this application will be blocked.'}
@@ -392,89 +298,63 @@ export const AppSettingsSubTab: React.FC<AppSettingsSubTabProps> = ({
 
           {/* Allowed Redirect URIs */}
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 6, display: 'block' }}>
+            <label className="form-label" htmlFor="app-settings-redirect-uris">
               {lang === 'vi' ? 'Allowed Redirect URIs (Mỗi dòng một URL)' : 'Allowed Redirect URIs (One per line)'}
             </label>
             <textarea
               id="app-settings-redirect-uris"
-              className="form-control"
+              className="form-control form-control-mono"
               rows={3}
               value={redirectUrisInput}
               onChange={(e) => setRedirectUrisInput(e.target.value)}
               placeholder="http://localhost:3001/"
-              style={{
-                width: '100%',
-                maxWidth: 580,
-                fontSize: 13,
-                fontFamily: 'monospace',
-                background: 'var(--bg-input, #0f172a)',
-                border: '1px solid var(--border-medium, #334155)',
-                color: '#fff',
-                borderRadius: 6,
-                padding: '8px 12px',
-                lineHeight: 1.5,
-                boxSizing: 'border-box',
-              }}
+              style={{ maxWidth: 580 }}
             />
-            <div style={{ fontSize: 12, color: 'var(--text-dim, #64748b)', marginTop: 4 }}>
+            <div className="form-hint">
               {lang === 'vi'
                 ? 'URI đích hợp lệ mà Auth Service cho phép chuyển hướng sau khi hoàn tất xác thực OAuth.'
                 : 'Valid destination URLs where Auth Service is permitted to redirect after OAuth authentication.'}
             </div>
           </div>
 
-          <div style={{ paddingTop: 6 }}>
+          <div style={{ paddingTop: 4 }}>
             <button
               type="submit"
               className="btn btn-primary"
               disabled={isSaving}
+              aria-busy={isSaving}
               id="btn-save-app-settings"
-              style={{ minWidth: 130, height: 36 }}
             >
-              {isSaving ? '...' : (lang === 'vi' ? 'Lưu Cài Đặt' : 'Save Settings')}
+              {isSaving && <span className="btn-spinner" aria-hidden="true" />}
+              <span>{isSaving ? (lang === 'vi' ? 'Đang lưu…' : 'Saving…') : (lang === 'vi' ? 'Lưu Cài Đặt' : 'Save Settings')}</span>
             </button>
           </div>
         </form>
       </div>
 
       {/* 3. Danger Zone Card */}
-      <div
-        className="danger-zone"
-        style={{
-          background: 'rgba(239, 68, 68, 0.03)',
-          border: '1px solid rgba(239, 68, 68, 0.35)',
-          borderRadius: 8,
-          padding: '20px 24px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.25">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--danger, #ef4444)' }}>
+      <div className="danger-zone">
+        <div className="inline-code-row" style={{ gap: 8, marginBottom: 6, color: 'var(--danger)' }}>
+          <IconAlertTriangle size={18} />
+          <h3 className="card-title" style={{ color: 'var(--danger)' }}>
             {lang === 'vi' ? 'Vùng Nguy Hiểm (Danger Zone)' : 'Danger Zone'}
           </h3>
         </div>
 
-        <p style={{ fontSize: 13, color: 'var(--text-muted, #94a3b8)', margin: '0 0 16px', lineHeight: 1.4 }}>
+        <p className="card-subtitle" style={{ marginBottom: 16 }}>
           {lang === 'vi'
             ? 'Hành động xóa ứng dụng là vĩnh viễn và không thể hoàn tác. Mọi AppUser và cấu hình OAuth liên kết sẽ bị xóa.'
             : 'Deleting an application is permanent and cannot be undone. All associated AppUsers and OAuth configs will be removed.'}
         </p>
 
-        <div>
-          <button
-            type="button"
-            className="btn btn-danger btn-sm"
-            onClick={() => setShowDeleteConfirm(true)}
-            id="btn-delete-app"
-            style={{ height: 32 }}
-          >
-            {lang === 'vi' ? 'Xóa Ứng Dụng Này' : 'Delete Application'}
-          </button>
-        </div>
+        <button
+          type="button"
+          className="btn btn-danger btn-sm"
+          onClick={() => setShowDeleteConfirm(true)}
+          id="btn-delete-app"
+        >
+          {lang === 'vi' ? 'Xóa Ứng Dụng Này' : 'Delete Application'}
+        </button>
       </div>
 
       {/* Confirmation Dialogs */}

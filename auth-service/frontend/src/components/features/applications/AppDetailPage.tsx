@@ -8,6 +8,7 @@ import { AppUsersSubTab } from './AppUsersSubTab';
 import { AppOAuthSubTab } from './AppOAuthSubTab';
 import { AppSettingsSubTab } from './AppSettingsSubTab';
 import { SkeletonTable } from '../../common/SkeletonTable';
+import { IconAlertTriangle, IconArrowLeft, IconCode, IconCopy } from '../../common/Icons';
 
 export type AppSubTabType = 'users' | 'oauth' | 'settings';
 
@@ -116,8 +117,8 @@ export const AppDetailPage: React.FC<AppDetailPageProps> = ({
   // 1. Loading Skeleton
   if (loading) {
     return (
-      <div className="tab-content active" style={{ width: '100%', padding: 24 }}>
-        <div style={{ height: 60, marginBottom: 20 }}>
+      <div className="tab-content active page-container">
+        <div style={{ marginBottom: 20 }}>
           <div className="skeleton-bar" style={{ height: 28, width: '40%', marginBottom: 8 }} />
           <div className="skeleton-bar" style={{ height: 16, width: '25%' }} />
         </div>
@@ -129,46 +130,27 @@ export const AppDetailPage: React.FC<AppDetailPageProps> = ({
   // 2. Error / Forbidden State (Protects against IDOR)
   if (errorStatus || !app) {
     return (
-      <div className="tab-content active" style={{ width: '100%', padding: 24 }}>
+      <div className="tab-content active page-container">
         <div
           className="card"
           style={{
-            maxWidth: 640,
+            maxWidth: 600,
             margin: '40px auto',
             padding: 32,
             textAlign: 'center',
-            border: `1px solid ${errorStatus === 403 ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-subtle)'}`,
-            background: 'var(--bg-surface, #111827)',
-            borderRadius: 12,
           }}
         >
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: '50%',
-              background: errorStatus === 403 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(148, 163, 184, 0.15)',
-              color: errorStatus === 403 ? '#ef4444' : '#94a3b8',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px',
-            }}
-          >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
+          <div className={`icon-well icon-well--lg ${errorStatus === 403 ? 'icon-well--danger' : ''}`}>
+            <IconAlertTriangle size={24} />
           </div>
 
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: '0 0 8px' }}>
+          <h2 className="section-title" style={{ margin: '0 0 8px' }}>
             {errorStatus === 403
               ? (lang === 'vi' ? '403 — Không Có Quyền Truy Cập' : '403 — Access Forbidden')
               : (lang === 'vi' ? '404 — Ứng Dụng Không Tồn Tại' : '404 — Application Not Found')}
           </h2>
 
-          <p style={{ fontSize: 14, color: 'var(--text-muted, #94a3b8)', margin: '0 0 24px', lineHeight: 1.5 }}>
+          <p className="page-subtitle" style={{ margin: '0 auto 24px' }}>
             {errorMessage}
           </p>
 
@@ -177,7 +159,8 @@ export const AppDetailPage: React.FC<AppDetailPageProps> = ({
             className="btn btn-primary"
             onClick={() => navigate('/console/applications')}
           >
-            ← {lang === 'vi' ? 'Quay lại Danh Sách Ứng Dụng' : 'Back to Applications'}
+            <IconArrowLeft size={15} />
+            <span>{lang === 'vi' ? 'Quay lại Danh Sách Ứng Dụng' : 'Back to Applications'}</span>
           </button>
         </div>
       </div>
@@ -188,31 +171,21 @@ export const AppDetailPage: React.FC<AppDetailPageProps> = ({
   const ownerEmail = app.user?.email || '—';
 
   return (
-    <div className="tab-content active" id="app-detail-page" style={{ width: '100%' }}>
+    <div className="tab-content active page-container" id="app-detail-page">
       {/* 1. Header Navigation Bar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 16,
-          flexWrap: 'wrap',
-          gap: 12,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="page-header" style={{ alignItems: 'center', marginBottom: 16 }}>
+        <div className="breadcrumbs">
           <button
             type="button"
             className="btn btn-secondary btn-sm"
             onClick={() => navigate('/console/applications')}
             id="btn-back-to-app-list"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32 }}
           >
-            <span>←</span>
+            <IconArrowLeft size={14} />
             <span>{lang === 'vi' ? 'Danh Sách Ứng Dụng' : 'Applications List'}</span>
           </button>
-          <span style={{ color: 'var(--border-subtle, #334155)' }}>/</span>
-          <span style={{ color: 'var(--text-dim, #64748b)', fontSize: 13, fontWeight: 500 }}>
+          <span className="breadcrumb-separator">/</span>
+          <span className="breadcrumb-item current">
             {lang === 'vi' ? 'Chi Tiết Ứng Dụng' : 'App Details'}
           </span>
         </div>
@@ -222,181 +195,85 @@ export const AppDetailPage: React.FC<AppDetailPageProps> = ({
           className="btn btn-secondary btn-sm"
           onClick={() => navigate(`/console/quickstart?appId=${app.appId || app.id}`)}
           id="btn-go-to-quickstart"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32 }}
         >
-          <span>{lang === 'vi' ? 'Xem Hướng Dẫn Tích Hợp →' : 'View Quickstart Guide →'}</span>
+          <IconCode size={14} />
+          <span>{lang === 'vi' ? 'Hướng Dẫn Tích Hợp' : 'Integration Quickstart'}</span>
         </button>
       </div>
 
-      {/* 2. App Header Card: Polished SaaS Layout with Status Badge */}
-      <div
-        className="card"
-        style={{
-          background: 'var(--bg-surface, #111827)',
-          border: '1px solid var(--border-subtle, #1e293b)',
-          borderRadius: 8,
-          padding: '20px 24px',
-          marginBottom: 20,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}
-      >
+      {/* 2. App Header Card */}
+      <div className="tenant-summary-bar">
         <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>
-              {app.name}
-            </h1>
+          <div className="identity-banner-title">
+            <h1 className="page-title">{app.name}</h1>
 
-            {/* Clear Status Badge with Dot indicator */}
             <span
               id="header-app-status-badge"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 12,
-                fontWeight: 600,
-                padding: '3px 10px',
-                borderRadius: 12,
-                background: isActive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                color: isActive ? 'var(--success, #10b981)' : 'var(--danger, #ef4444)',
-                border: isActive ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
-              }}
+              className={`badge ${isActive ? 'badge-success' : 'badge-danger'}`}
             >
-              <span
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  background: isActive ? 'var(--success, #10b981)' : 'var(--danger, #ef4444)',
-                }}
-              />
               {isActive
                 ? (lang === 'vi' ? 'Đang Hoạt Động' : 'Active')
                 : (lang === 'vi' ? 'Tạm Ngưng' : 'Inactive')}
             </span>
           </div>
 
-          <div
-            style={{
-              fontSize: 13,
-              color: 'var(--text-muted, #94a3b8)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 14,
-              flexWrap: 'wrap',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ color: 'var(--text-dim, #64748b)' }}>AppID:</span>
-              <code
-                style={{
-                  color: '#fff',
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  padding: '2px 8px',
-                  borderRadius: 4,
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                }}
-              >
-                {app.appId}
-              </code>
+          <div className="tenant-meta-list">
+            <div className="inline-code-row">
+              <span>AppID:</span>
+              <code className="mono-tag">{app.appId}</code>
               <button
                 type="button"
                 id="btn-copy-header-appid"
                 className="btn btn-secondary btn-xs"
                 onClick={copyAppId}
-                style={{ padding: '2px 8px', fontSize: 11, height: 22, lineHeight: 1 }}
                 title={lang === 'vi' ? 'Sao chép AppID' : 'Copy AppID'}
               >
-                {lang === 'vi' ? 'Sao chép' : 'Copy'}
+                <IconCopy size={12} />
+                <span>{lang === 'vi' ? 'Sao chép' : 'Copy'}</span>
               </button>
             </div>
 
-            <span style={{ color: 'var(--border-subtle, #334155)' }}>•</span>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ color: 'var(--text-dim, #64748b)' }}>{lang === 'vi' ? 'Chủ sở hữu:' : 'Owner:'}</span>
-              <span style={{ color: '#fff', fontWeight: 500 }}>{ownerEmail}</span>
+            <div className="inline-code-row">
+              <span>{lang === 'vi' ? 'Chủ sở hữu:' : 'Owner:'}</span>
+              <strong style={{ color: 'var(--text-main)' }}>{ownerEmail}</strong>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. Sub-tabs Navigation Bar: Sleek and Modern */}
-      <div
-        className="sub-tabs"
-        style={{
-          display: 'flex',
-          borderBottom: '1px solid var(--border-subtle, #1e293b)',
-          marginBottom: 20,
-          gap: 6,
-        }}
-      >
+      {/* 3. Sub-tabs Navigation Bar */}
+      <div className="sub-tabs" role="tablist">
         <button
           type="button"
+          role="tab"
+          aria-selected={activeSubTab === 'users'}
           id="subtab-btn-users"
           className={`sub-tab-item ${activeSubTab === 'users' ? 'active' : ''}`}
           onClick={() => handleSwitchTab('users')}
-          style={{
-            padding: '10px 18px',
-            fontSize: 13,
-            fontWeight: 600,
-            background: activeSubTab === 'users' ? 'rgba(79, 70, 229, 0.08)' : 'transparent',
-            border: 'none',
-            borderBottom: activeSubTab === 'users' ? '2px solid var(--primary, #4f46e5)' : '2px solid transparent',
-            borderRadius: '6px 6px 0 0',
-            color: activeSubTab === 'users' ? '#a5b4fc' : 'var(--text-muted, #94a3b8)',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease-in-out',
-          }}
         >
-          {lang === 'vi' ? '1. Khách Hàng (AppUsers)' : '1. Users (AppUsers)'}
+          {lang === 'vi' ? 'Khách Hàng (AppUsers)' : 'Users (AppUsers)'}
         </button>
 
         <button
           type="button"
+          role="tab"
+          aria-selected={activeSubTab === 'oauth'}
           id="subtab-btn-oauth"
           className={`sub-tab-item ${activeSubTab === 'oauth' ? 'active' : ''}`}
           onClick={() => handleSwitchTab('oauth')}
-          style={{
-            padding: '10px 18px',
-            fontSize: 13,
-            fontWeight: 600,
-            background: activeSubTab === 'oauth' ? 'rgba(79, 70, 229, 0.08)' : 'transparent',
-            border: 'none',
-            borderBottom: activeSubTab === 'oauth' ? '2px solid var(--primary, #4f46e5)' : '2px solid transparent',
-            borderRadius: '6px 6px 0 0',
-            color: activeSubTab === 'oauth' ? '#a5b4fc' : 'var(--text-muted, #94a3b8)',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease-in-out',
-          }}
         >
-          {lang === 'vi' ? '2. Phương Thức OAuth (Google / Facebook)' : '2. OAuth Providers'}
+          {lang === 'vi' ? 'Phương Thức OAuth (Google / Facebook)' : 'OAuth Providers'}
         </button>
 
         <button
           type="button"
+          role="tab"
+          aria-selected={activeSubTab === 'settings'}
           id="subtab-btn-settings"
           className={`sub-tab-item ${activeSubTab === 'settings' ? 'active' : ''}`}
           onClick={() => handleSwitchTab('settings')}
-          style={{
-            padding: '10px 18px',
-            fontSize: 13,
-            fontWeight: 600,
-            background: activeSubTab === 'settings' ? 'rgba(79, 70, 229, 0.08)' : 'transparent',
-            border: 'none',
-            borderBottom: activeSubTab === 'settings' ? '2px solid var(--primary, #4f46e5)' : '2px solid transparent',
-            borderRadius: '6px 6px 0 0',
-            color: activeSubTab === 'settings' ? '#a5b4fc' : 'var(--text-muted, #94a3b8)',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease-in-out',
-          }}
         >
-          {lang === 'vi' ? '3. Cài Đặt & Danger Zone' : '3. Settings & Danger Zone'}
+          {lang === 'vi' ? 'Cài Đặt & Vùng Nguy Hiểm' : 'Settings & Danger Zone'}
         </button>
       </div>
 

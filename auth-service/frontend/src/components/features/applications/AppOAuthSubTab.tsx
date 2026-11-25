@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { providersService } from '../../../services/providers.service';
+import { IconAlertTriangle, IconCheck, IconRefresh, IconSettings, IconX } from '../../common/Icons';
+import { useModalA11y } from '../../../hooks/useModalA11y';
 import type { Application } from '../../../types/application.types';
 import type { SanitizedOAuthProvider, UpdateOAuthProviderPayload } from '../../../types/provider.types';
 
@@ -36,49 +38,10 @@ const Switch: React.FC<SwitchProps> = ({
       aria-label={ariaLabel}
       disabled={disabled || loading}
       onClick={onChange}
-      style={{
-        position: 'relative',
-        width: 44,
-        height: 24,
-        borderRadius: 12,
-        background: checked ? 'var(--primary, #4f46e5)' : 'var(--border-subtle, #334155)',
-        border: 'none',
-        cursor: disabled || loading ? 'not-allowed' : 'pointer',
-        transition: 'background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        padding: 0,
-        outline: 'none',
-        opacity: disabled ? 0.6 : 1,
-        flexShrink: 0,
-      }}
+      className={`toggle-switch ${checked ? 'toggle-switch--checked' : ''}`}
     >
-      <span
-        style={{
-          position: 'absolute',
-          top: 2,
-          left: checked ? 22 : 2,
-          width: 20,
-          height: 20,
-          borderRadius: '50%',
-          background: '#ffffff',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)',
-          transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        {loading && (
-          <span
-            style={{
-              width: 10,
-              height: 10,
-              border: '2px solid rgba(79, 70, 229, 0.4)',
-              borderTopColor: 'var(--primary, #4f46e5)',
-              borderRadius: '50%',
-              animation: 'spin 0.8s linear infinite',
-            }}
-          />
-        )}
+      <span className="toggle-switch-thumb">
+        {loading && <span className="toggle-switch-spinner" aria-hidden="true" />}
       </span>
     </button>
   );
@@ -90,6 +53,7 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
 
   const [providers, setProviders] = useState<SanitizedOAuthProvider[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [togglingProvider, setTogglingProvider] = useState<string | null>(null);
 
   // Configure modal states
@@ -100,18 +64,27 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
   const [modalIsEnabled, setModalIsEnabled] = useState(false);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
 
+  const { handleBackdropClick } = useModalA11y(
+    Boolean(configuringProvider),
+    () => setConfiguringProvider(null),
+    isSavingConfig,
+  );
+
   // Load OAuth providers
   const loadProviders = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await providersService.findAllByApplication(app.id);
       setProviders(data);
     } catch (err: any) {
-      showToast(err.message || 'Lỗi tải danh sách phương thức xác thực', 'error');
+      const msg = err?.message || (lang === 'vi' ? 'Lỗi tải danh sách phương thức xác thực' : 'Failed to load sign-in providers');
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setLoading(false);
     }
-  }, [app.id, showToast]);
+  }, [app.id, lang, showToast]);
 
   useEffect(() => {
     void loadProviders();
@@ -242,87 +215,68 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
     : 'https://developers.facebook.com/apps/';
 
   return (
-    <div id="app-view-oauth" style={{ width: '100%', maxWidth: 840 }}>
+    <div id="app-view-oauth" className="page-container page-container--narrow" style={{ margin: 0 }}>
       {/* Unified OAuth Card Panel */}
-      <div
-        className="card"
-        style={{
-          background: 'var(--bg-surface, #111827)',
-          border: '1px solid var(--border-subtle, #1e293b)',
-          borderRadius: 8,
-          overflow: 'hidden',
-          marginBottom: 24,
-        }}
-      >
+      <div className="card-panel">
         {/* Card Header */}
-        <div
-          style={{
-            padding: '18px 24px',
-            borderBottom: '1px solid var(--border-subtle, #1e293b)',
-          }}
-        >
-          <h2 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: '#fff' }}>
-            {lang === 'vi' ? 'Phương Thức Đăng Nhập OAuth 2.0' : 'OAuth 2.0 Sign-in Providers'}
-          </h2>
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted, #94a3b8)', lineHeight: 1.4 }}>
-            {lang === 'vi'
-              ? 'Bật hoặc tắt từng phương thức đăng nhập và cấu hình Client ID / Client Secret riêng cho ứng dụng này.'
-              : 'Enable, disable, and configure independent Client ID / Secret credentials for this application.'}
-          </p>
+        <div className="panel-header">
+          <div>
+            <h2 className="panel-title">
+              {lang === 'vi' ? 'Phương Thức Đăng Nhập OAuth 2.0' : 'OAuth 2.0 Sign-in Providers'}
+            </h2>
+            <p className="card-subtitle">
+              {lang === 'vi'
+                ? 'Bật hoặc tắt từng phương thức đăng nhập và cấu hình Client ID / Client Secret riêng cho ứng dụng này.'
+                : 'Enable, disable, and configure independent Client ID / Secret credentials for this application.'}
+            </p>
+          </div>
         </div>
 
         {loading ? (
-          <div style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div className="skeleton-bar" style={{ width: 38, height: 38, borderRadius: 8 }} />
-                <div style={{ flex: 1 }}>
-                  <div className="skeleton-bar" style={{ height: 16, width: '35%', marginBottom: 8 }} />
-                  <div className="skeleton-bar" style={{ height: 12, width: '60%' }} />
-                </div>
-                <div className="skeleton-bar" style={{ width: 80, height: 30, borderRadius: 6 }} />
-                <div className="skeleton-bar" style={{ width: 44, height: 24, borderRadius: 12 }} />
+          <div className="panel-body card-stack">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div className="skeleton-bar" style={{ width: 38, height: 38, borderRadius: 8 }} />
+              <div style={{ flex: 1 }}>
+                <div className="skeleton-bar" style={{ height: 16, width: '35%', marginBottom: 8 }} />
+                <div className="skeleton-bar" style={{ height: 12, width: '60%' }} />
               </div>
-              <div style={{ height: 1, background: 'var(--border-subtle, #1e293b)' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div className="skeleton-bar" style={{ width: 38, height: 38, borderRadius: 8 }} />
-                <div style={{ flex: 1 }}>
-                  <div className="skeleton-bar" style={{ height: 16, width: '35%', marginBottom: 8 }} />
-                  <div className="skeleton-bar" style={{ height: 12, width: '60%' }} />
-                </div>
-                <div className="skeleton-bar" style={{ width: 80, height: 30, borderRadius: 6 }} />
-                <div className="skeleton-bar" style={{ width: 44, height: 24, borderRadius: 12 }} />
+              <div className="skeleton-bar" style={{ width: 80, height: 30, borderRadius: 6 }} />
+              <div className="skeleton-bar" style={{ width: 44, height: 24, borderRadius: 12 }} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div className="skeleton-bar" style={{ width: 38, height: 38, borderRadius: 8 }} />
+              <div style={{ flex: 1 }}>
+                <div className="skeleton-bar" style={{ height: 16, width: '35%', marginBottom: 8 }} />
+                <div className="skeleton-bar" style={{ height: 12, width: '60%' }} />
               </div>
+              <div className="skeleton-bar" style={{ width: 80, height: 30, borderRadius: 6 }} />
+              <div className="skeleton-bar" style={{ width: 44, height: 24, borderRadius: 12 }} />
+            </div>
+          </div>
+        ) : error ? (
+          <div className="panel-body">
+            <div className="error-alert" role="alert" id="oauth-providers-error" style={{ marginBottom: 0 }}>
+              <div className="error-alert-content">
+                <IconAlertTriangle size={16} />
+                <span>{error}</span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => void loadProviders()}
+              >
+                <IconRefresh size={13} />
+                <span>{lang === 'vi' ? 'Thử lại' : 'Retry'}</span>
+              </button>
             </div>
           </div>
         ) : (
           <div>
             {/* 1. Google Row */}
-            <div
-              style={{
-                padding: '18px 24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 16,
-              }}
-            >
-              {/* Left: Brand Icon + Title + Description */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 8,
-                    background: 'rgba(234, 67, 53, 0.08)',
-                    border: '1px solid rgba(234, 67, 53, 0.2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24">
+            <div className="provider-row">
+              <div className="provider-row-main">
+                <div className="provider-brand-box provider-brand-box--google">
+                  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
                     <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z" />
                     <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z" />
                     <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15s.7 5.3 1.9 7.7l3.7-2.9z" />
@@ -331,39 +285,17 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
                 </div>
 
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
-                    <span style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>Google</span>
-                    <span
-                      className="badge"
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 500,
-                        padding: '2px 7px',
-                        borderRadius: 4,
-                        background: 'var(--bg-card, #1e293b)',
-                        color: 'var(--text-dim, #94a3b8)',
-                        border: '1px solid var(--border-subtle, #334155)',
-                      }}
-                    >
-                      OAuth 2.0 PKCE
-                    </span>
+                  <div className="inline-code-row" style={{ flexWrap: 'wrap', marginBottom: 2 }}>
+                    <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-main)' }}>Google</span>
+                    <span className="badge badge-neutral">OAuth 2.0 PKCE</span>
                     {googleProvider?.hasSecret && (
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 500,
-                          padding: '1px 6px',
-                          borderRadius: 4,
-                          background: 'rgba(16, 185, 129, 0.1)',
-                          color: 'var(--success, #10b981)',
-                          border: '1px solid rgba(16, 185, 129, 0.25)',
-                        }}
-                      >
-                        ✓ Secret
+                      <span className="badge badge-success">
+                        <IconCheck size={11} />
+                        <span>Secret</span>
                       </span>
                     )}
                   </div>
-                  <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted, #94a3b8)', lineHeight: 1.4 }}>
+                  <p className="card-subtitle">
                     {lang === 'vi'
                       ? 'Đăng nhập bảo mật qua Google với luồng xác thực PKCE chuẩn.'
                       : 'Secure sign-in via Google account with standard PKCE authentication flow.'}
@@ -371,38 +303,20 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
                 </div>
               </div>
 
-              {/* Right: Balanced Action Controls */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                {/* 1. Configure button */}
+              <div className="provider-row-controls">
                 <button
                   type="button"
                   id="btn-config-google"
                   className="btn btn-secondary btn-sm"
                   onClick={() => googleProvider && handleOpenConfigure(googleProvider)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    fontSize: 12,
-                    padding: '0 12px',
-                    height: 30,
-                    boxSizing: 'border-box',
-                    borderRadius: 6,
-                    whiteSpace: 'nowrap',
-                  }}
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                  </svg>
+                  <IconSettings size={13} />
                   <span>{lang === 'vi' ? 'Cấu hình' : 'Configure'}</span>
                 </button>
 
-                {/* Divider */}
-                <div style={{ width: 1, height: 18, background: 'var(--border-subtle, #334155)' }} />
+                <div className="provider-divider-v" aria-hidden="true" />
 
-                {/* 2. Toggle Switch + Status Label */}
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                <div className="inline-code-row" style={{ gap: 10 }}>
                   <Switch
                     id="toggle-oauth-google"
                     checked={isGoogleEnabled}
@@ -412,105 +326,39 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
                     ariaLabel={lang === 'vi' ? 'Bật hoặc tắt Google OAuth' : 'Toggle Google OAuth'}
                   />
 
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      height: 30,
-                      boxSizing: 'border-box',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      padding: '0 10px',
-                      borderRadius: 15,
-                      background: isGoogleEnabled ? 'rgba(16, 185, 129, 0.12)' : 'rgba(100, 116, 139, 0.15)',
-                      color: isGoogleEnabled ? 'var(--success, #10b981)' : 'var(--text-dim, #94a3b8)',
-                      border: isGoogleEnabled ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(100, 116, 139, 0.25)',
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        background: isGoogleEnabled ? 'var(--success, #10b981)' : 'var(--text-dim, #64748b)',
-                      }}
-                    />
-                    {isGoogleEnabled
-                      ? (lang === 'vi' ? 'Đang bật' : 'Enabled')
-                      : (lang === 'vi' ? 'Đã tắt' : 'Disabled')}
+                  <span className={`status-pill ${isGoogleEnabled ? 'status-pill-success' : ''}`}>
+                    <span className="status-dot" aria-hidden="true" />
+                    <span>
+                      {isGoogleEnabled
+                        ? (lang === 'vi' ? 'Đang bật' : 'Enabled')
+                        : (lang === 'vi' ? 'Đã tắt' : 'Disabled')}
+                    </span>
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Divider */}
-            <div style={{ height: 1, background: 'var(--border-subtle, #1e293b)' }} />
-
             {/* 2. Facebook Row */}
-            <div
-              style={{
-                padding: '18px 24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 16,
-              }}
-            >
-              {/* Left: Brand Icon + Title + Description */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 8,
-                    background: 'rgba(24, 119, 242, 0.08)',
-                    border: '1px solid rgba(24, 119, 242, 0.2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2">
+            <div className="provider-row">
+              <div className="provider-row-main">
+                <div className="provider-brand-box provider-brand-box--facebook">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2" aria-hidden="true">
                     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                   </svg>
                 </div>
 
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
-                    <span style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>Facebook</span>
-                    <span
-                      className="badge"
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 500,
-                        padding: '2px 7px',
-                        borderRadius: 4,
-                        background: 'var(--bg-card, #1e293b)',
-                        color: 'var(--text-dim, #94a3b8)',
-                        border: '1px solid var(--border-subtle, #334155)',
-                      }}
-                    >
-                      Graph API
-                    </span>
+                  <div className="inline-code-row" style={{ flexWrap: 'wrap', marginBottom: 2 }}>
+                    <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-main)' }}>Facebook</span>
+                    <span className="badge badge-neutral">Graph API</span>
                     {facebookProvider?.hasSecret && (
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 500,
-                          padding: '1px 6px',
-                          borderRadius: 4,
-                          background: 'rgba(16, 185, 129, 0.1)',
-                          color: 'var(--success, #10b981)',
-                          border: '1px solid rgba(16, 185, 129, 0.25)',
-                        }}
-                      >
-                        ✓ Secret
+                      <span className="badge badge-success">
+                        <IconCheck size={11} />
+                        <span>Secret</span>
                       </span>
                     )}
                   </div>
-                  <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted, #94a3b8)', lineHeight: 1.4 }}>
+                  <p className="card-subtitle">
                     {lang === 'vi'
                       ? 'Đăng nhập qua Meta Facebook với quyền xác thực email tin cậy.'
                       : 'Sign in via Facebook Meta account with verified email permission.'}
@@ -518,38 +366,20 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
                 </div>
               </div>
 
-              {/* Right: Balanced Action Controls */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                {/* 1. Configure button */}
+              <div className="provider-row-controls">
                 <button
                   type="button"
                   id="btn-config-facebook"
                   className="btn btn-secondary btn-sm"
                   onClick={() => facebookProvider && handleOpenConfigure(facebookProvider)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    fontSize: 12,
-                    padding: '0 12px',
-                    height: 30,
-                    boxSizing: 'border-box',
-                    borderRadius: 6,
-                    whiteSpace: 'nowrap',
-                  }}
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                  </svg>
+                  <IconSettings size={13} />
                   <span>{lang === 'vi' ? 'Cấu hình' : 'Configure'}</span>
                 </button>
 
-                {/* Divider */}
-                <div style={{ width: 1, height: 18, background: 'var(--border-subtle, #334155)' }} />
+                <div className="provider-divider-v" aria-hidden="true" />
 
-                {/* 2. Toggle Switch + Status Label */}
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                <div className="inline-code-row" style={{ gap: 10 }}>
                   <Switch
                     id="toggle-oauth-facebook"
                     checked={isFacebookEnabled}
@@ -559,33 +389,13 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
                     ariaLabel={lang === 'vi' ? 'Bật hoặc tắt Facebook Login' : 'Toggle Facebook Login'}
                   />
 
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      height: 30,
-                      boxSizing: 'border-box',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      padding: '0 10px',
-                      borderRadius: 15,
-                      background: isFacebookEnabled ? 'rgba(16, 185, 129, 0.12)' : 'rgba(100, 116, 139, 0.15)',
-                      color: isFacebookEnabled ? 'var(--success, #10b981)' : 'var(--text-dim, #94a3b8)',
-                      border: isFacebookEnabled ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(100, 116, 139, 0.25)',
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        background: isFacebookEnabled ? 'var(--success, #10b981)' : 'var(--text-dim, #64748b)',
-                      }}
-                    />
-                    {isFacebookEnabled
-                      ? (lang === 'vi' ? 'Đang bật' : 'Enabled')
-                      : (lang === 'vi' ? 'Đã tắt' : 'Disabled')}
+                  <span className={`status-pill ${isFacebookEnabled ? 'status-pill-success' : ''}`}>
+                    <span className="status-dot" aria-hidden="true" />
+                    <span>
+                      {isFacebookEnabled
+                        ? (lang === 'vi' ? 'Đang bật' : 'Enabled')
+                        : (lang === 'vi' ? 'Đã tắt' : 'Disabled')}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -599,28 +409,16 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
         <div
           className="modal-backdrop show"
           id="configure-provider-modal"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.75)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1050,
-            padding: 16,
-          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="configure-provider-modal-title"
+          onClick={handleBackdropClick}
+          style={{ zIndex: 1050 }}
         >
           <div
             className="modal-content"
-            style={{
-              background: 'var(--bg-surface, #111827)',
-              border: '1px solid var(--border-subtle, #1e293b)',
-              borderRadius: 10,
-              width: '100%',
-              maxWidth: 540,
-              padding: 24,
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
-            }}
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 540 }}
           >
             {/* Modal Header */}
             <div
@@ -630,7 +428,7 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
                 justifyContent: 'space-between',
                 marginBottom: 18,
                 paddingBottom: 14,
-                borderBottom: '1px solid var(--border-subtle, #1e293b)',
+                borderBottom: '1px solid var(--border-subtle)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -647,12 +445,12 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
                   </svg>
                 )}
                 <div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#fff' }}>
+                  <h3 id="configure-provider-modal-title" style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-main)' }}>
                     {lang === 'vi'
                       ? `Cấu hình ${configuringProvider.name || configuringProvider.provider}`
                       : `Configure ${configuringProvider.name || configuringProvider.provider}`}
                   </h3>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted, #94a3b8)', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                     {lang === 'vi' ? 'Thông tin định danh OAuth riêng của ứng dụng' : 'Application-specific OAuth credentials'}
                   </div>
                 </div>
@@ -661,51 +459,29 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
               <button
                 type="button"
                 id="btn-close-modal"
+                className="btn-icon"
                 onClick={() => setConfiguringProvider(null)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-muted, #94a3b8)',
-                  fontSize: 18,
-                  cursor: 'pointer',
-                  padding: 4,
-                  lineHeight: 1,
-                }}
+                disabled={isSavingConfig}
+                aria-label={lang === 'vi' ? 'Đóng' : 'Close'}
               >
-                ✕
+                <IconX size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveModal} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <form onSubmit={handleSaveModal} className="card-stack" style={{ gap: 16 }}>
               {/* Developer Console Link banner */}
-              <div
-                style={{
-                  padding: '10px 14px',
-                  background: 'rgba(56, 189, 248, 0.08)',
-                  border: '1px solid rgba(56, 189, 248, 0.2)',
-                  borderRadius: 6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                }}
-              >
-                <span style={{ fontSize: 12, color: '#38bdf8', lineHeight: 1.4 }}>
+              <div className="info-banner info-banner--primary" style={{ marginBottom: 0, justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>
                   {lang === 'vi'
-                    ? `Lấy Client ID & Secret từ trang quản trị developer:`
-                    : `Get Client ID & Secret from the developer portal:`}
+                    ? 'Lấy Client ID & Secret từ trang quản trị developer:'
+                    : 'Get Client ID & Secret from the developer portal:'}
                 </span>
                 <a
                   href={portalHref}
                   target="_blank"
                   rel="noreferrer"
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: '#38bdf8',
-                    textDecoration: 'underline',
-                    whiteSpace: 'nowrap',
-                  }}
+                  className="btn-link-action"
+                  style={{ whiteSpace: 'nowrap' }}
                 >
                   {configuringProvider.provider === 'GOOGLE' ? 'Google Cloud' : 'Meta Developers'} ↗
                 </a>
@@ -713,13 +489,13 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
 
               {/* Client ID field */}
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 6, display: 'block' }}>
-                  Client ID <span style={{ color: 'var(--danger, #ef4444)' }}>*</span>
+                <label className="form-label" htmlFor="modal-provider-client-id">
+                  Client ID <span style={{ color: 'var(--danger)' }}>*</span>
                 </label>
                 <input
                   type="text"
                   id="modal-provider-client-id"
-                  className="form-control"
+                  className="form-control form-control-mono"
                   required
                   placeholder={
                     configuringProvider.provider === 'GOOGLE'
@@ -729,59 +505,28 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
                   value={modalClientId}
                   onChange={(e) => setModalClientId(e.target.value)}
                   disabled={isSavingConfig}
-                  style={{
-                    width: '100%',
-                    height: 36,
-                    fontSize: 13,
-                    fontFamily: 'monospace',
-                    background: 'var(--bg-input, #0f172a)',
-                    border: '1px solid var(--border-medium, #334155)',
-                    color: '#fff',
-                    borderRadius: 6,
-                    padding: '0 12px',
-                    boxSizing: 'border-box',
-                  }}
                 />
               </div>
 
               {/* Client Secret field */}
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <label className="form-label" style={{ fontSize: 13, fontWeight: 600, color: '#fff', margin: 0 }}>
-                    Client Secret <span style={{ color: 'var(--danger, #ef4444)' }}>*</span>
+                  <label className="form-label" htmlFor="modal-provider-client-secret" style={{ marginBottom: 0 }}>
+                    Client Secret <span style={{ color: 'var(--danger)' }}>*</span>
                   </label>
-                  {modalClientSecret ? (
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: 'var(--success, #10b981)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                      }}
-                    >
-                      ✓ {lang === 'vi' ? 'Đã thiết lập secret' : 'Secret configured'}
+                  {modalClientSecret && (
+                    <span className="badge badge-success">
+                      <IconCheck size={11} />
+                      <span>{lang === 'vi' ? 'Đã thiết lập secret' : 'Secret configured'}</span>
                     </span>
-                  ) : null}
+                  )}
                 </div>
 
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    background: 'var(--bg-input, #0f172a)',
-                    border: '1px solid var(--border-medium, #334155)',
-                    borderRadius: 6,
-                    padding: '0 8px 0 12px',
-                    height: 36,
-                    boxSizing: 'border-box',
-                  }}
-                >
+                <div className="password-inline-field">
                   <input
                     type={modalShowSecret ? 'text' : 'password'}
                     id="modal-provider-client-secret"
+                    className="password-inline-input password-inline-input--mono"
                     placeholder={
                       lang === 'vi'
                         ? 'Nhập Client Secret của nhà cung cấp...'
@@ -790,25 +535,13 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
                     value={modalClientSecret}
                     onChange={(e) => setModalClientSecret(e.target.value)}
                     disabled={isSavingConfig}
-                    style={{
-                      flex: 1,
-                      height: '100%',
-                      background: 'transparent',
-                      border: 'none',
-                      outline: 'none',
-                      fontSize: 13,
-                      fontFamily: 'monospace',
-                      color: '#fff',
-                      padding: 0,
-                    }}
                   />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <div className="inline-code-row">
                     <button
                       type="button"
                       id="modal-secret-toggle-btn"
-                      className="btn btn-secondary btn-sm"
+                      className="btn btn-secondary btn-xs"
                       onClick={() => setModalShowSecret(!modalShowSecret)}
-                      style={{ height: 26, fontSize: 11, padding: '0 8px', whiteSpace: 'nowrap' }}
                     >
                       {modalShowSecret ? (lang === 'vi' ? 'Ẩn' : 'Hide') : (lang === 'vi' ? 'Hiện' : 'Show')}
                     </button>
@@ -816,7 +549,7 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
                       <button
                         type="button"
                         id="modal-secret-copy-btn"
-                        className="btn btn-secondary btn-sm"
+                        className="btn btn-secondary btn-xs"
                         onClick={() => {
                           navigator.clipboard.writeText(modalClientSecret);
                           showToast(
@@ -826,14 +559,13 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
                             'success'
                           );
                         }}
-                        style={{ height: 26, fontSize: 11, padding: '0 8px', whiteSpace: 'nowrap' }}
                       >
                         {lang === 'vi' ? 'Sao chép' : 'Copy'}
                       </button>
                     )}
                   </div>
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--text-dim, #64748b)', marginTop: 4 }}>
+                <div className="form-hint">
                   {lang === 'vi'
                     ? 'Dùng để xác thực an toàn giữa Auth Service và nhà cung cấp OAuth.'
                     : 'Used to securely authenticate between Auth Service and the OAuth provider.'}
@@ -842,44 +574,22 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
 
               {/* Callback URL */}
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 6, display: 'block' }}>
+                <label className="form-label" htmlFor="modal-provider-callback">
                   Callback / Redirect URI
                 </label>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    background: 'var(--bg-input, #0f172a)',
-                    border: '1px solid var(--border-subtle, #1e293b)',
-                    borderRadius: 6,
-                    padding: '6px 10px',
-                    gap: 8,
-                  }}
-                >
-                  <span
-                    id="modal-provider-callback"
-                    style={{
-                      flex: 1,
-                      fontSize: 12,
-                      fontFamily: 'monospace',
-                      color: '#38bdf8',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                <div className="field-copy-box">
+                  <span id="modal-provider-callback" className="field-copy-value field-copy-value--accent">
                     {modalCallbackUrl}
                   </span>
                   <button
                     type="button"
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-secondary btn-xs"
                     onClick={() => copyCallbackUrl(modalCallbackUrl)}
-                    style={{ height: 26, fontSize: 11, padding: '0 8px', flexShrink: 0 }}
                   >
                     {lang === 'vi' ? 'Sao chép' : 'Copy'}
                   </button>
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--text-dim, #64748b)', marginTop: 4 }}>
+                <div className="form-hint">
                   {lang === 'vi'
                     ? 'Thêm chính xác URL này vào mục Authorized redirect URIs trên developer console của provider.'
                     : 'Add this exact URL to Authorized redirect URIs in the provider console.'}
@@ -887,15 +597,19 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
               </div>
 
               {/* Checkbox enable provider */}
-              <div
+              <label
+                htmlFor="modal-provider-enabled"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 10,
                   padding: '10px 14px',
-                  background: 'rgba(15, 23, 42, 0.4)',
+                  background: 'var(--bg-surface-elevated)',
                   borderRadius: 6,
-                  border: '1px solid var(--border-subtle, #1e293b)',
+                  border: '1px solid var(--border-subtle)',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  fontWeight: 500,
                 }}
               >
                 <input
@@ -904,30 +618,20 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
                   checked={modalIsEnabled}
                   onChange={(e) => setModalIsEnabled(e.target.checked)}
                   disabled={isSavingConfig}
-                  style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--primary, #4f46e5)' }}
+                  style={{ width: 16, height: 16, accentColor: 'var(--primary)' }}
                 />
-                <label htmlFor="modal-provider-enabled" style={{ fontSize: 13, fontWeight: 500, color: '#fff', cursor: 'pointer', margin: 0 }}>
+                <span>
                   {lang === 'vi' ? 'Kích hoạt phương thức đăng nhập này cho ứng dụng' : 'Enable this sign-in method for application'}
-                </label>
-              </div>
+                </span>
+              </label>
 
               {/* Modal Actions */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: 10,
-                  marginTop: 10,
-                  paddingTop: 14,
-                  borderTop: '1px solid var(--border-subtle, #1e293b)',
-                }}
-              >
+              <div className="modal-actions" style={{ marginTop: 6, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => setConfiguringProvider(null)}
                   disabled={isSavingConfig}
-                  style={{ height: 34, fontSize: 13 }}
                 >
                   {lang === 'vi' ? 'Hủy' : 'Cancel'}
                 </button>
@@ -936,9 +640,10 @@ export const AppOAuthSubTab: React.FC<AppOAuthSubTabProps> = ({ app }) => {
                   id="modal-provider-save-btn"
                   className="btn btn-primary"
                   disabled={isSavingConfig}
-                  style={{ height: 34, fontSize: 13, minWidth: 110 }}
+                  aria-busy={isSavingConfig}
                 >
-                  {isSavingConfig ? '...' : (lang === 'vi' ? 'Lưu Cấu Hình' : 'Save Config')}
+                  {isSavingConfig && <span className="btn-spinner" aria-hidden="true" />}
+                  <span>{isSavingConfig ? (lang === 'vi' ? 'Đang lưu…' : 'Saving…') : (lang === 'vi' ? 'Lưu Cấu Hình' : 'Save Config')}</span>
                 </button>
               </div>
             </form>

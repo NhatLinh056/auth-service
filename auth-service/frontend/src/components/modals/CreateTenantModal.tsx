@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useModalA11y } from '../../hooks/useModalA11y';
 import { tenantsService, type TenantSummary } from '../../services/tenants.service';
 
 interface CreateTenantModalProps {
@@ -21,6 +22,8 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const { handleBackdropClick } = useModalA11y(isOpen, onClose, loading);
 
   if (!isOpen) return null;
 
@@ -53,9 +56,16 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({
   };
 
   return (
-    <div className="modal-backdrop show" id="create-tenant-modal">
-      <div className="modal-content" style={{ maxWidth: 520 }}>
-        <h3 className="modal-title">
+    <div
+      className="modal-backdrop show"
+      id="create-tenant-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-tenant-modal-title"
+      onClick={handleBackdropClick}
+    >
+      <div className="modal-content" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
+        <h3 id="create-tenant-modal-title" className="modal-title">
           {vi ? 'Tạo Doanh Nghiệp Mới' : 'Create New Tenant'}
         </h3>
         <p className="modal-desc">

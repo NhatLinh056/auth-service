@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useModalA11y } from '../../hooks/useModalA11y';
 import { tenantsService, type TenantSummary } from '../../services/tenants.service';
 
 interface EditTenantModalProps {
@@ -23,6 +24,8 @@ export const EditTenantModal: React.FC<EditTenantModalProps> = ({
   const [name, setName] = useState(tenant.name || '');
   const [description, setDescription] = useState(tenant.description || '');
   const [loading, setLoading] = useState(false);
+
+  const { handleBackdropClick } = useModalA11y(isOpen, onClose, loading);
 
   useEffect(() => {
     setName(tenant.name || '');
@@ -58,9 +61,16 @@ export const EditTenantModal: React.FC<EditTenantModalProps> = ({
   };
 
   return (
-    <div className="modal-backdrop show" id="edit-tenant-modal">
-      <div className="modal-content" style={{ maxWidth: 520 }}>
-        <h3 className="modal-title">
+    <div
+      className="modal-backdrop show"
+      id="edit-tenant-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-tenant-modal-title"
+      onClick={handleBackdropClick}
+    >
+      <div className="modal-content" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
+        <h3 id="edit-tenant-modal-title" className="modal-title">
           {vi ? 'Chỉnh Sửa Thông Tin Doanh Nghiệp' : 'Edit Tenant Information'}
         </h3>
         <p className="modal-desc">

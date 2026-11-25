@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
+import { useLanguage } from './contexts/LanguageContext';
 import { AuthScreen } from './components/auth/AuthScreen';
 import { ClientSignIn } from './components/auth/ClientSignIn';
 import { ToastContainer } from './components/common/ToastContainer';
+import { IconBrandMark } from './components/common/Icons';
 import { AppShell } from './components/layout/AppShell';
 import { RoleDashboard } from './components/features/dashboard/RoleDashboard';
 import { AppDetailPage } from './components/features/applications/AppDetailPage';
@@ -50,35 +52,60 @@ const ForbiddenView: React.FC = () => (
 );
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, isAdmin, token } = useAuth();
+  const { isAuthenticated, isAdmin, token, initializing } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Application state
   const [applications, setApplications] = useState<Application[]>([]);
   const [appsLoading, setAppsLoading] = useState(false);
+  const [appsError, setAppsError] = useState<string | null>(null);
 
   // Users state (Admin)
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
 
   // Modals state
   const [isCreateAppOpen, setIsCreateAppOpen] = useState(false);
   const [assignRoleUser, setAssignRoleUser] = useState<User | null>(null);
   const appsReqIdRef = useRef(0);
 
+  // Smooth fade-out transition when boot initialization completes
+  const [bootVisible, setBootVisible] = useState(initializing);
+  const [bootLeaving, setBootLeaving] = useState(false);
+
+  useEffect(() => {
+    if (initializing) {
+      setBootVisible(true);
+      setBootLeaving(false);
+      return;
+    }
+    if (!bootVisible) return;
+    setBootLeaving(true);
+    const timer = window.setTimeout(() => {
+      setBootVisible(false);
+      setBootLeaving(false);
+    }, 130);
+    return () => window.clearTimeout(timer);
+  }, [initializing, bootVisible]);
+
   // Load applications (guarded against out-of-order stale responses)
   const loadApplications = useCallback(async () => {
     if (!token) return;
     const reqId = ++appsReqIdRef.current;
     setAppsLoading(true);
+    setAppsError(null);
     try {
       const data = await applicationsService.findAll();
       if (reqId === appsReqIdRef.current) {
         setApplications(data);
       }
-    } catch {
-      // Handled in service or empty
+    } catch (err: any) {
+      if (reqId === appsReqIdRef.current) {
+        setAppsError(err?.message || 'Không thể tải danh sách ứng dụng.');
+      }
     } finally {
       if (reqId === appsReqIdRef.current) {
         setAppsLoading(false);
@@ -90,11 +117,12 @@ const AppContent: React.FC = () => {
   const loadUsers = useCallback(async () => {
     if (!token || !isAdmin) return;
     setUsersLoading(true);
+    setUsersError(null);
     try {
       const data = await usersService.getAll();
       setUsers(data);
-    } catch {
-      // Handled in service or empty
+    } catch (err: any) {
+      setUsersError(err?.message || 'Không thể tải danh sách người dùng.');
     } finally {
       setUsersLoading(false);
     }
@@ -105,7 +133,9 @@ const AppContent: React.FC = () => {
     if (!isAuthenticated) {
       appsReqIdRef.current += 1;
       setApplications([]);
+      setAppsError(null);
       setUsers([]);
+      setUsersError(null);
       return;
     }
     const path = location.pathname;
@@ -139,6 +169,26 @@ const AppContent: React.FC = () => {
   const flowId = new URLSearchParams(window.location.search).get('signin');
   if (flowId) return <ClientSignIn flowId={flowId} />;
 
+  if (initializing || bootVisible) {
+    return (
+      <div
+        className={`auth-boot-screen${bootLeaving ? ' is-leaving' : ''}`}
+        id="auth-boot-screen"
+        role="status"
+        aria-live="polite"
+        aria-label={t('auth_screen.loading_app')}
+      >
+        <div className="auth-boot-card page-enter">
+          <div className="auth-boot-logo" aria-hidden="true">
+            <IconBrandMark size={26} strokeWidth={1.9} />
+          </div>
+          <span className="auth-boot-title">Auth Service</span>
+          <div className="auth-boot-progress" aria-hidden="true" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <HashRedirect />
@@ -160,7 +210,7 @@ const AppContent: React.FC = () => {
           path="/console"
           element={
             isAuthenticated ? (
-              <AppShell />
+              <AppShell isLoading={appsLoading || usersLoading} />
             ) : (
               <Navigate to="/" replace />
             )
@@ -175,6 +225,7 @@ const AppContent: React.FC = () => {
             element={
               <RoleDashboard
                 applications={applications}
+                appsLoading={appsLoading}
                 onGoToApps={() => navigate('/console/applications')}
                 onOpenAppDetail={(app) => navigate(`/console/applications/${app.id}`)}
                 onOpenCreateApp={() => setIsCreateAppOpen(true)}
@@ -190,6 +241,7 @@ const AppContent: React.FC = () => {
               <ApplicationsTab
                 applications={applications}
                 loading={appsLoading}
+                error={appsError}
                 onRefresh={loadApplications}
                 onOpenCreateModal={() => setIsCreateAppOpen(true)}
                 onOpenDetailModal={(app) => navigate(`/console/applications/${app.id}`)}
@@ -232,6 +284,7 @@ const AppContent: React.FC = () => {
                 <UsersTab
                   users={users}
                   loading={usersLoading}
+                  error={usersError}
                   onRefresh={loadUsers}
                   onOpenAssignRole={setAssignRoleUser}
                 />

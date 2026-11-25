@@ -65,7 +65,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         style={{
           fontSize: 15,
           fontWeight: 600,
-          color: '#fff',
+          color: 'var(--text-main)',
           margin: '0 0 6px',
         }}
       >

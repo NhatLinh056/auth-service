@@ -5,6 +5,7 @@ import type { Application, AppUser } from '../../../types/application.types';
 import { SkeletonTable } from '../../common/SkeletonTable';
 import { EmptyState } from '../../common/EmptyState';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
+import { IconCopy, IconRefresh, IconSearch } from '../../common/Icons';
 
 export interface AppUsersSubTabProps {
   app: Application;
@@ -77,70 +78,21 @@ export const AppUsersSubTab: React.FC<AppUsersSubTabProps> = ({
   };
 
   return (
-    <div id="app-view-users" style={{ width: '100%' }}>
+    <div id="app-view-users" className="page-container">
       {/* Table Card Panel */}
-      <div
-        className="card"
-        style={{
-          background: 'var(--bg-surface, #111827)',
-          border: '1px solid var(--border-subtle, #1e293b)',
-          borderRadius: 8,
-          marginBottom: 20,
-          overflow: 'hidden',
-        }}
-      >
-        {/* Toolbar Header: Strictly aligned search + refresh + counter */}
-        <div
-          style={{
-            padding: '14px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 16,
-            borderBottom: '1px solid var(--border-subtle, #1e293b)',
-          }}
-        >
-          {/* Left: Search input (280px) and Refresh button side-by-side */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ position: 'relative', width: 280 }}>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                style={{
-                  position: 'absolute',
-                  left: 12,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--text-dim, #64748b)',
-                  pointerEvents: 'none',
-                }}
-              >
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
+      <div className="card-panel">
+        {/* Toolbar Header */}
+        <div className="toolbar-row">
+          <div className="toolbar-controls">
+            <div className="search-box">
+              <IconSearch size={14} />
               <input
                 type="text"
                 id="app-users-search"
+                className="search-input"
                 placeholder={lang === 'vi' ? 'Tìm theo email, tên...' : 'Search by email, name...'}
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
-                style={{
-                  height: 36,
-                  paddingLeft: 34,
-                  paddingRight: 12,
-                  fontSize: 13,
-                  background: 'var(--bg-input, #0f172a)',
-                  border: '1px solid var(--border-medium, #334155)',
-                  color: '#fff',
-                  borderRadius: 6,
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  outline: 'none',
-                }}
               />
             </div>
 
@@ -149,72 +101,29 @@ export const AppUsersSubTab: React.FC<AppUsersSubTabProps> = ({
               className="btn btn-secondary btn-sm"
               onClick={onRefresh}
               disabled={loading}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                height: 36,
-                padding: '0 14px',
-                borderRadius: 6,
-                whiteSpace: 'nowrap',
-              }}
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }}
-              >
-                <polyline points="23 4 23 10 17 10" />
-                <polyline points="1 20 1 14 7 14" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-              </svg>
+              <IconRefresh size={14} style={{ animation: loading ? 'spin 1s linear infinite' : undefined }} />
               <span>{lang === 'vi' ? 'Làm mới' : 'Refresh'}</span>
             </button>
           </div>
 
-          {/* Right: Counter badge */}
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--text-muted, #94a3b8)',
-              background: 'var(--bg-card, #1e293b)',
-              padding: '4px 12px',
-              borderRadius: 12,
-              border: '1px solid var(--border-subtle, #334155)',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <span className="results-count-badge">
             {lang === 'vi'
               ? `Tổng cộng: ${filteredUsers.length} AppUser`
               : `Total: ${filteredUsers.length} AppUsers`}
-          </div>
+          </span>
         </div>
 
         {/* Table */}
-        <div className="table-responsive" style={{ overflowX: 'auto', width: '100%' }}>
-          <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+        <div className="table-responsive">
+          <table className="data-table">
             <thead>
-              <tr style={{ background: 'rgba(15, 23, 42, 0.6)' }}>
-                <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim, #94a3b8)', borderBottom: '1px solid var(--border-subtle, #1e293b)' }}>
-                  {lang === 'vi' ? 'Khách Hàng / Email' : 'User / Email'}
-                </th>
-                <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim, #94a3b8)', borderBottom: '1px solid var(--border-subtle, #1e293b)' }}>
-                  {lang === 'vi' ? 'Phương Thức Đăng Nhập' : 'Last Login Method'}
-                </th>
-                <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim, #94a3b8)', borderBottom: '1px solid var(--border-subtle, #1e293b)' }}>
-                  {lang === 'vi' ? 'AppUser ID' : 'AppUser ID'}
-                </th>
-                <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim, #94a3b8)', borderBottom: '1px solid var(--border-subtle, #1e293b)' }}>
-                  {lang === 'vi' ? 'Ngày Tham Gia' : 'Joined App At'}
-                </th>
-                <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim, #94a3b8)', borderBottom: '1px solid var(--border-subtle, #1e293b)', textAlign: 'right' }}>
-                  {t('table.actions')}
-                </th>
+              <tr>
+                <th>{lang === 'vi' ? 'Khách Hàng / Email' : 'User / Email'}</th>
+                <th>{lang === 'vi' ? 'Phương Thức Đăng Nhập' : 'Last Login Method'}</th>
+                <th>AppUser ID</th>
+                <th>{lang === 'vi' ? 'Ngày Tham Gia' : 'Joined App At'}</th>
+                <th style={{ textAlign: 'right' }}>{t('table.actions')}</th>
               </tr>
             </thead>
 
@@ -269,101 +178,67 @@ export const AppUsersSubTab: React.FC<AppUsersSubTabProps> = ({
                   const isPlatformSession = rawMethod.includes('PLATFORM_SESSION');
 
                   let displayMethod = lang === 'vi' ? 'Chưa xác định' : 'Unknown';
-                  let badgeBg = 'rgba(148, 163, 184, 0.15)';
-                  let badgeColor = '#94a3b8';
+                  let badgeClass = 'badge-neutral';
 
                   if (isGoogle) {
                     displayMethod = 'Google';
-                    badgeBg = 'rgba(234, 67, 53, 0.15)';
-                    badgeColor = '#ea4335';
+                    badgeClass = 'badge-danger';
                   } else if (isFacebook) {
                     displayMethod = 'Facebook';
-                    badgeBg = 'rgba(24, 119, 242, 0.15)';
-                    badgeColor = '#1877f2';
+                    badgeClass = 'badge-info';
                   } else if (isPassword) {
-                    displayMethod = 'Mật khẩu';
-                    badgeBg = 'rgba(16, 185, 129, 0.15)';
-                    badgeColor = '#10b981';
+                    displayMethod = lang === 'vi' ? 'Mật khẩu' : 'Password';
+                    badgeClass = 'badge-success';
                   } else if (isPlatformSession) {
                     displayMethod = 'Platform SSO';
-                    badgeBg = 'rgba(129, 140, 248, 0.15)';
-                    badgeColor = '#818cf8';
+                    badgeClass = 'badge-primary';
                   }
 
                   const shortId = u.id ? `${u.id.slice(0, 8)}...${u.id.slice(-6)}` : 'N/A';
                   const joinedDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—';
 
                   return (
-                    <tr
-                      key={u.id}
-                      style={{
-                        borderBottom: '1px solid var(--border-subtle, #1e293b)',
-                        transition: 'background 0.15s ease',
-                      }}
-                    >
+                    <tr key={u.id}>
                       {/* 1. User / Email */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ fontWeight: 600, color: '#fff', fontSize: 13 }}>
+                      <td>
+                        <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: 13 }}>
                           {u.name || (lang === 'vi' ? 'Khách chưa đặt tên' : 'Unnamed User')}
                         </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted, #94a3b8)', marginTop: 2 }}>
+                        <div className="form-hint" style={{ marginTop: 2 }}>
                           {u.email}
                         </div>
                       </td>
 
                       {/* 2. Login Method */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <span
-                          className="badge"
-                          style={{
-                            background: badgeBg,
-                            color: badgeColor,
-                            fontWeight: 600,
-                            fontSize: 11,
-                            padding: '3px 8px',
-                            borderRadius: 4,
-                            border: `1px solid ${badgeBg}`,
-                          }}
-                        >
-                          {displayMethod}
-                        </span>
+                      <td>
+                        <span className={`badge ${badgeClass}`}>{displayMethod}</span>
                       </td>
 
                       {/* 3. AppUser ID (Short + Copy) */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          <code
-                            style={{
-                              fontSize: 12,
-                              color: '#cbd5e1',
-                              background: 'rgba(0, 0, 0, 0.3)',
-                              padding: '2px 6px',
-                              borderRadius: 4,
-                              fontFamily: 'var(--font-mono, monospace)',
-                            }}
-                            title={u.id}
-                          >
+                      <td>
+                        <div className="inline-code-row">
+                          <code className="mono-tag" title={u.id}>
                             {shortId}
                           </code>
                           <button
                             type="button"
-                            className="btn btn-secondary btn-xs"
+                            className="btn-icon"
                             onClick={() => copyAppUserId(u.id)}
                             title={lang === 'vi' ? 'Sao chép AppUser ID đầy đủ' : 'Copy Full AppUser ID'}
-                            style={{ padding: '2px 6px', fontSize: 11 }}
+                            aria-label={lang === 'vi' ? 'Sao chép AppUser ID đầy đủ' : 'Copy Full AppUser ID'}
                           >
-                            {lang === 'vi' ? 'Copy' : 'Copy'}
+                            <IconCopy size={13} />
                           </button>
                         </div>
                       </td>
 
                       {/* 4. Joined Date */}
-                      <td style={{ padding: '14px 18px', fontSize: 12, color: 'var(--text-muted, #94a3b8)' }}>
+                      <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                         {joinedDate}
                       </td>
 
                       {/* 5. Actions (Delete AppUser) */}
-                      <td style={{ padding: '14px 18px', textAlign: 'right' }}>
+                      <td style={{ textAlign: 'right' }}>
                         <button
                           type="button"
                           className="btn btn-danger btn-xs"
@@ -373,11 +248,6 @@ export const AppUsersSubTab: React.FC<AppUsersSubTabProps> = ({
                               ? 'Xóa người dùng khỏi ứng dụng này (không xóa tài khoản platform)'
                               : 'Remove user from this application'
                           }
-                          style={{
-                            padding: '4px 10px',
-                            fontSize: 11,
-                            fontWeight: 600,
-                          }}
                         >
                           {lang === 'vi' ? 'Xóa khỏi App' : 'Remove'}
                         </button>

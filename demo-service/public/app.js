@@ -21,14 +21,17 @@ const translations = {
       subtitle: 'Fast and secure sign-in with your social account',
       btn_google: 'Sign in with Google',
       btn_facebook: 'Sign in with Facebook',
+      provider_disabled: 'Currently disabled in Application Settings',
       footer_note: 'Direct authentication via OAuth orchestrated by Auth Service.',
     },
     btn: {
       sign_out: 'Sign Out',
+      signing_out: 'Signing out…',
     },
     modal_logout: {
       title: 'Confirm Sign Out',
-      body: 'Are you sure you want to sign out of <strong>Demo Order Service</strong>?',
+      body_prefix: 'Are you sure you want to sign out of',
+      body_suffix: '?',
       note: 'Your session on this customer portal will end. This sign-out does not affect your active sessions on other applications.',
       btn_cancel: 'Cancel (Esc)',
       btn_confirm: 'Sign Out Now',
@@ -41,6 +44,7 @@ const translations = {
       sync_error: 'Failed to verify session with server. Please retry.',
     },
     status: {
+      checking: 'Checking…',
       online: 'System Online',
       connected: 'System Online',
       disconnected: 'Disconnected',
@@ -58,7 +62,8 @@ const translations = {
     },
     api_test: {
       title: 'Token Verification (Protected API)',
-      desc: 'Call endpoint GET /auth/protected with your session cookie (or Bearer token) to verify access via Auth Service.',
+      desc_before: 'Call endpoint',
+      desc_after: 'with your session cookie (or Bearer token) to verify access via Auth Service.',
       btn_call: 'Test Protected API',
     }
   },
@@ -73,14 +78,17 @@ const translations = {
       subtitle: 'Đăng nhập nhanh chóng và bảo mật qua mạng xã hội',
       btn_google: 'Đăng nhập bằng Google',
       btn_facebook: 'Đăng nhập bằng Facebook',
+      provider_disabled: 'Đang vô hiệu hóa trong Cài đặt Ứng dụng',
       footer_note: 'Xác thực trực tiếp qua luồng OAuth do Auth Service điều phối.',
     },
     btn: {
       sign_out: 'Đăng Xuất',
+      signing_out: 'Đang đăng xuất…',
     },
     modal_logout: {
       title: 'Xác Nhận Đăng Xuất',
-      body: 'Bạn có chắc chắn muốn đăng xuất khỏi <strong>Demo Order Service</strong> không?',
+      body_prefix: 'Bạn có chắc chắn muốn đăng xuất khỏi',
+      body_suffix: ' không?',
       note: 'Phiên đăng nhập trên cổng khách hàng này sẽ kết thúc. Việc đăng xuất này không làm mất phiên đăng nhập của bạn trên các ứng dụng khác.',
       btn_cancel: 'Hủy Bỏ (Esc)',
       btn_confirm: 'Đăng Xuất Ngay',
@@ -93,6 +101,7 @@ const translations = {
       sync_error: 'Không thể xác thực phiên đăng nhập với máy chủ. Vui lòng thử lại.',
     },
     status: {
+      checking: 'Đang kiểm tra…',
       online: 'Hệ Thống Trực Tuyến',
       connected: 'Hệ Thống Trực Tuyến',
       disconnected: 'Mất Kết Nối',
@@ -110,7 +119,8 @@ const translations = {
     },
     api_test: {
       title: 'Kiểm Chứng Token (Protected API)',
-      desc: 'Gọi endpoint GET /auth/protected bằng cookie phiên (hoặc Bearer token) để xác thực quyền truy cập qua Auth Service.',
+      desc_before: 'Gọi endpoint',
+      desc_after: 'bằng cookie phiên (hoặc Bearer token) để xác thực quyền truy cập qua Auth Service.',
       btn_call: 'Thử Gọi API Bảo Vệ',
     }
   }
@@ -118,12 +128,23 @@ const translations = {
 
 const state = {
   lang: localStorage.getItem('demo_lang') || 'vi',
+  bootPending: false,
   user: null, // Fail-closed: always initialize unauthenticated; authenticated state is rendered only after successful GET /auth/me with cookie
   providers: [],
   handshake: null,
   handshakeStatus: null,
   oauthBusy: false,
+  loggingOut: false,
+  lastFocusedElement: null,
 };
+
+async function waitMinFeedback(startedAt, minMs) {
+  if (typeof setTimeout !== 'function') return;
+  const remaining = minMs - (Date.now() - startedAt);
+  if (remaining > 0) {
+    await new Promise(resolve => setTimeout(resolve, remaining));
+  }
+}
 
 function t(path) {
   const keys = path.split('.');
@@ -166,23 +187,38 @@ function showToast(message, type = 'success') {
   toast.textContent = message;
 
   container.appendChild(toast);
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateY(8px)';
-    setTimeout(() => toast.remove(), 200);
-  }, 3500);
+  if (typeof setTimeout === 'function') {
+    setTimeout(() => {
+      toast.classList?.add('is-leaving');
+      setTimeout(() => toast.remove(), 200);
+    }, 3500);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AUTH & SESSION MANAGEMENT
 // ─────────────────────────────────────────────────────────────────────────────
 function updateAuthUI() {
+  if (state.bootPending) return;
+
   const unauthView = document.getElementById('unauth-view');
   const authView = document.getElementById('auth-view');
 
   if (state.user) {
-    if (unauthView) unauthView.style.display = 'none';
-    if (authView) authView.style.display = 'block';
+    if (unauthView) {
+      unauthView.hidden = true;
+      if (unauthView.style) unauthView.style.display = 'none';
+    }
+    if (authView) {
+      const wasHidden = authView.hidden;
+      authView.hidden = false;
+      if (authView.style) authView.style.display = 'block';
+      if (wasHidden && authView.classList) {
+        authView.classList.remove('view-enter');
+        void authView.offsetWidth;
+        authView.classList.add('view-enter');
+      }
+    }
 
     const nameEl = document.getElementById('user-name-display');
     const emailEl = document.getElementById('user-email-display');
@@ -210,7 +246,7 @@ function updateAuthUI() {
       } else if (p === 'FACEBOOK') {
         providerEl.className = 'badge badge-facebook';
       } else {
-        providerEl.className = 'badge';
+        providerEl.className = 'badge badge-neutral';
       }
     }
 
@@ -219,30 +255,33 @@ function updateAuthUI() {
     if (roleEl) {
       const r = state.user.appRole || state.user.role || 'USER';
       roleEl.textContent = r === 'ADMIN'
-        ? (state.lang === 'vi' ? 'ADMIN' : 'ADMIN')
+        ? 'ADMIN'
         : (state.lang === 'vi' ? 'USER (Khách hàng)' : 'USER (Customer)');
     }
     if (ownerEl) {
       const isOwner = Boolean(state.user.isAppOwner);
-      ownerEl.style.display = isOwner ? 'inline-flex' : 'none';
+      ownerEl.hidden = !isOwner;
+      if (ownerEl.style) ownerEl.style.display = isOwner ? 'inline-flex' : 'none';
       ownerEl.textContent = state.lang === 'vi' ? 'Chủ Ứng Dụng' : 'App Owner';
     }
 
     if (avatarEl) {
       const avatarUrl = state.user.avatar || state.user.avatarUrl;
       if (avatarUrl) {
-        avatarEl.replaceChildren();
+        avatarEl.replaceChildren?.();
         try {
           const url = new URL(avatarUrl);
           if (url.protocol === 'https:') {
             const img = document.createElement('img');
             img.src = url.href;
             img.alt = 'Avatar';
-            img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%';
+            img.className = 'user-avatar-img';
             avatarEl.appendChild(img);
+          } else {
+            avatarEl.textContent = displayName.charAt(0).toUpperCase();
           }
         } catch {
-          avatarEl.textContent = '?';
+          avatarEl.textContent = displayName.charAt(0).toUpperCase();
         }
       } else {
         const initial = (state.user.name || state.user.email || 'U').charAt(0).toUpperCase();
@@ -250,8 +289,20 @@ function updateAuthUI() {
       }
     }
   } else {
-    if (unauthView) unauthView.style.display = 'block';
-    if (authView) authView.style.display = 'none';
+    if (authView) {
+      authView.hidden = true;
+      if (authView.style) authView.style.display = 'none';
+    }
+    if (unauthView) {
+      const wasHidden = unauthView.hidden;
+      unauthView.hidden = false;
+      if (unauthView.style) unauthView.style.display = 'block';
+      if (wasHidden && unauthView.classList) {
+        unauthView.classList.remove('view-enter');
+        void unauthView.offsetWidth;
+        unauthView.classList.add('view-enter');
+      }
+    }
   }
 }
 
@@ -308,20 +359,42 @@ async function handleUrlCallback() {
 
 function openLogoutModal() {
   const modal = document.getElementById('logout-modal');
-  if (modal) modal.style.display = 'flex';
+  if (!modal) return;
+  state.lastFocusedElement = document.activeElement || null;
+  modal.hidden = false;
+  if (modal.style) modal.style.display = 'flex';
+  const confirmBtn = document.getElementById('btn-confirm-logout');
+  if (confirmBtn && typeof confirmBtn.focus === 'function') {
+    confirmBtn.focus();
+  }
 }
 
 function closeLogoutModal() {
+  if (state.loggingOut) return;
   const modal = document.getElementById('logout-modal');
-  if (modal) modal.style.display = 'none';
+  if (!modal) return;
+  modal.hidden = true;
+  if (modal.style) modal.style.display = 'none';
+  if (state.lastFocusedElement && typeof state.lastFocusedElement.focus === 'function') {
+    state.lastFocusedElement.focus();
+  }
+  state.lastFocusedElement = null;
 }
 
 function confirmLogout() {
-  closeLogoutModal();
   return logout();
 }
 
 async function logout() {
+  if (state.loggingOut) return;
+  state.loggingOut = true;
+  const confirmBtn = document.getElementById('btn-confirm-logout');
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = t('btn.signing_out');
+  }
+
+  const startedAt = Date.now();
   try {
     const res = await fetch(`${API_BASE}/auth/logout`, {
       method: 'POST',
@@ -333,21 +406,34 @@ async function logout() {
       throw new Error(data.message || (state.lang === 'vi' ? 'Đăng xuất thất bại.' : 'Sign out failed.'));
     }
 
+    await waitMinFeedback(startedAt, 380);
     state.user = null;
 
     const resultEl = document.getElementById('api-test-result');
     const statusEl = document.getElementById('api-test-status');
     if (resultEl) {
-      resultEl.style.display = 'none';
+      resultEl.hidden = true;
+      if (resultEl.style) resultEl.style.display = 'none';
       resultEl.textContent = '';
     }
-    if (statusEl) statusEl.textContent = '';
+    if (statusEl) {
+      statusEl.className = 'api-status';
+      statusEl.textContent = '';
+    }
 
+    state.loggingOut = false;
+    closeLogoutModal();
     updateAuthUI();
     showToast(t('toasts.signed_out'));
   } catch (err) {
+    state.loggingOut = false;
     console.warn('Logout request failed:', err.message);
     showToast(err.message || (state.lang === 'vi' ? 'Đăng xuất thất bại.' : 'Sign out failed.'), 'error');
+  } finally {
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = t('modal_logout.btn_confirm');
+    }
   }
 }
 
@@ -362,17 +448,23 @@ async function testProtectedApi() {
   }
 
   if (btn) btn.disabled = true;
-  if (statusEl) statusEl.textContent = state.lang === 'vi' ? 'Đang gọi API...' : 'Calling API...';
+  if (statusEl) {
+    statusEl.className = 'api-status is-loading';
+    statusEl.textContent = state.lang === 'vi' ? 'Đang gọi API...' : 'Calling API...';
+  }
 
+  const startedAt = Date.now();
   try {
     const res = await fetch(`${API_BASE}/auth/protected`, {
       credentials: 'include',
     });
 
     const data = await res.json().catch(() => ({}));
+    await waitMinFeedback(startedAt, 260);
 
     if (resultEl) {
-      resultEl.style.display = 'block';
+      resultEl.hidden = false;
+      if (resultEl.style) resultEl.style.display = 'block';
       const displayData = (res.ok && data && data.user) ? {
         message: data.message,
         authenticated: data.authenticated,
@@ -392,25 +484,26 @@ async function testProtectedApi() {
       }, null, 2);
     }
 
-    const setStatusBadge = (color, text) => {
+    const setStatusBadge = (statusClass, text) => {
       if (!statusEl) return;
-      statusEl.style.color = color;
+      statusEl.className = `api-status ${statusClass}`;
       statusEl.textContent = text;
     };
 
     if (res.ok) {
-      setStatusBadge('#10b981', `HTTP ${res.status} OK (Đã xác thực)`);
+      const okLabel = state.lang === 'vi' ? 'Đã xác thực' : 'Verified';
+      setStatusBadge('is-success', `HTTP ${res.status} OK (${okLabel})`);
       showToast(state.lang === 'vi' ? 'Xác thực API bảo vệ thành công!' : 'Protected API verified successfully!');
     } else if (res.status === 403) {
-      setStatusBadge('#ef4444', `HTTP 403 (${data.message || 'Truy cập bị từ chối'})`);
+      setStatusBadge('is-error', `HTTP 403 (${data.message || (state.lang === 'vi' ? 'Truy cập bị từ chối' : 'Access denied')})`);
       showToast(data.message || (state.lang === 'vi' ? 'Truy cập bị từ chối' : 'Access denied'), 'error');
     } else {
-      setStatusBadge('#ef4444', `HTTP ${res.status} (${data.message || 'Lỗi'})`);
+      setStatusBadge('is-error', `HTTP ${res.status} (${data.message || (state.lang === 'vi' ? 'Lỗi' : 'Error')})`);
       showToast(data.message || 'API error', 'error');
     }
   } catch (err) {
     if (statusEl) {
-      statusEl.style.color = '#ef4444';
+      statusEl.className = 'api-status is-error';
       statusEl.textContent = 'Network Error';
     }
     showToast(err.message, 'error');
@@ -432,10 +525,8 @@ async function loginWithProvider(provider = 'google') {
   }
 
   state.oauthBusy = true;
-  const button = document.getElementById('btn-auth-login');
   const googleBtn = document.getElementById('btn-oauth-google');
   const fbBtn = document.getElementById('btn-oauth-facebook');
-  if (button) button.disabled = true;
   if (googleBtn) googleBtn.disabled = true;
   if (fbBtn) fbBtn.disabled = true;
   try {
@@ -443,7 +534,6 @@ async function loginWithProvider(provider = 'google') {
     window.location.assign(`${API_BASE}/auth/login/${encodeURIComponent(provider.toLowerCase())}`);
   } catch (error) {
     state.oauthBusy = false;
-    if (button) button.disabled = false;
     renderProvidersList(state.providers);
     showToast(error.message || 'Không thể mở trang đăng nhập.', 'error');
   }
@@ -476,7 +566,8 @@ function renderProvidersList(providers) {
     if (googleBtn.style) googleBtn.style.opacity = isGoogleEnabled ? '1' : '0.45';
     googleBtn.title = isGoogleEnabled ? t('auth.btn_google') : t('toasts.not_enabled');
     if (googleNote) {
-      googleNote.style.display = isGoogleEnabled ? 'none' : 'block';
+      googleNote.hidden = isGoogleEnabled;
+      if (googleNote.style) googleNote.style.display = isGoogleEnabled ? 'none' : 'block';
     }
   }
 
@@ -486,7 +577,8 @@ function renderProvidersList(providers) {
     if (fbBtn.style) fbBtn.style.opacity = isFbEnabled ? '1' : '0.45';
     fbBtn.title = isFbEnabled ? t('auth.btn_facebook') : t('toasts.not_enabled');
     if (fbNote) {
-      fbNote.style.display = isFbEnabled ? 'none' : 'block';
+      fbNote.hidden = isFbEnabled;
+      if (fbNote.style) fbNote.style.display = isFbEnabled ? 'none' : 'block';
     }
   }
 }
@@ -498,20 +590,28 @@ window.addEventListener('keydown', (e) => {
 });
 
 function updateHandshakeUI() {
+  const pill = document.getElementById('handshake-pill');
   const dot = document.getElementById('handshake-dot');
+  const bannerDot = document.getElementById('banner-status-dot');
   const text = document.getElementById('handshake-text');
   const bannerAppName = document.getElementById('banner-app-name');
   const bannerAppStatus = document.getElementById('banner-app-status');
+  const logoutModalAppName = document.getElementById('logout-modal-app-name');
 
-  const isConnected = state.handshakeStatus === 'CONNECTED';
-  const isOffline = state.handshakeStatus === 'OFFLINE';
+  const statusClass = state.handshakeStatus === 'CONNECTED'
+    ? 'is-online'
+    : state.handshakeStatus === null
+    ? 'is-checking'
+    : 'is-offline';
 
-  if (dot) {
-    dot.className = isConnected ? 'status-dot' : 'status-dot status-dot-error';
-  }
+  if (pill) pill.className = `status-pill ${statusClass}`;
+  if (dot) dot.className = `status-dot ${statusClass}`;
+  if (bannerDot) bannerDot.className = `app-status-dot ${statusClass}`;
+
   if (text) {
-    if (isConnected) text.textContent = t('status.online');
-    else if (isOffline) text.textContent = t('status.offline');
+    if (state.handshakeStatus === 'CONNECTED') text.textContent = t('status.online');
+    else if (state.handshakeStatus === 'OFFLINE') text.textContent = t('status.offline');
+    else if (state.handshakeStatus === null) text.textContent = t('status.checking');
     else text.textContent = t('status.disconnected');
   }
 
@@ -520,6 +620,7 @@ function updateHandshakeUI() {
     const appStatus = state.handshake.handshake?.applicationStatus || state.handshake.status || 'ACTIVE';
 
     if (bannerAppName) bannerAppName.textContent = appName;
+    if (logoutModalAppName) logoutModalAppName.textContent = appName;
     if (bannerAppStatus) {
       bannerAppStatus.textContent = appStatus;
       bannerAppStatus.className = appStatus === 'ACTIVE' ? 'badge badge-success' : 'badge badge-danger';
@@ -554,10 +655,28 @@ async function checkHandshake() {
 // INITIALIZATION
 // ─────────────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
+  const startedAt = Date.now();
+  state.bootPending = true;
   setLanguage(state.lang);
   await handleUrlCallback();
+
+  await Promise.allSettled([
+    checkHandshake(),
+    refreshProviders(),
+    syncUserProfile(),
+  ]);
+
+  await waitMinFeedback(startedAt, 380);
+
+  const bootView = document.getElementById('boot-loading-view');
+  if (bootView) {
+    bootView.classList?.add('is-leaving');
+    if (typeof setTimeout === 'function') {
+      await new Promise(resolve => setTimeout(resolve, 150));
+    }
+    bootView.hidden = true;
+  }
+
+  state.bootPending = false;
   updateAuthUI();
-  await checkHandshake();
-  await refreshProviders();
-  await syncUserProfile();
 });

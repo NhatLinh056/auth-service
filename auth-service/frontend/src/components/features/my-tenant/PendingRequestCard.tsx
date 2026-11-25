@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
+import { IconAlertTriangle, IconBuilding, IconKey, IconPlus } from '../../common/Icons';
 import { tenantsService, type TenantJoinRequest } from '../../../services/tenants.service';
 
 interface PendingRequestCardProps {
@@ -56,110 +57,102 @@ export const PendingRequestCard: React.FC<PendingRequestCardProps> = ({
   const targetTenant = request.tenant;
 
   return (
-    <div style={{ maxWidth: 840, margin: '20px auto' }}>
-      {/* CASE 1: PENDING REQUEST CARD (Matching Scene 6 Wireframe) */}
+    <div className="page-container page-container--narrow card-stack">
+      {/* CASE 1: PENDING REQUEST CARD */}
       <div
         id="scene6PendingCard"
+        className="card"
         style={{
-          background: 'rgba(245, 158, 11, 0.08)',
-          border: '1px solid rgba(245, 158, 11, 0.3)',
-          borderRadius: 8,
-          padding: '18px 20px',
-          marginBottom: 24,
+          background: 'var(--warning-subtle)',
+          borderColor: 'var(--warning-border)',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="inline-code-row" style={{ flexWrap: 'wrap' }}>
               <span className="badge badge-warning">PENDING</span>
-              <strong style={{ color: '#f59e0b', fontSize: 14 }}>
+              <strong style={{ color: 'var(--warning)', fontSize: 14 }}>
                 {vi ? 'Bạn đang có 1 yêu cầu gia nhập đang chờ duyệt' : 'You have 1 pending join request'}
               </strong>
             </div>
 
-            <p style={{ fontSize: 13, color: '#fff', margin: '8px 0 2px' }}>
+            <p style={{ fontSize: 13, color: 'var(--text-main)', margin: '8px 0 4px' }}>
               {vi ? 'Doanh nghiệp mục tiêu:' : 'Target tenant:'}{' '}
-              <strong>{targetTenant?.name || vi ? 'Doanh nghiệp' : 'Tenant'}</strong>{' '}
+              <strong>{targetTenant?.name || (vi ? 'Doanh nghiệp' : 'Tenant')}</strong>{' '}
               {targetTenant?.id && (
-                <span style={{ color: 'var(--text-dim)' }}>
-                  (Tenant ID: <code style={{ fontSize: 11 }}>{targetTenant.id}</code>)
+                <span className="form-hint">
+                  (Tenant ID: <code className="mono-tag">{targetTenant.id}</code>)
                 </span>
               )}
             </p>
 
             {targetTenant?.owner && (
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0' }}>
-                {vi ? 'Chủ sở hữu:' : 'Owner:'} <strong>{targetTenant.owner.email}</strong>
+              <p className="card-subtitle" style={{ margin: '2px 0' }}>
+                {vi ? 'Chủ sở hữu:' : 'Owner:'} <strong style={{ color: 'var(--text-main)' }}>{targetTenant.owner.email}</strong>
               </p>
             )}
 
-            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '4px 0 0' }}>
+            <p className="form-hint">
               {vi ? 'Gửi yêu cầu lúc:' : 'Submitted at:'} {formatDate(request.createdAt)}
             </p>
           </div>
 
           <button
             type="button"
-            className="btn btn-secondary btn-sm"
+            className="btn btn-danger btn-sm"
             onClick={() => setConfirmCancelOpen(true)}
-            style={{ color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.4)', whiteSpace: 'nowrap' }}
             id="btn-cancel-pending-request"
           >
-            {vi ? 'Hủy Yêu Cầu (Cancel)' : 'Cancel Request'}
+            {vi ? 'Hủy Yêu Cầu' : 'Cancel Request'}
           </button>
         </div>
 
         <div
+          className="inline-code-row"
           style={{
             marginTop: 14,
-            paddingTop: 10,
-            borderTop: '1px solid rgba(245, 158, 11, 0.2)',
+            paddingTop: 12,
+            borderTop: '1px solid var(--warning-border)',
             fontSize: 12,
-            color: '#f59e0b',
-            lineHeight: 1.5,
+            color: 'var(--warning)',
+            alignItems: 'flex-start',
           }}
         >
-          ⚠️ <strong>{vi ? 'Quy tắc an toàn:' : 'Safety Rule:'}</strong>{' '}
-          {vi
-            ? 'Khi đang có yêu cầu PENDING, bạn KHÔNG THỂ tạo Tenant mới hoặc gửi yêu cầu gia nhập Tenant khác cho đến khi hủy yêu cầu này.'
-            : 'While a PENDING request is active, you CANNOT create a new tenant or apply to another tenant until this request is cancelled.'}
+          <IconAlertTriangle size={15} style={{ flexShrink: 0, marginTop: 2 }} />
+          <span>
+            <strong>{vi ? 'Quy tắc an toàn:' : 'Safety Rule:'}</strong>{' '}
+            {vi
+              ? 'Khi đang có yêu cầu PENDING, bạn KHÔNG THỂ tạo Tenant mới hoặc gửi yêu cầu gia nhập Tenant khác cho đến khi hủy yêu cầu này.'
+              : 'While a PENDING request is active, you CANNOT create a new tenant or apply to another tenant until this request is cancelled.'}
+          </span>
         </div>
       </div>
 
-      {/* CASE 2: LOCKED ACTIONS PANEL (Scene 6) */}
-      <div className="card-panel" id="scene6ActionPanel" style={{ opacity: 0.55, position: 'relative' }}>
-        <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* CASE 2: LOCKED ACTIONS PANEL */}
+      <div className="card-panel" id="scene6ActionPanel" style={{ opacity: 0.65 }}>
+        <div className="panel-header">
           <div className="panel-title" id="scene6ActionTitle">
             {vi
-              ? 'Tùy Chọn Khi Chưa Thuộc Doanh Nghiệp (Đang Tạm Khóa Do Có Yêu Cầu PENDING)'
-              : 'Options When Not In Tenant (Locked Due to Active PENDING Request)'}
+              ? 'Tùy Chọn Khi Chưa Thuộc Doanh Nghiệp (Đang Tạm Khóa)'
+              : 'Options When Not In Tenant (Locked)'}
           </div>
           <span className="badge badge-warning" id="scene6ActionBadge">
             {vi ? 'BỊ KHÓA BỞI HỆ THỐNG' : 'LOCKED BY SYSTEM'}
           </span>
         </div>
 
-        <div className="panel-body" style={{ padding: 20 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div className="panel-body">
+          <div className="grid-2-col">
             {/* Action 1: Create Tenant (Locked) */}
-            <div
-              style={{
-                background: 'var(--bg-surface-elevated)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 8,
-                padding: 20,
-                textAlign: 'center',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-              }}
-            >
+            <div className="option-tile option-tile-center">
               <div>
-                <div style={{ fontSize: 32, marginBottom: 10 }}>🏢</div>
-                <strong style={{ fontSize: 15, color: '#fff' }}>
+                <div className="icon-well icon-well--lg">
+                  <IconBuilding size={22} />
+                </div>
+                <strong style={{ fontSize: 15, color: 'var(--text-main)', display: 'block', marginBottom: 6 }}>
                   {vi ? 'Tạo Doanh Nghiệp Mới' : 'Create New Tenant'}
                 </strong>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 16px' }}>
+                <p className="card-subtitle">
                   {vi
                     ? 'Tạo doanh nghiệp của riêng bạn và tự động trở thành Tenant Owner với toàn quyền quản trị thành viên.'
                     : 'Create your own organization and automatically become Tenant Owner with full member management privileges.'}
@@ -167,67 +160,47 @@ export const PendingRequestCard: React.FC<PendingRequestCardProps> = ({
               </div>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary btn-block"
                 disabled
-                style={{ width: '100%', opacity: 0.5, cursor: notAllowedStyle.cursor }}
                 title={vi ? 'Bị khóa: Bạn đang có yêu cầu PENDING chờ duyệt' : 'Locked: Active PENDING request exists'}
               >
-                {vi ? '+ Tạo Doanh Nghiệp (Đang Khóa)' : '+ Create Tenant (Locked)'}
+                <IconPlus size={14} />
+                <span>{vi ? 'Tạo Doanh Nghiệp (Đang Khóa)' : 'Create Tenant (Locked)'}</span>
               </button>
             </div>
 
             {/* Action 2: Join by Tenant ID (Locked) */}
-            <div
-              style={{
-                background: 'var(--bg-surface-elevated)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 8,
-                padding: 20,
-                textAlign: 'left',
-              }}
-            >
-              <div style={{ fontSize: 32, marginBottom: 10, textAlign: 'center' }}>🔑</div>
-              <strong style={{ fontSize: 15, color: '#fff', display: 'block', textAlign: 'center' }}>
-                {vi ? 'Gia Nhập Theo Tenant ID' : 'Join by Tenant ID'}
-              </strong>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 14px', textAlign: 'center' }}>
-                {vi
-                  ? 'Nhập mã Tenant ID UUID do doanh nghiệp của bạn cung cấp để tra cứu và gửi yêu cầu gia nhập.'
-                  : 'Enter the UUID Tenant ID provided by your organization to look up and apply.'}
-              </p>
+            <div className="option-tile">
+              <div className="option-tile-center">
+                <div className="icon-well icon-well--lg icon-well--teal">
+                  <IconKey size={22} />
+                </div>
+                <strong style={{ fontSize: 15, color: 'var(--text-main)', display: 'block', marginBottom: 6 }}>
+                  {vi ? 'Gia Nhập Theo Tenant ID' : 'Join by Tenant ID'}
+                </strong>
+                <p className="card-subtitle" style={{ marginBottom: 14 }}>
+                  {vi
+                    ? 'Nhập mã Tenant ID UUID do doanh nghiệp của bạn cung cấp để tra cứu và gửi yêu cầu gia nhập.'
+                    : 'Enter the UUID Tenant ID provided by your organization to look up and apply.'}
+                </p>
+              </div>
 
-              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <div className="inline-code-row" style={{ width: '100%' }}>
                 <input
                   type="text"
+                  className="form-control form-control-mono"
                   placeholder={vi ? 'Nhập Tenant ID UUID...' : 'Enter UUID Tenant ID...'}
                   disabled
-                  style={{
-                    background: 'var(--bg-input)',
-                    border: '1px solid var(--border-medium)',
-                    color: '#94a3b8',
-                    padding: '7px 10px',
-                    borderRadius: 6,
-                    fontSize: 11,
-                    fontFamily: 'monospace',
-                    flex: 1,
-                    cursor: 'not-allowed',
-                  }}
                 />
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  disabled
-                  style={{ cursor: 'not-allowed' }}
-                >
+                <button type="button" className="btn btn-secondary btn-sm" disabled>
                   {vi ? 'Kiểm Tra' : 'Verify'}
                 </button>
               </div>
 
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary btn-block"
                 disabled
-                style={{ width: '100%', opacity: 0.5, cursor: 'not-allowed' }}
                 title={vi ? 'Bị khóa: Bạn đang có yêu cầu PENDING chờ duyệt' : 'Locked: Active PENDING request exists'}
               >
                 {vi ? 'Xác Nhận Gửi Yêu Cầu (Đang Khóa)' : 'Submit Join Request (Locked)'}
@@ -246,7 +219,7 @@ export const PendingRequestCard: React.FC<PendingRequestCardProps> = ({
             ? `Bạn có chắc chắn muốn hủy yêu cầu xin gia nhập doanh nghiệp "${targetTenant?.name || 'mục tiêu'}" không? Sau khi hủy, bạn có thể tạo doanh nghiệp mới hoặc gửi yêu cầu khác.`
             : `Are you sure you want to cancel your join request to "${targetTenant?.name || 'target'}"? Once cancelled, you can create a new tenant or apply to another.`
         }
-        confirmText={cancelling ? (vi ? 'Đang hủy...' : 'Cancelling...') : (vi ? 'Xác Nhận Hủy' : 'Confirm Cancel')}
+        confirmText={cancelling ? (vi ? 'Đang hủy…' : 'Cancelling…') : (vi ? 'Xác Nhận Hủy' : 'Confirm Cancel')}
         cancelText={vi ? 'Quay Lại' : 'Back'}
         variant="warning"
         isLoading={cancelling}
@@ -256,5 +229,3 @@ export const PendingRequestCard: React.FC<PendingRequestCardProps> = ({
     </div>
   );
 };
-
-const notAllowedStyle = { cursor: 'not-allowed' };

@@ -33,7 +33,7 @@ export const ToastContainer: React.FC = () => {
       case 'info':
       default:
         return (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="16" x2="12" y2="12" />
             <line x1="12" y1="8" x2="12.01" y2="8" />
@@ -74,21 +74,21 @@ export const ToastContainer: React.FC = () => {
             justifyContent: 'space-between',
             gap: 12,
             padding: '10px 14px',
-            background: 'var(--bg-surface-elevated, #1a2234)',
-            border: '1px solid var(--border-medium, #334155)',
+            background: 'var(--bg-surface, #ffffff)',
+            border: '1px solid var(--border-subtle, #dcd8ce)',
             borderLeft: `4px solid ${
               toast.type === 'success'
-                ? 'var(--success, #10b981)'
+                ? 'var(--success, #15803d)'
                 : toast.type === 'error'
-                ? 'var(--danger, #ef4444)'
+                ? 'var(--danger, #b91c1c)'
                 : toast.type === 'warning'
-                ? 'var(--warning, #f59e0b)'
-                : 'var(--primary, #4f46e5)'
+                ? 'var(--warning, #b45309)'
+                : 'var(--primary, #0e6b5b)'
             }`,
             borderRadius: 'var(--radius-sm, 6px)',
-            color: 'var(--text-main, #f8fafc)',
+            color: 'var(--text-main, #18181b)',
             fontSize: 13,
-            boxShadow: '0 8px 20px rgba(0,0,0,0.4)',
+            boxShadow: 'var(--shadow-lg, 0 10px 25px rgba(16, 36, 31, 0.12))',
             wordBreak: 'break-word',
           }}
         >

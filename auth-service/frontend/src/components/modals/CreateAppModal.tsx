@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { applicationsService } from '../../services/applications.service';
+import { useModalA11y } from '../../hooks/useModalA11y';
 import type { Application } from '../../types/application.types';
 
 interface CreateAppModalProps {
@@ -15,10 +16,12 @@ export const CreateAppModal: React.FC<CreateAppModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { showToast } = useToast();
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const { handleBackdropClick } = useModalA11y(isOpen, onClose, loading);
 
   if (!isOpen) return null;
 
@@ -40,14 +43,21 @@ export const CreateAppModal: React.FC<CreateAppModalProps> = ({
   };
 
   return (
-    <div className="modal-backdrop show" id="create-app-modal">
-      <div className="modal-content">
-        <h3 className="modal-title">{t('create_app.title')}</h3>
+    <div
+      className="modal-backdrop show"
+      id="create-app-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-app-modal-title"
+      onClick={handleBackdropClick}
+    >
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <h3 id="create-app-modal-title" className="modal-title">{t('create_app.title')}</h3>
         <p className="modal-desc">{t('create_app.desc')}</p>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">{t('create_app.name_label')}</label>
+            <label className="form-label" htmlFor="new-app-name">{t('create_app.name_label')}</label>
             <input
               type="text"
               className="form-control"
@@ -74,8 +84,10 @@ export const CreateAppModal: React.FC<CreateAppModalProps> = ({
               type="submit"
               className="btn btn-primary"
               disabled={loading}
+              aria-busy={loading}
             >
-              {loading ? '...' : t('apps.create_btn')}
+              {loading && <span className="btn-spinner" aria-hidden="true" />}
+              <span>{loading ? (lang === 'vi' ? 'Đang tạo…' : 'Creating…') : t('apps.create_btn')}</span>
             </button>
           </div>
         </form>

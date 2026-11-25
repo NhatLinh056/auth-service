@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { SkeletonTable } from '../../common/SkeletonTable';
+import { IconAlertTriangle } from '../../common/Icons';
 import { NoTenantView } from './NoTenantView';
 import { PendingRequestCard } from './PendingRequestCard';
 import { TenantMemberView } from './TenantMemberView';
@@ -34,10 +35,10 @@ export const MyTenantPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ maxWidth: 1100, margin: '20px auto' }}>
+      <div className="page-container page-container--tenant">
         <div style={{ marginBottom: 20 }}>
-          <div style={{ height: 32, width: 260, background: 'var(--bg-surface)', borderRadius: 6, marginBottom: 8 }} />
-          <div style={{ height: 16, width: 400, background: 'var(--bg-surface)', borderRadius: 4 }} />
+          <div className="skeleton-bar" style={{ height: 32, width: 260, marginBottom: 8 }} />
+          <div className="skeleton-bar" style={{ height: 16, width: 400 }} />
         </div>
         <SkeletonTable rows={4} columns={5} />
       </div>
@@ -46,21 +47,15 @@ export const MyTenantPage: React.FC = () => {
 
   if (error) {
     return (
-      <div style={{ maxWidth: 840, margin: '40px auto' }}>
-        <div
-          style={{
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: 8,
-            padding: 24,
-            textAlign: 'center',
-          }}
-        >
-          <div style={{ fontSize: 32, marginBottom: 8 }}>⚠️</div>
-          <h3 style={{ color: 'var(--danger)', margin: '0 0 8px' }}>
+      <div className="page-container page-container--narrow">
+        <div className="card" style={{ padding: 28, textAlign: 'center', marginTop: 24 }}>
+          <div className="icon-well icon-well--lg icon-well--danger">
+            <IconAlertTriangle size={22} />
+          </div>
+          <h3 className="section-title" style={{ color: 'var(--danger)', margin: '0 0 8px' }}>
             {vi ? 'Lỗi Tải Dữ Liệu Doanh Nghiệp' : 'Failed to Load Tenant'}
           </h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 16px' }}>
+          <p className="page-subtitle" style={{ margin: '0 auto 16px' }}>
             {error}
           </p>
           <button

@@ -5,6 +5,7 @@ import { AppListPage } from '../features/applications/AppListPage';
 export interface ApplicationsTabProps {
   applications: Application[];
   loading: boolean;
+  error?: string | null;
   onRefresh: () => void;
   onOpenCreateModal: () => void;
   onOpenDetailModal: (app: Application) => void;
@@ -13,6 +14,7 @@ export interface ApplicationsTabProps {
 export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
   applications,
   loading,
+  error,
   onRefresh,
   onOpenCreateModal,
   onOpenDetailModal,
@@ -21,6 +23,7 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
     <AppListPage
       applications={applications}
       loading={loading}
+      error={error}
       onRefresh={onRefresh}
       onOpenCreateModal={onOpenCreateModal}
       onOpenDetailModal={onOpenDetailModal}

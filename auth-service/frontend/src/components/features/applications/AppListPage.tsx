@@ -7,10 +7,12 @@ import type { Application, ApplicationStatus } from '../../../types/application.
 import { Pagination } from '../../common/Pagination';
 import { SkeletonTable } from '../../common/SkeletonTable';
 import { EmptyState } from '../../common/EmptyState';
+import { IconAlertTriangle, IconCopy, IconPlus, IconRefresh, IconSearch, IconX } from '../../common/Icons';
 
 export interface AppListPageProps {
   applications: Application[];
   loading: boolean;
+  error?: string | null;
   onRefresh: () => void;
   onOpenCreateModal: () => void;
   onOpenDetailModal?: (app: Application) => void;
@@ -19,7 +21,8 @@ export interface AppListPageProps {
 export const AppListPage: React.FC<AppListPageProps> = ({
   applications,
   loading,
-  onRefresh: _onRefresh,
+  error,
+  onRefresh,
   onOpenCreateModal,
   onOpenDetailModal,
 }) => {
@@ -121,24 +124,14 @@ export const AppListPage: React.FC<AppListPageProps> = ({
   };
 
   return (
-    <div className="tab-content active" id="tab-apps-list" style={{ width: '100%' }}>
+    <div className="tab-content active page-container" id="tab-apps-list">
       {/* 1. Page Header */}
-      <div
-        className="page-header"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 20,
-          flexWrap: 'wrap',
-          gap: 16,
-        }}
-      >
+      <div className="page-header">
         <div>
-          <h1 className="page-title" style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#fff' }}>
+          <h1 className="page-title">
             {lang === 'vi' ? 'Danh Sách Ứng Dụng' : 'Platform Applications'}
           </h1>
-          <p className="page-subtitle" style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
+          <p className="page-subtitle">
             {lang === 'vi'
               ? 'Quản lý các microservice và client application tích hợp vào hệ thống xác thực tập trung.'
               : 'Manage client applications and microservices integrated into the centralized auth system.'}
@@ -150,92 +143,56 @@ export const AppListPage: React.FC<AppListPageProps> = ({
           className="btn btn-primary"
           onClick={onOpenCreateModal}
           id="btn-create-app-top"
-          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
+          <IconPlus size={15} />
           <span>{t('apps.create_btn')}</span>
         </button>
       </div>
 
-      {/* 2. Search & Filter Card Panel (Scene 2 Layout) */}
-      <div
-        className="card"
-        style={{
-          background: 'var(--bg-surface, #111827)',
-          border: '1px solid var(--border-subtle, #1e293b)',
-          borderRadius: 8,
-          marginBottom: 20,
-        }}
-      >
-        <div
-          className="panel-header"
-          style={{
-            padding: '12px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 10,
-            borderBottom: '1px solid var(--border-subtle, #1e293b)',
-            boxSizing: 'border-box',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
-            {/* Search input with strictly bounded width & box-sizing */}
-            <div style={{ position: 'relative', width: 190, minWidth: 150, flexShrink: 0, boxSizing: 'border-box' }}>
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                style={{
-                  position: 'absolute',
-                  left: 9,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--text-dim, #64748b)',
-                  pointerEvents: 'none',
-                }}
-              >
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
+      {error && (
+        <div className="error-alert" role="alert" id="apps-load-error">
+          <div className="error-alert-content">
+            <IconAlertTriangle size={16} />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={onRefresh}
+            disabled={loading}
+          >
+            <IconRefresh size={13} />
+            <span>{lang === 'vi' ? 'Thử lại' : 'Retry'}</span>
+          </button>
+        </div>
+      )}
+
+      {/* 2. Search & Filter Card Panel */}
+      <div className="card-panel">
+        <div className="toolbar-row">
+          <div className="toolbar-controls">
+            {/* Search input */}
+            <div className="search-box">
+              <IconSearch size={14} />
               <input
                 type="text"
                 id="apps-search-input"
-                className="form-control"
+                className="search-input"
                 placeholder={lang === 'vi' ? 'Tìm theo tên, AppID...' : 'Search name, AppID...'}
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setCurrentPage(1);
                 }}
-                style={{
-                  paddingLeft: 28,
-                  paddingRight: 8,
-                  height: 32,
-                  fontSize: 12,
-                  boxSizing: 'border-box',
-                  background: 'var(--bg-input, #0f172a)',
-                  border: '1px solid var(--border-medium, #334155)',
-                  color: '#fff',
-                  borderRadius: 6,
-                  width: '100%',
-                }}
               />
             </div>
 
             {/* Super Admin View Mode Filter (Only when isAdmin === true) */}
             {isAdmin && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, whiteSpace: 'nowrap' }}>
-                <span style={{ fontSize: 11, color: 'var(--text-dim, #94a3b8)', whiteSpace: 'nowrap' }}>
+              <div className="inline-code-row">
+                <label htmlFor="apps-view-mode-filter" className="form-hint" style={{ marginTop: 0, whiteSpace: 'nowrap' }}>
                   {t('filter.view_mode')}
-                </span>
+                </label>
                 <select
                   id="apps-view-mode-filter"
                   className="filter-select"
@@ -243,17 +200,6 @@ export const AppListPage: React.FC<AppListPageProps> = ({
                   onChange={(e) => {
                     setViewMode(e.target.value as 'ALL' | 'MINE');
                     setCurrentPage(1);
-                  }}
-                  style={{
-                    height: 32,
-                    fontSize: 11,
-                    boxSizing: 'border-box',
-                    background: 'var(--bg-input, #0f172a)',
-                    border: '1px solid var(--border-medium, #334155)',
-                    color: '#fff',
-                    borderRadius: 6,
-                    padding: '0 6px',
-                    cursor: 'pointer',
                   }}
                 >
                   <option value="ALL">{t('filter.view_mode_all')}</option>
@@ -271,18 +217,7 @@ export const AppListPage: React.FC<AppListPageProps> = ({
                 setStatusFilter(e.target.value as any);
                 setCurrentPage(1);
               }}
-              style={{
-                height: 32,
-                fontSize: 11,
-                boxSizing: 'border-box',
-                background: 'var(--bg-input, #0f172a)',
-                border: '1px solid var(--border-medium, #334155)',
-                color: '#fff',
-                borderRadius: 6,
-                padding: '0 6px',
-                flexShrink: 0,
-                cursor: 'pointer',
-              }}
+              aria-label={t('filter.all_statuses')}
             >
               <option value="ALL">{t('filter.all_statuses')}</option>
               <option value="ACTIVE">{t('filter.status_active')}</option>
@@ -298,18 +233,7 @@ export const AppListPage: React.FC<AppListPageProps> = ({
                 setSortBy(e.target.value as any);
                 setCurrentPage(1);
               }}
-              style={{
-                height: 32,
-                fontSize: 11,
-                boxSizing: 'border-box',
-                background: 'var(--bg-input, #0f172a)',
-                border: '1px solid var(--border-medium, #334155)',
-                color: '#fff',
-                borderRadius: 6,
-                padding: '0 6px',
-                flexShrink: 0,
-                cursor: 'pointer',
-              }}
+              aria-label={t('filter.sort_newest')}
             >
               <option value="newest">{t('filter.sort_newest')}</option>
               <option value="oldest">{t('filter.sort_oldest')}</option>
@@ -323,38 +247,16 @@ export const AppListPage: React.FC<AppListPageProps> = ({
                 type="button"
                 className="btn btn-secondary btn-sm"
                 onClick={clearFilters}
-                style={{
-                  height: 32,
-                  fontSize: 11,
-                  padding: '0 6px',
-                  borderRadius: 6,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 3,
-                  boxSizing: 'border-box',
-                  color: 'var(--text-dim, #94a3b8)',
-                }}
                 title={t('filter.clear_filter')}
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
+                <IconX size={12} />
                 <span>{t('filter.clear_filter')}</span>
               </button>
             )}
           </div>
 
-          {/* Result Count Indicator aligned right */}
-          <div
-            id="apps-count-indicator"
-            style={{
-              fontSize: 12,
-              color: 'var(--text-dim, #94a3b8)',
-              whiteSpace: 'nowrap',
-              marginLeft: 'auto',
-            }}
-          >
+          {/* Result Count Indicator */}
+          <div id="apps-count-indicator" className="results-count-badge">
             {lang === 'vi'
               ? `Hiển thị ${filteredApplications.length} / ${applications.length} ứng dụng`
               : `Showing ${filteredApplications.length} of ${applications.length} apps`}
@@ -362,28 +264,16 @@ export const AppListPage: React.FC<AppListPageProps> = ({
         </div>
 
         {/* 3. Applications Table */}
-        <div className="table-responsive" style={{ overflowX: 'auto', width: '100%' }}>
-          <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="table-responsive">
+          <table className="data-table">
             <thead>
               <tr>
-                <th style={{ padding: '10px 12px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim, #64748b)', borderBottom: '1px solid var(--border-subtle, #1e293b)', width: '22%' }}>
-                  {t('table.app_name')}
-                </th>
-                <th style={{ padding: '10px 12px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim, #64748b)', borderBottom: '1px solid var(--border-subtle, #1e293b)', width: '24%' }}>
-                  {t('table.appid')}
-                </th>
-                <th style={{ padding: '10px 12px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim, #64748b)', borderBottom: '1px solid var(--border-subtle, #1e293b)', width: '20%' }}>
-                  {t('table.owner')}
-                </th>
-                <th style={{ padding: '10px 12px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim, #64748b)', borderBottom: '1px solid var(--border-subtle, #1e293b)', width: '12%' }}>
-                  {t('table.status')}
-                </th>
-                <th style={{ padding: '10px 12px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim, #64748b)', borderBottom: '1px solid var(--border-subtle, #1e293b)', width: '10%' }}>
-                  {t('table.created')}
-                </th>
-                <th style={{ padding: '10px 12px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim, #64748b)', borderBottom: '1px solid var(--border-subtle, #1e293b)', width: '12%', textAlign: 'right' }}>
-                  {t('table.actions')}
-                </th>
+                <th style={{ width: '22%' }}>{t('table.app_name')}</th>
+                <th style={{ width: '24%' }}>{t('table.appid')}</th>
+                <th style={{ width: '20%' }}>{t('table.owner')}</th>
+                <th style={{ width: '12%' }}>{t('table.status')}</th>
+                <th style={{ width: '10%' }}>{t('table.created')}</th>
+                <th style={{ width: '12%', textAlign: 'right' }}>{t('table.actions')}</th>
               </tr>
             </thead>
 
@@ -392,6 +282,25 @@ export const AppListPage: React.FC<AppListPageProps> = ({
                 <tr>
                   <td colSpan={6} style={{ padding: 0 }}>
                     <SkeletonTable rows={4} columns={6} />
+                  </td>
+                </tr>
+              ) : error && applications.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: 0 }}>
+                    <EmptyState
+                      title={lang === 'vi' ? 'Không thể tải danh sách ứng dụng' : 'Unable to load applications'}
+                      description={error}
+                      action={
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={onRefresh}
+                        >
+                          <IconRefresh size={13} />
+                          <span>{lang === 'vi' ? 'Thử lại' : 'Retry'}</span>
+                        </button>
+                      }
+                    />
                   </td>
                 </tr>
               ) : applications.length === 0 ? (
@@ -453,66 +362,49 @@ export const AppListPage: React.FC<AppListPageProps> = ({
                   return (
                     <tr
                       key={app.id}
-                      style={{ cursor: 'pointer', transition: 'background 0.15s' }}
+                      style={{ cursor: 'pointer' }}
                       onClick={() => handleOpenDetail(app)}
-                      className="app-row"
+                      className="app-row clickable-row"
                     >
                       {/* Name & Note */}
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-subtle, #1e293b)' }}>
+                      <td>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <strong
-                            style={{ color: '#fff', fontSize: 13, cursor: 'pointer' }}
-                            title={app.name}
-                          >
+                          <strong style={{ color: 'var(--text-main)', fontSize: 13 }} title={app.name}>
                             {app.name}
                           </strong>
-                          <span style={{ fontSize: 11, color: 'var(--text-dim, #64748b)', marginTop: 2 }}>
+                          <span className="form-hint" style={{ marginTop: 2 }}>
                             {lang === 'vi' ? 'Cổng xác thực microservice' : 'Microservice auth client'}
                           </span>
                         </div>
                       </td>
 
                       {/* AppID with Copy */}
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-subtle, #1e293b)' }}>
-                        <span className="mono-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          <code style={{ fontSize: 12 }}>{app.appId}</code>
+                      <td>
+                        <span className="mono-tag">
+                          <code>{app.appId}</code>
                           <button
                             type="button"
                             className="btn-icon"
-                            style={{
-                              width: 20,
-                              height: 20,
-                              padding: 0,
-                              background: 'transparent',
-                              border: 'none',
-                              color: 'var(--text-dim, #64748b)',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
                             title={t('table.copy_appid')}
+                            aria-label={t('table.copy_appid')}
                             onClick={(e) => {
                               e.stopPropagation();
                               copyAppId(app.appId);
                             }}
                           >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                            </svg>
+                            <IconCopy size={13} />
                           </button>
                         </span>
                       </td>
 
                       {/* Owner Email & isMine Pill */}
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-subtle, #1e293b)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                      <td>
+                        <div className="inline-code-row" style={{ minWidth: 0 }}>
                           <span
                             style={{
                               fontSize: 12,
-                              color: 'var(--text-muted, #94a3b8)',
-                              maxWidth: 150,
+                              color: 'var(--text-muted)',
+                              maxWidth: 160,
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
@@ -522,10 +414,7 @@ export const AppListPage: React.FC<AppListPageProps> = ({
                             {ownerEmail}
                           </span>
                           {isMine && (
-                            <span
-                              className="badge badge-info"
-                              style={{ fontSize: 10, padding: '1px 5px', flexShrink: 0 }}
-                            >
+                            <span className="badge badge-info">
                               {t('filter.you_tag')}
                             </span>
                           )}
@@ -533,27 +422,19 @@ export const AppListPage: React.FC<AppListPageProps> = ({
                       </td>
 
                       {/* Status */}
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-subtle, #1e293b)' }}>
+                      <td>
                         <span className={`badge ${isActive ? 'badge-success' : 'badge-danger'}`}>
-                          <span
-                            style={{
-                              width: 6,
-                              height: 6,
-                              borderRadius: '50%',
-                              background: isActive ? 'var(--success, #10b981)' : 'var(--danger, #ef4444)',
-                            }}
-                          />
                           {isActive ? t('table.status_active') : t('table.status_inactive')}
                         </span>
                       </td>
 
                       {/* Created date */}
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-subtle, #1e293b)', fontSize: 12, color: 'var(--text-dim, #64748b)', whiteSpace: 'nowrap' }}>
+                      <td style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
                         {createdDate}
                       </td>
 
                       {/* Action */}
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-subtle, #1e293b)', textAlign: 'right' }}>
+                      <td style={{ textAlign: 'right' }}>
                         <button
                           type="button"
                           className="btn btn-secondary btn-sm"
@@ -562,16 +443,6 @@ export const AppListPage: React.FC<AppListPageProps> = ({
                             handleOpenDetail(app);
                           }}
                           id={`btn-manage-app-${app.id}`}
-                          style={{
-                            height: 28,
-                            padding: '0 8px',
-                            fontSize: 11,
-                            borderRadius: 6,
-                            whiteSpace: 'nowrap',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 3,
-                          }}
                         >
                           {t('filter.manage_app')}
                         </button>

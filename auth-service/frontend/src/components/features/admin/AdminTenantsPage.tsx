@@ -3,6 +3,7 @@ import { useLanguage } from '../../../contexts/LanguageContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { DataTable, type Column } from '../../common/DataTable';
 import { EmptyState } from '../../common/EmptyState';
+import { IconAlertTriangle, IconBuilding, IconCopy, IconFileText, IconRefresh, IconSearch } from '../../common/Icons';
 import { TransferOwnerModal } from '../../modals/TransferOwnerModal';
 import { DeleteTenantModal } from '../../modals/DeleteTenantModal';
 import { TenantAuditModal } from '../../modals/TenantAuditModal';
@@ -20,6 +21,7 @@ export const AdminTenantsPage: React.FC = () => {
 
   const [tenants, setTenants] = useState<TenantSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -33,11 +35,14 @@ export const AdminTenantsPage: React.FC = () => {
 
   const loadTenants = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await tenantsService.list();
       setTenants(data);
     } catch (err: any) {
-      showToast(err.message || (vi ? 'Không thể tải danh sách doanh nghiệp' : 'Failed to load tenants'), 'error');
+      const msg = err?.message || (vi ? 'Không thể tải danh sách doanh nghiệp' : 'Failed to load tenants');
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -116,25 +121,17 @@ export const AdminTenantsPage: React.FC = () => {
       header: vi ? 'Tên Doanh Nghiệp' : 'Tenant Name',
       render: (t) => (
         <div>
-          <strong style={{ color: '#fff', fontSize: 13 }}>{t.name}</strong>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-            <code style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'monospace' }}>
-              {t.id}
-            </code>
+          <strong style={{ color: 'var(--text-main)', fontSize: 13 }}>{t.name}</strong>
+          <div className="inline-code-row" style={{ marginTop: 2 }}>
+            <code className="mono-tag">{t.id}</code>
             <button
               type="button"
+              className="btn-icon"
               onClick={() => copyToClipboard(t.id, 'Tenant ID')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-dim)',
-                cursor: 'pointer',
-                padding: '0 2px',
-                fontSize: 10,
-              }}
               title={vi ? 'Sao chép Tenant ID' : 'Copy Tenant ID'}
+              aria-label={vi ? 'Sao chép Tenant ID' : 'Copy Tenant ID'}
             >
-              📋
+              <IconCopy size={13} />
             </button>
           </div>
         </div>
@@ -144,28 +141,14 @@ export const AdminTenantsPage: React.FC = () => {
       key: 'owner',
       header: vi ? 'Chủ Sở Hữu (Owner)' : 'Owner',
       render: (t) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: '50%',
-              background: '#f59e0b',
-              color: '#000',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 700,
-              fontSize: 11,
-              flexShrink: 0,
-            }}
-          >
+        <div className="card-header-left" style={{ gap: 8 }}>
+          <div className="avatar-circle avatar-circle--sm avatar-circle--admin">
             {getMonogram(t.owner?.name, t.owner?.email)}
           </div>
           <div>
-            <div style={{ fontSize: 13, color: '#e2e8f0' }}>{t.owner?.email || t.ownerUserId}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-main)' }}>{t.owner?.email || t.ownerUserId}</div>
             {t.owner?.name && (
-              <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t.owner.name}</div>
+              <div className="form-hint" style={{ marginTop: 0 }}>{t.owner.name}</div>
             )}
           </div>
         </div>
@@ -175,7 +158,7 @@ export const AdminTenantsPage: React.FC = () => {
       key: 'members',
       header: vi ? 'Số Thành Viên' : 'Members',
       render: (t) => (
-        <span className="badge badge-secondary" style={{ fontSize: 11 }}>
+        <span className="badge badge-secondary">
           {t._count?.users || 1} {vi ? 'thành viên' : 'members'}
         </span>
       ),
@@ -194,7 +177,7 @@ export const AdminTenantsPage: React.FC = () => {
       header: vi ? 'Thao Tác Admin' : 'Admin Actions',
       align: 'right',
       render: (t) => (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+        <div className="app-actions-group">
           <button
             type="button"
             className="btn btn-secondary btn-sm"
@@ -233,28 +216,29 @@ export const AdminTenantsPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ maxWidth: 1280, margin: '20px auto' }}>
+    <div className="page-container">
       {/* Top Header & System-wide Audit Log button */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+      <div className="page-header">
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: '#fff', margin: 0 }}>
+          <h1 className="page-title">
             {vi ? 'Quản Trị Doanh Nghiệp Toàn Cục' : 'Global Tenant Administration'}
           </h1>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+          <p className="page-subtitle">
             {vi
               ? 'Dành riêng cho Super Admin. Quản trị toàn bộ danh sách Tenant, tra cứu audit log và can thiệp quyền.'
               : 'Dedicated Super Admin console. Manage all system tenants, inspect audit logs, and oversee ownership.'}
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div className="card-header-actions">
           <button
             type="button"
             className="btn btn-secondary btn-sm"
             onClick={() => setAuditTarget({})}
             id="btn-view-global-audit-logs"
           >
-            {vi ? '📋 Nhật Ký Toàn Cầu' : '📋 Global Audit Logs'}
+            <IconFileText size={14} />
+            <span>{vi ? 'Nhật Ký Toàn Cầu' : 'Global Audit Logs'}</span>
           </button>
           <button
             type="button"
@@ -262,36 +246,56 @@ export const AdminTenantsPage: React.FC = () => {
             onClick={loadTenants}
             disabled={loading}
           >
-            {loading ? (vi ? 'Đang tải...' : 'Loading...') : (vi ? 'Làm Mới' : 'Refresh')}
+            <IconRefresh size={14} style={{ animation: loading ? 'spin 1s linear infinite' : undefined }} />
+            <span>{loading ? (vi ? 'Đang tải…' : 'Loading…') : (vi ? 'Làm Mới' : 'Refresh')}</span>
           </button>
         </div>
       </div>
 
-      {/* Filter / Search Bar (Scene 9 Wireframe) */}
-      <div className="card-panel" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, maxWidth: 420 }}>
+      {/* Filter / Search Bar */}
+      <div className="table-toolbar">
+        <div className="table-toolbar-left">
+          <div className="search-box">
+            <IconSearch size={14} />
             <input
               type="text"
-              className="form-control"
+              className="search-input"
               placeholder={vi ? 'Tìm theo tên tenant, chủ sở hữu, ID...' : 'Search by tenant name, owner, ID...'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               id="input-admin-search-tenants"
-              style={{ fontSize: 13 }}
             />
           </div>
-
-          <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-            {vi
-              ? `Hệ thống: ${filteredTenants.length} Doanh Nghiệp`
-              : `Total: ${filteredTenants.length} Tenants`}
-          </div>
         </div>
+
+        <span className="results-count-badge">
+          {vi
+            ? `Hệ thống: ${filteredTenants.length} Doanh Nghiệp`
+            : `Total: ${filteredTenants.length} Tenants`}
+        </span>
       </div>
 
+      {/* Error alert */}
+      {error && (
+        <div className="error-alert" role="alert" id="admin-tenants-error">
+          <div className="error-alert-content">
+            <IconAlertTriangle size={16} />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={loadTenants}
+            disabled={loading}
+          >
+            <IconRefresh size={13} />
+            <span>{vi ? 'Thử lại' : 'Retry'}</span>
+          </button>
+        </div>
+      )}
+
       {/* Tenants Table */}
-      {filteredTenants.length === 0 && !loading ? (
+      {error && tenants.length === 0 && !loading ? null : filteredTenants.length === 0 && !loading ? (
         <EmptyState
           title={vi ? 'Không tìm thấy doanh nghiệp nào' : 'No tenants found'}
           description={
@@ -299,7 +303,7 @@ export const AdminTenantsPage: React.FC = () => {
               ? (vi ? 'Không có doanh nghiệp nào khớp với từ khóa tìm kiếm.' : 'No tenants match your search filter.')
               : (vi ? 'Hệ thống hiện chưa có doanh nghiệp nào được tạo.' : 'No tenants have been created yet.')
           }
-          icon="🏢"
+          icon={<IconBuilding size={26} />}
           action={
             search ? (
               <button

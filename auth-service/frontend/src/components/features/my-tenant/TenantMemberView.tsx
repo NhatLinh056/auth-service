@@ -3,6 +3,7 @@ import { useLanguage } from '../../../contexts/LanguageContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
+import { IconCopy } from '../../common/Icons';
 import {
   tenantsService,
   type TenantSummary,
@@ -94,93 +95,65 @@ export const TenantMemberView: React.FC<TenantMemberViewProps> = ({
   };
 
   return (
-    <div style={{ maxWidth: 1100, margin: '20px auto' }}>
-      {/* Top Overview Card (Scene 7 Wireframe) */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
-          padding: '20px 24px',
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 8,
-          gap: 16,
-          flexWrap: 'wrap',
-        }}
-      >
+    <div className="page-container page-container--tenant card-stack">
+      {/* Top Overview Card */}
+      <div className="tenant-summary-bar" style={{ marginBottom: 0 }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: '#fff', margin: 0 }}>
-              {tenant.name}
-            </h1>
+          <div className="inline-code-row" style={{ gap: 10 }}>
+            <h1 className="page-title">{tenant.name}</h1>
             <span className="badge badge-secondary">{vi ? 'THÀNH VIÊN' : 'MEMBER'}</span>
           </div>
 
           {tenant.description && (
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 8px' }}>
+            <p className="page-subtitle" style={{ marginTop: 4 }}>
               {tenant.description}
             </p>
           )}
 
-          <div style={{ fontSize: 12, color: 'var(--text-dim)', display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 6 }}>
-            <span>
-              Tenant ID:{' '}
-              <code style={{ fontSize: 11, color: '#93c5fd' }}>{tenant.id}</code>{' '}
+          <div className="tenant-meta-list">
+            <span className="inline-code-row">
+              <span>Tenant ID:</span>
+              <code className="mono-tag">{tenant.id}</code>
               <button
                 type="button"
+                className="btn-icon"
                 onClick={() => copyToClipboard(tenant.id, 'Tenant ID')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  padding: '0 4px',
-                  fontSize: 11,
-                }}
                 title={vi ? 'Sao chép Tenant ID' : 'Copy Tenant ID'}
+                aria-label={vi ? 'Sao chép Tenant ID' : 'Copy Tenant ID'}
               >
-                📋
+                <IconCopy size={13} />
               </button>
             </span>
             <span>
               {vi ? 'Chủ sở hữu:' : 'Owner:'}{' '}
-              <strong style={{ color: '#fff' }}>{tenant.owner?.email || tenant.ownerUserId}</strong>
+              <strong style={{ color: 'var(--text-main)' }}>{tenant.owner?.email || tenant.ownerUserId}</strong>
             </span>
           </div>
         </div>
 
-        {/* Leave Button */}
         <button
           type="button"
-          className="btn btn-secondary btn-sm"
+          className="btn btn-danger btn-sm"
           onClick={() => setLeaveConfirmOpen(true)}
-          style={{
-            color: 'var(--danger)',
-            borderColor: 'rgba(239, 68, 68, 0.4)',
-            padding: '8px 16px',
-            fontWeight: 600,
-          }}
           id="btn-leave-tenant"
         >
-          {vi ? 'Rời Khỏi Doanh Nghiệp (Leave)' : 'Leave Tenant'}
+          {vi ? 'Rời Khỏi Doanh Nghiệp' : 'Leave Tenant'}
         </button>
       </div>
 
       {/* Members List Table (Read-Only) */}
       <div className="card-panel">
-        <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="panel-title" style={{ fontSize: 15 }}>
-            {vi ? `Danh Sách Thành Viên (Chế Độ Chỉ Xem) — ${members.length} người` : `Organization Members (Read-Only) — ${members.length} total`}
+        <div className="panel-header">
+          <div className="panel-title">
+            {vi ? `Danh Sách Thành Viên (${members.length})` : `Organization Members (${members.length})`}
           </div>
-          <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-            {vi ? 'Cập nhật theo thời gian thực' : 'Realtime Directory'}
+          <span className="form-hint" style={{ marginTop: 0 }}>
+            {vi ? 'Chế độ chỉ xem' : 'Read-only directory'}
           </span>
         </div>
 
         <div className="table-responsive">
-          <table className="mock-table" style={{ width: '100%' }}>
+          <table className="mock-table">
             <thead>
               <tr>
                 <th>{vi ? 'Thành Viên' : 'Member'}</th>
@@ -209,60 +182,36 @@ export const TenantMemberView: React.FC<TenantMemberViewProps> = ({
                   const isSelf = m.id === currentUser?.id;
 
                   return (
-                    <tr key={m.id} style={isSelf ? { background: 'rgba(59, 130, 246, 0.05)' } : undefined}>
+                    <tr key={m.id} style={isSelf ? { background: 'var(--primary-subtle)' } : undefined}>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div
-                            style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: '50%',
-                              background: isOwner ? '#f59e0b' : 'var(--primary)',
-                              color: isOwner ? '#000' : '#fff',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 700,
-                              fontSize: 13,
-                              flexShrink: 0,
-                            }}
-                          >
+                        <div className="inline-code-row" style={{ gap: 10 }}>
+                          <div className={`avatar-circle avatar-circle--sm ${isOwner ? 'avatar-circle--admin' : ''}`}>
                             {getMonogram(m.name, m.email)}
                           </div>
-                          <div>
-                            <strong style={{ color: '#fff', fontSize: 13 }}>
-                              {m.name || m.email.split('@')[0]}
-                              {isSelf && (
-                                <span style={{ color: 'var(--primary)', marginLeft: 6, fontSize: 11 }}>
-                                  ({vi ? 'Bạn' : 'You'})
-                                </span>
-                              )}
-                            </strong>
-                          </div>
+                          <strong style={{ color: 'var(--text-main)', fontSize: 13 }}>
+                            {m.name || m.email.split('@')[0]}
+                            {isSelf && (
+                              <span style={{ color: 'var(--primary)', marginLeft: 6, fontSize: 11 }}>
+                                ({vi ? 'Bạn' : 'You'})
+                              </span>
+                            )}
+                          </strong>
                         </div>
                       </td>
 
-                      <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{m.email}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{m.email}</td>
 
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <code style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                            {m.id}
-                          </code>
+                        <div className="inline-code-row">
+                          <code className="mono-tag">{m.id}</code>
                           <button
                             type="button"
+                            className="btn-icon"
                             onClick={() => copyToClipboard(m.id, 'User ID')}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: 'var(--text-dim)',
-                              cursor: 'pointer',
-                              padding: '0 2px',
-                              fontSize: 10,
-                            }}
                             title={vi ? 'Sao chép User ID' : 'Copy User ID'}
+                            aria-label={vi ? 'Sao chép User ID' : 'Copy User ID'}
                           >
-                            📋
+                            <IconCopy size={13} />
                           </button>
                         </div>
                       </td>

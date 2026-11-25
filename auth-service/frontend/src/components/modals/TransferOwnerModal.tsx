@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useModalA11y } from '../../hooks/useModalA11y';
+import { IconAlertTriangle } from '../common/Icons';
 import { tenantsService, type TenantSummary, type TenantMember } from '../../services/tenants.service';
 
 interface TransferOwnerModalProps {
@@ -30,6 +32,8 @@ export const TransferOwnerModal: React.FC<TransferOwnerModalProps> = ({
   const [selectedUserId, setSelectedUserId] = useState('');
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const { handleBackdropClick } = useModalA11y(isOpen, onClose, loading);
 
   if (!isOpen) return null;
 
@@ -72,9 +76,16 @@ export const TransferOwnerModal: React.FC<TransferOwnerModalProps> = ({
   };
 
   return (
-    <div className="modal-backdrop show" id="transfer-owner-modal">
-      <div className="modal-content" style={{ maxWidth: 540 }}>
-        <h3 className="modal-title" style={{ color: 'var(--warning)' }}>
+    <div
+      className="modal-backdrop show"
+      id="transfer-owner-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="transfer-owner-modal-title"
+      onClick={handleBackdropClick}
+    >
+      <div className="modal-content" style={{ maxWidth: 540 }} onClick={(e) => e.stopPropagation()}>
+        <h3 id="transfer-owner-modal-title" className="modal-title" style={{ color: 'var(--warning)' }}>
           {isSuperAdminIntervention
             ? (vi ? 'Can Thiệp: Chuyển Quyền Chủ Sở Hữu (Admin)' : 'Admin Intervention: Transfer Ownership')
             : (vi ? 'Chuyển Giao Quyền Chủ Sở Hữu' : 'Transfer Tenant Ownership')}
@@ -87,20 +98,12 @@ export const TransferOwnerModal: React.FC<TransferOwnerModalProps> = ({
         </p>
 
         {/* Warning Banner */}
-        <div
-          style={{
-            background: 'rgba(245, 158, 11, 0.08)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: 8,
-            padding: '12px 16px',
-            marginBottom: 20,
-            fontSize: 13,
-            color: '#f59e0b',
-            lineHeight: 1.5,
-          }}
-        >
-          <strong>⚠️ {vi ? 'Lưu ý quan trọng:' : 'Important Notice:'}</strong>
-          <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
+        <div className="info-banner info-banner--warning" style={{ flexDirection: 'column', gap: 6 }}>
+          <strong className="inline-code-row">
+            <IconAlertTriangle size={15} />
+            <span>{vi ? 'Lưu ý quan trọng:' : 'Important Notice:'}</span>
+          </strong>
+          <ul style={{ margin: '2px 0 0', paddingLeft: 20 }}>
             <li>
               {vi
                 ? 'Chủ sở hữu hiện tại sẽ trở thành thành viên thông thường và mất quyền quản trị Tenant này.'

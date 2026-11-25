@@ -3,6 +3,8 @@ import { useLanguage } from '../../../contexts/LanguageContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
+import { IconAlertTriangle, IconCopy, IconRefresh } from '../../common/Icons';
+import { useModalA11y } from '../../../hooks/useModalA11y';
 import { EditTenantModal } from '../../modals/EditTenantModal';
 import { TransferOwnerModal } from '../../modals/TransferOwnerModal';
 import { DeleteTenantModal } from '../../modals/DeleteTenantModal';
@@ -32,8 +34,10 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
   // State
   const [members, setMembers] = useState<TenantMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
+  const [membersError, setMembersError] = useState<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<TenantJoinRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
 
   // Modals state
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -51,31 +55,41 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
   const [rejectReason, setRejectReason] = useState('');
   const [rejecting, setRejecting] = useState(false);
 
+  const { handleBackdropClick: handleRejectBackdropClick } = useModalA11y(
+    Boolean(rejectTarget),
+    () => setRejectTarget(null),
+    rejecting,
+  );
+
   // Fetch members
   const loadMembers = useCallback(async () => {
     setLoadingMembers(true);
+    setMembersError(null);
     try {
       const data = await tenantsService.getMembers(tenant.id);
       setMembers(data);
-    } catch {
+    } catch (err: any) {
+      setMembersError(err?.message || (vi ? 'Không thể tải danh sách thành viên' : 'Failed to load members'));
       setMembers(tenant.members || []);
     } finally {
       setLoadingMembers(false);
     }
-  }, [tenant.id, tenant.members]);
+  }, [tenant.id, tenant.members, vi]);
 
   // Fetch join requests
   const loadJoinRequests = useCallback(async () => {
     setLoadingRequests(true);
+    setRequestsError(null);
     try {
       const reqs = await tenantsService.listJoinRequests(tenant.id);
       setJoinRequests(reqs.filter((r) => r.status === 'PENDING'));
-    } catch {
+    } catch (err: any) {
+      setRequestsError(err?.message || (vi ? 'Không thể tải yêu cầu gia nhập' : 'Failed to load join requests'));
       setJoinRequests([]);
     } finally {
       setLoadingRequests(false);
     }
-  }, [tenant.id]);
+  }, [tenant.id, vi]);
 
   useEffect(() => {
     loadMembers();
@@ -190,59 +204,38 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
   };
 
   return (
-    <div style={{ maxWidth: 1100, margin: '20px auto' }}>
-      {/* Overview Top Card (Scene 5 Wireframe) */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
-          padding: '20px 24px',
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 8,
-          gap: 16,
-          flexWrap: 'wrap',
-        }}
-      >
+    <div className="page-container page-container--tenant card-stack">
+      {/* Overview Top Card */}
+      <div className="tenant-summary-bar" style={{ marginBottom: 0 }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: '#fff', margin: 0 }}>
-              {tenant.name}
-            </h1>
+          <div className="inline-code-row" style={{ gap: 10 }}>
+            <h1 className="page-title">{tenant.name}</h1>
             <span className="badge badge-warning">{vi ? 'CHỦ SỞ HỮU' : 'TENANT OWNER'}</span>
           </div>
 
           {tenant.description && (
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 8px' }}>
+            <p className="page-subtitle" style={{ marginTop: 4 }}>
               {tenant.description}
             </p>
           )}
 
-          <div style={{ fontSize: 12, color: 'var(--text-dim)', display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 6 }}>
-            <span>
-              Tenant ID:{' '}
-              <code style={{ fontSize: 11, color: '#93c5fd' }}>{tenant.id}</code>{' '}
+          <div className="tenant-meta-list">
+            <span className="inline-code-row">
+              <span>Tenant ID:</span>
+              <code className="mono-tag">{tenant.id}</code>
               <button
                 type="button"
+                className="btn-icon"
                 onClick={() => copyToClipboard(tenant.id, 'Tenant ID')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  padding: '0 4px',
-                  fontSize: 11,
-                }}
                 title={vi ? 'Sao chép Tenant ID' : 'Copy Tenant ID'}
+                aria-label={vi ? 'Sao chép Tenant ID' : 'Copy Tenant ID'}
               >
-                📋
+                <IconCopy size={13} />
               </button>
             </span>
             <span>
               {vi ? 'Chủ sở hữu:' : 'Owner:'}{' '}
-              <strong style={{ color: '#fff' }}>{tenant.owner?.email || tenant.ownerUserId}</strong>
+              <strong style={{ color: 'var(--text-main)' }}>{tenant.owner?.email || tenant.ownerUserId}</strong>
             </span>
             <span>
               {vi ? 'Tổng thành viên:' : 'Members:'}{' '}
@@ -251,7 +244,6 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
           </div>
         </div>
 
-        {/* Action button */}
         <button
           type="button"
           className="btn btn-secondary btn-sm"
@@ -263,9 +255,9 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
       </div>
 
       {/* Card 1: Members Table */}
-      <div className="card-panel" style={{ marginBottom: 24 }}>
-        <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="panel-title" style={{ fontSize: 15 }}>
+      <div className="card-panel">
+        <div className="panel-header">
+          <div className="panel-title">
             {vi
               ? `Danh Sách Thành Viên Doanh Nghiệp (${members.length})`
               : `Tenant Members (${members.length})`}
@@ -276,12 +268,32 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
             onClick={loadMembers}
             disabled={loadingMembers}
           >
-            {loadingMembers ? (vi ? 'Đang tải...' : 'Loading...') : (vi ? 'Làm Mới' : 'Refresh')}
+            {loadingMembers ? (vi ? 'Đang tải…' : 'Loading…') : (vi ? 'Làm Mới' : 'Refresh')}
           </button>
         </div>
 
+        {membersError && (
+          <div style={{ padding: '12px 16px 0' }}>
+            <div className="error-alert" role="alert" id="tenant-members-error" style={{ marginBottom: 0 }}>
+              <div className="error-alert-content">
+                <IconAlertTriangle size={16} />
+                <span>{membersError}</span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={loadMembers}
+                disabled={loadingMembers}
+              >
+                <IconRefresh size={13} />
+                <span>{vi ? 'Thử lại' : 'Retry'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="table-responsive">
-          <table className="mock-table" style={{ width: '100%' }}>
+          <table className="mock-table">
             <thead>
               <tr>
                 <th>{vi ? 'Thành Viên' : 'Member'}</th>
@@ -311,60 +323,36 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
                   const isSelf = m.id === currentUser?.id;
 
                   return (
-                    <tr key={m.id} style={isOwner ? { background: 'rgba(245, 158, 11, 0.03)' } : undefined}>
+                    <tr key={m.id} style={isOwner ? { background: 'var(--warning-subtle)' } : undefined}>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div
-                            style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: '50%',
-                              background: isOwner ? '#f59e0b' : 'var(--primary)',
-                              color: isOwner ? '#000' : '#fff',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 700,
-                              fontSize: 13,
-                              flexShrink: 0,
-                            }}
-                          >
+                        <div className="inline-code-row" style={{ gap: 10 }}>
+                          <div className={`avatar-circle avatar-circle--sm ${isOwner ? 'avatar-circle--admin' : ''}`}>
                             {getMonogram(m.name, m.email)}
                           </div>
-                          <div>
-                            <strong style={{ color: '#fff', fontSize: 13 }}>
-                              {m.name || m.email.split('@')[0]}
-                              {isSelf && (
-                                <span style={{ color: '#f59e0b', marginLeft: 6, fontSize: 11 }}>
-                                  ({vi ? 'Bạn' : 'You'})
-                                </span>
-                              )}
-                            </strong>
-                          </div>
+                          <strong style={{ color: 'var(--text-main)', fontSize: 13 }}>
+                            {m.name || m.email.split('@')[0]}
+                            {isSelf && (
+                              <span style={{ color: 'var(--warning)', marginLeft: 6, fontSize: 11 }}>
+                                ({vi ? 'Bạn' : 'You'})
+                              </span>
+                            )}
+                          </strong>
                         </div>
                       </td>
 
-                      <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{m.email}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{m.email}</td>
 
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <code style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                            {m.id}
-                          </code>
+                        <div className="inline-code-row">
+                          <code className="mono-tag">{m.id}</code>
                           <button
                             type="button"
+                            className="btn-icon"
                             onClick={() => copyToClipboard(m.id, 'User ID')}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: 'var(--text-dim)',
-                              cursor: 'pointer',
-                              padding: '0 2px',
-                              fontSize: 10,
-                            }}
                             title={vi ? 'Sao chép User ID' : 'Copy User ID'}
+                            aria-label={vi ? 'Sao chép User ID' : 'Copy User ID'}
                           >
-                            📋
+                            <IconCopy size={13} />
                           </button>
                         </div>
                       </td>
@@ -383,11 +371,11 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
 
                       <td style={{ textAlign: 'right' }}>
                         {isOwner ? (
-                          <span style={{ color: 'var(--text-dim)', fontSize: 12, fontStyle: 'italic' }}>
+                          <span className="form-hint" style={{ marginTop: 0, fontStyle: 'italic' }}>
                             {vi ? 'Chủ sở hữu' : 'Current Owner'}
                           </span>
                         ) : (
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                          <div className="app-actions-group">
                             <button
                               type="button"
                               className="btn btn-secondary btn-sm"
@@ -398,9 +386,8 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
                             </button>
                             <button
                               type="button"
-                              className="btn btn-secondary btn-sm"
+                              className="btn btn-danger btn-sm"
                               onClick={() => setRemoveMemberTarget(m)}
-                              style={{ color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
                               title={vi ? 'Loại thành viên khỏi doanh nghiệp' : 'Remove from tenant'}
                             >
                               {vi ? 'Xóa Khỏi Tenant' : 'Remove'}
@@ -418,9 +405,9 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
       </div>
 
       {/* Card 2: Join Requests Table */}
-      <div className="card-panel" style={{ marginBottom: 24 }}>
-        <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="panel-title" style={{ fontSize: 15 }}>
+      <div className="card-panel">
+        <div className="panel-header">
+          <div className="panel-title">
             {vi
               ? `Yêu Cầu Gia Nhập Đang Chờ Duyệt (${joinRequests.length})`
               : `Pending Join Requests (${joinRequests.length})`}
@@ -431,12 +418,32 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
             onClick={loadJoinRequests}
             disabled={loadingRequests}
           >
-            {loadingRequests ? (vi ? 'Đang tải...' : 'Loading...') : (vi ? 'Làm Mới' : 'Refresh')}
+            {loadingRequests ? (vi ? 'Đang tải…' : 'Loading…') : (vi ? 'Làm Mới' : 'Refresh')}
           </button>
         </div>
 
+        {requestsError && (
+          <div style={{ padding: '12px 16px 0' }}>
+            <div className="error-alert" role="alert" id="tenant-requests-error" style={{ marginBottom: 0 }}>
+              <div className="error-alert-content">
+                <IconAlertTriangle size={16} />
+                <span>{requestsError}</span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={loadJoinRequests}
+                disabled={loadingRequests}
+              >
+                <IconRefresh size={13} />
+                <span>{vi ? 'Thử lại' : 'Retry'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="table-responsive">
-          <table className="mock-table" style={{ width: '100%' }}>
+          <table className="mock-table">
             <thead>
               <tr>
                 <th>{vi ? 'Người Gửi Yêu Cầu' : 'Applicant'}</th>
@@ -462,31 +469,30 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
                 joinRequests.map((req) => (
                   <tr key={req.id}>
                     <td>
-                      <strong style={{ color: '#fff', fontSize: 13 }}>
-                        {req.user?.name || req.user?.email.split('@')[0] || vi ? 'Người dùng' : 'User'}
+                      <strong style={{ color: 'var(--text-main)', fontSize: 13 }}>
+                        {req.user?.name || req.user?.email?.split('@')[0] || (vi ? 'Người dùng' : 'User')}
                       </strong>
                     </td>
-                    <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{req.user?.email}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{req.user?.email}</td>
                     <td style={{ fontSize: 12, color: 'var(--text-dim)' }}>{formatDateTime(req.createdAt)}</td>
                     <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                      <div className="app-actions-group">
                         <button
                           type="button"
                           className="btn btn-primary btn-sm"
                           onClick={() => setApproveTarget(req)}
                         >
-                          {vi ? 'Duyệt (Approve)' : 'Approve'}
+                          {vi ? 'Duyệt' : 'Approve'}
                         </button>
                         <button
                           type="button"
-                          className="btn btn-secondary btn-sm"
+                          className="btn btn-danger btn-sm"
                           onClick={() => {
                             setRejectTarget(req);
                             setRejectReason('');
                           }}
-                          style={{ color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
                         >
-                          {vi ? 'Từ Chối (Reject)' : 'Reject'}
+                          {vi ? 'Từ Chối' : 'Reject'}
                         </button>
                       </div>
                     </td>
@@ -498,12 +504,15 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
         </div>
       </div>
 
-      {/* Card 3: Danger Zone (Scene 5 Wireframe) */}
-      <div className="danger-zone" style={{ padding: 20, border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: 8, background: 'rgba(239, 68, 68, 0.04)' }}>
-        <div className="danger-title" style={{ color: 'var(--danger)', fontSize: 16, fontWeight: 700 }}>
-          {vi ? 'Danger Zone Doanh Nghiệp' : 'Tenant Danger Zone'}
+      {/* Card 3: Danger Zone */}
+      <div className="danger-zone">
+        <div className="inline-code-row" style={{ gap: 8, marginBottom: 6, color: 'var(--danger)' }}>
+          <IconAlertTriangle size={18} />
+          <div className="card-title" style={{ color: 'var(--danger)' }}>
+            {vi ? 'Vùng Nguy Hiểm Doanh Nghiệp' : 'Tenant Danger Zone'}
+          </div>
         </div>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '6px 0 16px', lineHeight: 1.5 }}>
+        <p className="card-subtitle" style={{ marginBottom: 16 }}>
           {vi
             ? 'Khi giải tán hoặc xóa Tenant, toàn bộ quan hệ thành viên (User.tenantId) sẽ được đưa về null. Người dùng không bị xóa khỏi hệ thống.'
             : 'Dissolving or deleting the tenant will detach all members (setting User.tenantId to null). User accounts are not deleted.'}
@@ -588,9 +597,16 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
 
       {/* Reject Reason Modal */}
       {rejectTarget && (
-        <div className="modal-backdrop show" id="reject-request-modal">
-          <div className="modal-content" style={{ maxWidth: 480 }}>
-            <h3 className="modal-title" style={{ color: 'var(--danger)' }}>
+        <div
+          className="modal-backdrop show"
+          id="reject-request-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reject-request-modal-title"
+          onClick={handleRejectBackdropClick}
+        >
+          <div className="modal-content" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
+            <h3 id="reject-request-modal-title" className="modal-title" style={{ color: 'var(--danger)' }}>
               {vi ? 'Từ Chối Yêu Cầu Gia Nhập' : 'Reject Join Request'}
             </h3>
             <p className="modal-desc">
@@ -600,10 +616,11 @@ export const TenantOwnerView: React.FC<TenantOwnerViewProps> = ({
             </p>
 
             <div className="form-group" style={{ marginBottom: 16 }}>
-              <label className="form-label">
+              <label className="form-label" htmlFor="reject-reason-input">
                 {vi ? 'Lý Do Từ Chối (Tùy chọn)' : 'Reason (Optional)'}
               </label>
               <textarea
+                id="reject-reason-input"
                 className="form-control"
                 rows={2}
                 maxLength={500}

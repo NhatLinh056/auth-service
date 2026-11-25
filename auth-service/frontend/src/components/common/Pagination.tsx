@@ -87,9 +87,9 @@ export const Pagination: React.FC<PaginationProps> = ({
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
               className="pagination-pagesize-select"
               style={{
-                background: 'var(--bg-surface-elevated, #1a2234)',
-                border: '1px solid var(--border-medium, #334155)',
-                color: '#fff',
+                background: 'var(--bg-input)',
+                border: '1px solid var(--border-medium)',
+                color: 'var(--text-main)',
                 borderRadius: 4,
                 padding: '3px 8px',
                 fontSize: 12,

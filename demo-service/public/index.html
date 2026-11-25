@@ -3,11 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Customer Portal — Tích Hợp Đăng Nhập</title>
+  <title>Customer Portal — Demo Service</title>
+  <link
+    rel="icon"
+    type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230E6B5B'/%3E%3Cpath d='M16 5.5L7.5 9V15.5C7.5 21 11.2 25.6 16 27.2C20.8 25.6 24.5 21 24.5 15.5V9L16 5.5Z' fill='none' stroke='%23FFFFFF' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='15' r='2.2' fill='none' stroke='%23FFFFFF' stroke-width='2'/%3E%3Cpath d='M16 17.2V20.5' stroke='%23FFFFFF' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"
+  >
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261103_01">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20261126_swiss">
 </head>
 <body>
 
@@ -15,9 +20,11 @@
   <header class="navbar">
     <div class="nav-container">
       <div class="brand">
-        <div class="brand-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.5L4.5 5.5V11.5C4.5 16.3 7.7 20.5 12 22C16.3 20.5 19.5 16.3 19.5 11.5V5.5L12 2.5Z"/>
+            <circle cx="12" cy="11" r="2"/>
+            <path d="M12 13v3"/>
           </svg>
         </div>
         <div class="brand-text">
@@ -28,54 +35,73 @@
 
       <div class="nav-right">
         <!-- Service Status Pill -->
-        <div class="status-pill" id="handshake-pill" title="Trạng thái hệ thống">
-          <span class="status-dot" id="handshake-dot"></span>
-          <span id="handshake-text" data-i18n="status.online">Hệ Thống Trực Tuyến</span>
+        <div class="status-pill is-checking" id="handshake-pill" role="status" aria-live="polite">
+          <span class="status-dot is-checking" id="handshake-dot" aria-hidden="true"></span>
+          <span id="handshake-text" data-i18n="status.checking">Đang kiểm tra…</span>
         </div>
 
         <!-- Language Switcher -->
-        <div class="lang-switcher">
-          <button class="lang-btn" id="lang-btn-en" onclick="setLanguage('en')">EN</button>
-          <button class="lang-btn active" id="lang-btn-vi" onclick="setLanguage('vi')">VI</button>
+        <div class="lang-switcher" role="group" aria-label="Language">
+          <button type="button" class="lang-btn" id="lang-btn-en" onclick="setLanguage('en')">EN</button>
+          <button type="button" class="lang-btn active" id="lang-btn-vi" onclick="setLanguage('vi')">VI</button>
         </div>
       </div>
     </div>
   </header>
 
   <!-- Main Container -->
-  <main class="main-container" style="max-width: 600px; margin: 32px auto; padding: 0 16px;">
+  <main class="main-container">
 
-    <!-- APPLICATION HEADER -->
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding: 14px 20px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <div style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);"></div>
-        <div>
-          <strong style="font-size: 15px; color: #fff;" id="banner-app-name">Demo Service</strong>
-          <span style="font-size: 12px; color: var(--text-dim); margin-left: 8px;" data-i18n="nav.app_desc">— Minh Họa Tích Hợp OAuth với Auth Service</span>
+    <!-- Application Connection Bar -->
+    <div class="app-status-bar">
+      <div class="app-status-meta">
+        <span class="app-status-dot is-checking" id="banner-status-dot" aria-hidden="true"></span>
+        <div class="app-status-copy">
+          <strong class="app-status-name" id="banner-app-name">Demo Service</strong>
+          <span class="app-status-desc" data-i18n="nav.app_desc">— Minh Họa Tích Hợp OAuth với Auth Service</span>
         </div>
       </div>
-      <span class="badge badge-success" id="banner-app-status" style="font-size: 11px;">ACTIVE</span>
+      <span class="badge badge-success" id="banner-app-status">ACTIVE</span>
     </div>
 
-    <!-- VIEW 1: UNAUTHENTICATED (CHỈ ĐĂNG NHẬP OAUTH, TINH GỌN) -->
-    <div class="card" id="unauth-view" style="max-width: 480px; margin: 0 auto;">
-      <div class="card-header" style="text-align: center; justify-content: center; flex-direction: column; gap: 6px; padding: 28px 24px 16px;">
-        <div class="card-icon card-icon-auth" style="margin: 0 auto 8px; width: 44px; height: 44px;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-            <polyline points="10 17 15 12 10 7"></polyline>
-            <line x1="15" y1="12" x2="3" y2="12"></line>
+    <!-- Boot Loading Card (Prevents Unauth Flash During Session Check) -->
+    <section
+      class="boot-card"
+      id="boot-loading-view"
+      role="status"
+      aria-live="polite"
+      aria-label="Đang tải Demo Service"
+    >
+      <div class="boot-logo" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2.5L4.5 5.5V11.5C4.5 16.3 7.7 20.5 12 22C16.3 20.5 19.5 16.3 19.5 11.5V5.5L12 2.5Z"/>
+          <circle cx="12" cy="11" r="2"/>
+          <path d="M12 13v3"/>
+        </svg>
+      </div>
+      <span class="boot-title">Demo Service</span>
+      <div class="boot-progress" aria-hidden="true"></div>
+    </section>
+
+    <!-- VIEW 1: UNAUTHENTICATED (OAUTH LOGIN) -->
+    <section class="portal-card auth-login-card" id="unauth-view" hidden>
+      <div class="auth-login-header">
+        <div class="card-icon card-icon-auth" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+            <polyline points="10 17 15 12 10 7"/>
+            <line x1="15" y1="12" x2="3" y2="12"/>
           </svg>
         </div>
-        <h3 class="card-title" style="font-size: 20px;" data-i18n="auth.title">Đăng Nhập Tài Khoản</h3>
-        <p class="card-subtitle" style="font-size: 13px;" data-i18n="auth.subtitle">Đăng nhập nhanh chóng và bảo mật qua mạng xã hội</p>
+        <h2 class="auth-card-title" data-i18n="auth.title">Đăng Nhập Tài Khoản</h2>
+        <p class="auth-card-subtitle" data-i18n="auth.subtitle">Đăng nhập nhanh chóng và bảo mật qua mạng xã hội</p>
       </div>
 
-      <div class="card-body" style="padding: 16px 24px 28px;">
+      <div class="auth-login-body">
         <div class="oauth-actions">
-          <div style="position: relative; width: 100%;">
+          <div class="oauth-provider-item">
             <button type="button" class="btn btn-oauth btn-oauth-google" id="btn-oauth-google" onclick="loginWithProvider('google')">
-              <svg width="18" height="18" viewBox="0 0 24 24">
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
@@ -83,124 +109,160 @@
               </svg>
               <span id="btn-google-text" data-i18n="auth.btn_google">Đăng nhập bằng Google</span>
             </button>
-            <div id="google-disabled-note" style="display: none; text-align: center; font-size: 11px; color: var(--danger); margin-top: 4px; margin-bottom: 8px;">
-              ⚠️ Đang vô hiệu hóa trong Cài đặt Ứng dụng
+            <div class="provider-disabled-note" id="google-disabled-note" hidden>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span data-i18n="auth.provider_disabled">Đang vô hiệu hóa trong Cài đặt Ứng dụng</span>
             </div>
           </div>
 
-          <div style="position: relative; width: 100%;">
+          <div class="oauth-provider-item">
             <button type="button" class="btn btn-oauth btn-oauth-facebook" id="btn-oauth-facebook" onclick="loginWithProvider('facebook')">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
               </svg>
               <span id="btn-fb-text" data-i18n="auth.btn_facebook">Đăng nhập bằng Facebook</span>
             </button>
-            <div id="facebook-disabled-note" style="display: none; text-align: center; font-size: 11px; color: var(--danger); margin-top: 4px; margin-bottom: 8px;">
-              ⚠️ Đang vô hiệu hóa trong Cài đặt Ứng dụng
+            <div class="provider-disabled-note" id="facebook-disabled-note" hidden>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span data-i18n="auth.provider_disabled">Đang vô hiệu hóa trong Cài đặt Ứng dụng</span>
             </div>
           </div>
         </div>
-        <p style="text-align: center; font-size: 11px; color: var(--text-dim); margin-top: 12px;" data-i18n="auth.footer_note">
+
+        <p class="auth-footer-note" data-i18n="auth.footer_note">
           Xác thực trực tiếp qua luồng OAuth do Auth Service điều phối.
         </p>
       </div>
-    </div>
+    </section>
 
-    <!-- VIEW 2: AUTHENTICATED (PROFILE CƠ BẢN) -->
-    <div class="card" id="auth-view" style="display: none; max-width: 540px; margin: 0 auto;">
-      <!-- Header -->
-      <div class="card-header" style="justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 20px 24px;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <div class="user-avatar" id="user-avatar" style="overflow: hidden; width: 44px; height: 44px; font-size: 18px;">U</div>
-          <div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <strong class="user-name" id="user-name-display" style="font-size: 16px;">Loading...</strong>
-            </div>
-            <div class="user-email" id="user-email-display" style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">user@example.com</div>
+    <!-- VIEW 2: AUTHENTICATED (PROFILE & PROTECTED API) -->
+    <section class="portal-card profile-card" id="auth-view" hidden>
+      <!-- Profile Header -->
+      <div class="profile-header">
+        <div class="profile-identity">
+          <div class="user-avatar" id="user-avatar">U</div>
+          <div class="profile-identity-text">
+            <strong class="user-name" id="user-name-display">User</strong>
+            <div class="user-email" id="user-email-display">user@example.com</div>
           </div>
         </div>
 
-        <button class="btn btn-danger btn-sm" onclick="openLogoutModal()" data-i18n="btn.sign_out" style="padding: 6px 14px;">
+        <button type="button" class="btn btn-danger-outline btn-sm" onclick="openLogoutModal()" data-i18n="btn.sign_out">
           Đăng Xuất
         </button>
       </div>
 
-      <div class="card-body" style="padding: 20px 24px;">
-        <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 16px;">
-          <h4 style="font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="profile.title">
-            Thông Tin Khách Hàng (AppUser)
-          </h4>
-          <div style="display: grid; grid-template-columns: 140px 1fr; gap: 10px; font-size: 13px; line-height: 1.6; align-items: center;">
-            <span style="color: var(--text-dim);" data-i18n="profile.user_id">User ID (AppUser):</span>
-            <code id="user-id-display" class="meta-code" style="word-break: break-all; font-size: 12px;">...</code>
+      <!-- Customer Profile Attributes -->
+      <div class="portal-section">
+        <h3 class="section-heading" data-i18n="profile.title">Thông Tin Khách Hàng (AppUser)</h3>
+        <div class="profile-grid">
+          <span class="profile-key" data-i18n="profile.user_id">User ID (AppUser):</span>
+          <code id="user-id-display" class="meta-code">...</code>
 
-            <span style="color: var(--text-dim);" data-i18n="profile.provider">Phương Thức:</span>
-            <span id="user-provider-display" class="badge badge-google" style="width: fit-content; font-size: 11px;">Google OAuth 2.0</span>
-
-            <span style="color: var(--text-dim);" data-i18n="profile.role">Vai Trò:</span>
-            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-              <span id="user-role-display" class="badge" style="background: rgba(148, 163, 184, 0.15); color: #cbd5e1; width: fit-content; font-size: 11px;">USER (Khách hàng)</span>
-              <span id="user-owner-badge" class="badge badge-port" style="display: none; font-size: 11px;">Chủ Ứng Dụng</span>
-            </div>
-
-            <span style="color: var(--text-dim);" data-i18n="profile.auth_status">Xác Thực:</span>
-            <span class="badge badge-success" style="width: fit-content; font-size: 11px;" data-i18n="profile.verified">Đã Xác Thực</span>
+          <span class="profile-key" data-i18n="profile.provider">Phương Thức:</span>
+          <div>
+            <span id="user-provider-display" class="badge badge-google">GOOGLE</span>
           </div>
-        </div>
 
-        <!-- PROTECTED API TEST SECTION (MINH HỌA XÁC MINH TOKEN) -->
-        <div style="margin-top: 16px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 16px;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-            <h4 style="font-size: 13px; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="api_test.title">
-              Kiểm Chứng Token (Protected API)
-            </h4>
-            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 10px;">UserAuthGuard</span>
+          <span class="profile-key" data-i18n="profile.role">Vai Trò:</span>
+          <div class="profile-role-group">
+            <span id="user-role-display" class="badge badge-neutral">USER (Khách hàng)</span>
+            <span id="user-owner-badge" class="badge badge-teal" hidden>Chủ Ứng Dụng</span>
           </div>
-          <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 12px; line-height: 1.4;" data-i18n="api_test.desc">
-            Gọi endpoint <code>GET /auth/protected</code> bằng cookie phiên (hoặc Bearer token) để xác thực quyền truy cập qua Auth Service.
-          </p>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <button type="button" class="btn btn-primary btn-sm" id="btn-test-protected-api" onclick="testProtectedApi()" data-i18n="api_test.btn_call" style="padding: 6px 14px;">
-              Thử Gọi API Bảo Vệ
-            </button>
-            <span id="api-test-status" style="font-size: 12px; color: var(--text-muted);"></span>
-          </div>
-          <div id="api-test-result" style="display: none; margin-top: 12px; padding: 10px 12px; background: #0f172a; border: 1px solid #334155; border-radius: var(--radius-sm); font-family: 'JetBrains Mono', monospace; font-size: 11px; max-height: 180px; overflow-y: auto; white-space: pre-wrap;">
-          </div>
-        </div>
 
-        <div style="margin-top: 16px; padding: 12px 14px; background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-muted); line-height: 1.5;">
-          <strong style="color: #10b981;" data-i18n="profile.integration_notice_title">Tích Hợp Thành Công:</strong>
-          <span data-i18n="profile.integration_notice_desc">
-            Ứng dụng Demo đã kết nối và xác thực an toàn qua Auth Service (Project 1) bằng giao thức OAuth 2.0 PKCE.
-          </span>
+          <span class="profile-key" data-i18n="profile.auth_status">Xác Thực:</span>
+          <div>
+            <span class="badge badge-success" data-i18n="profile.verified">Đã Xác Thực</span>
+          </div>
         </div>
       </div>
-    </div>
+
+      <!-- Protected API Verification Section -->
+      <div class="portal-section">
+        <div class="section-header-row">
+          <h3 class="section-heading" data-i18n="api_test.title">Kiểm Chứng Token (Protected API)</h3>
+          <span class="badge badge-primary">UserAuthGuard</span>
+        </div>
+        <p class="section-desc">
+          <span data-i18n="api_test.desc_before">Gọi endpoint</span>
+          <code class="inline-code">GET /auth/protected</code>
+          <span data-i18n="api_test.desc_after">bằng cookie phiên (hoặc Bearer token) để xác thực quyền truy cập qua Auth Service.</span>
+        </p>
+        <div class="api-action-row">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-test-protected-api" onclick="testProtectedApi()" data-i18n="api_test.btn_call">
+            Thử Gọi API Bảo Vệ
+          </button>
+          <span class="api-status" id="api-test-status" role="status" aria-live="polite"></span>
+        </div>
+        <pre id="api-test-result" class="api-result-box" hidden></pre>
+      </div>
+
+      <!-- Integration Notice -->
+      <div class="portal-section portal-section-footer">
+        <div class="integration-banner">
+          <svg class="integration-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          <div>
+            <strong class="integration-title" data-i18n="profile.integration_notice_title">Tích Hợp Thành Công:</strong>
+            <span data-i18n="profile.integration_notice_desc">
+              Ứng dụng Demo đã kết nối và xác thực an toàn qua Auth Service (Project 1) bằng giao thức OAuth 2.0 PKCE.
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
 
   </main>
 
-  <!-- Logout Confirmation Modal (Scene 13) -->
-  <div class="modal-backdrop" id="logout-modal" style="display: none;" onclick="if(event.target === this) closeLogoutModal()">
-    <div class="modal-content" style="max-width: 440px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-        <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; color: #fff;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Logout Confirmation Modal -->
+  <div
+    class="modal-backdrop"
+    id="logout-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="logout-modal-title"
+    hidden
+    onclick="if(event.target === this) closeLogoutModal()"
+  >
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <svg class="modal-warning-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
             <line x1="12" y1="9" x2="12" y2="13"/>
             <line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
-          <span data-i18n="modal_logout.title">Xác Nhận Đăng Xuất</span>
+          <h3 class="modal-title" id="logout-modal-title" data-i18n="modal_logout.title">Xác Nhận Đăng Xuất</h3>
         </div>
-        <button type="button" onclick="closeLogoutModal()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 4px;" aria-label="Đóng">✕</button>
+        <button type="button" class="modal-close-btn" onclick="closeLogoutModal()" aria-label="Đóng">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
       </div>
-      <div style="font-size: 13px; color: var(--text-main); line-height: 1.5; margin-bottom: 20px;">
-        <p data-i18n="modal_logout.body">Bạn có chắc chắn muốn đăng xuất khỏi <strong>Demo Order Service</strong> không?</p>
-        <p style="margin-top: 8px; font-size: 12px; color: var(--text-dim);" data-i18n="modal_logout.note">
+
+      <div class="modal-body">
+        <p class="modal-body-text">
+          <span data-i18n="modal_logout.body_prefix">Bạn có chắc chắn muốn đăng xuất khỏi</span>
+          <strong id="logout-modal-app-name">Demo Service</strong><span data-i18n="modal_logout.body_suffix"> không?</span>
+        </p>
+        <p class="modal-note" data-i18n="modal_logout.note">
           Phiên đăng nhập trên cổng khách hàng này sẽ kết thúc. Việc đăng xuất này không làm mất phiên đăng nhập của bạn trên các ứng dụng khác.
         </p>
       </div>
-      <div class="modal-actions" style="margin-top: 0; display: flex; justify-content: flex-end; gap: 8px;">
+
+      <div class="modal-actions">
         <button type="button" class="btn btn-secondary btn-sm" onclick="closeLogoutModal()" data-i18n="modal_logout.btn_cancel">Hủy Bỏ (Esc)</button>
         <button type="button" class="btn btn-danger btn-sm" id="btn-confirm-logout" onclick="confirmLogout()" data-i18n="modal_logout.btn_confirm">Đăng Xuất Ngay</button>
       </div>
@@ -208,8 +270,8 @@
   </div>
 
   <!-- Toast Notification Container -->
-  <div class="toast-container" id="toast-container"></div>
+  <div class="toast-container" id="toast-container" role="region" aria-label="Notifications"></div>
 
-  <script src="app.js?v=streamlined-20261103"></script>
+  <script src="app.js?v=20261126_swiss"></script>
 </body>
 </html>

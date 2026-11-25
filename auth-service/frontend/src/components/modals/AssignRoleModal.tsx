@@ -3,6 +3,8 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { IconAlertTriangle, IconInfo, IconLock, IconShield, IconX, IconZap } from '../common/Icons';
+import { useModalA11y } from '../../hooks/useModalA11y';
 import { rolesService } from '../../services/roles.service';
 import type { User, Role } from '../../types/auth.types';
 
@@ -29,6 +31,12 @@ export const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
   const [selectedRole, setSelectedRole] = useState<Role>('USER');
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const { handleBackdropClick } = useModalA11y(
+    isOpen && Boolean(user),
+    onClose,
+    loading || showConfirm,
+  );
 
   useEffect(() => {
     if (user) {
@@ -78,28 +86,22 @@ export const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
       <div
         className="modal-backdrop show"
         id="assign-role-modal"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9998,
-        }}
-        onClick={(e) => {
-          if (e.target === e.currentTarget && !loading) {
-            onClose();
-          }
-        }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="assign-role-modal-title"
+        style={{ zIndex: 9998 }}
+        onClick={handleBackdropClick}
       >
         <div
           className="modal-content"
           style={{
             maxWidth: 500,
             width: '90%',
-            background: 'var(--bg-surface, #111827)',
-            border: '1px solid var(--border-medium, #334155)',
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-medium)',
             borderRadius: 12,
             padding: 24,
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)',
+            boxShadow: 'var(--shadow-lg)',
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -110,121 +112,66 @@ export const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
               alignItems: 'center',
               justifyContent: 'space-between',
               marginBottom: 18,
-              borderBottom: '1px solid var(--border-subtle, #1e293b)',
+              borderBottom: '1px solid var(--border-subtle)',
               paddingBottom: 14,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 8,
-                  background: 'rgba(79, 70, 229, 0.15)',
-                  border: '1px solid rgba(79, 70, 229, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#818cf8',
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2a5 5 0 0 1 5 5v3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2V7a5 5 0 0 1 5-5z" />
-                </svg>
+            <div className="card-header-left" style={{ gap: 10 }}>
+              <div className="icon-well">
+                <IconLock size={17} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#fff' }}>
+                <h3 id="assign-role-modal-title" className="modal-title">
                   {vi ? 'Thay Đổi Quyền Người Dùng' : 'Change User Role'}
                 </h3>
-                <div style={{ fontSize: 12, color: 'var(--text-dim, #64748b)' }}>
+                <div className="card-subtitle">
                   {vi ? 'Quản trị vai trò toàn hệ thống' : 'System-wide role management'}
                 </div>
               </div>
             </div>
             <button
               type="button"
+              className="btn-icon"
               onClick={onClose}
               disabled={loading}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-muted, #94a3b8)',
-                fontSize: 18,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                padding: 4,
-                lineHeight: 1,
-              }}
+              aria-label={vi ? 'Đóng' : 'Close'}
             >
-              ✕
+              <IconX size={16} />
             </button>
           </div>
 
           {/* User Info Card */}
-          <div
-            style={{
-              background: 'var(--bg-surface-elevated, #1a2234)',
-              border: '1px solid var(--border-subtle, #1e293b)',
-              borderRadius: 8,
-              padding: '12px 14px',
-              marginBottom: 18,
-              fontSize: 12,
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ color: 'var(--text-dim, #64748b)' }}>{vi ? 'Người dùng:' : 'User:'}</span>
-              <strong style={{ color: '#fff' }}>{user.name || (vi ? 'Chưa đặt tên' : 'Unnamed')}</strong>
+          <div className="meta-strip" style={{ borderRadius: 8, border: '1px solid var(--border-subtle)', marginBottom: 18, gridTemplateColumns: '1fr' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span className="form-hint" style={{ marginTop: 0 }}>{vi ? 'Người dùng:' : 'User:'}</span>
+              <strong style={{ color: 'var(--text-main)' }}>{user.name || (vi ? 'Chưa đặt tên' : 'Unnamed')}</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ color: 'var(--text-dim, #64748b)' }}>Email:</span>
-              <span style={{ color: '#94a3b8', fontFamily: 'monospace' }}>{user.email}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span className="form-hint" style={{ marginTop: 0 }}>Email:</span>
+              <span className="mono-tag">{user.email}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ color: 'var(--text-dim, #64748b)' }}>User ID:</span>
-              <span style={{ color: '#94a3b8', fontFamily: 'monospace' }}>{user.id}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span className="form-hint" style={{ marginTop: 0 }}>User ID:</span>
+              <span className="mono-tag">{user.id}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: 'var(--text-dim, #64748b)' }}>{vi ? 'Quyền hiện tại:' : 'Current Role:'}</span>
-              <span
-                className={`badge ${user.role === 'ADMIN' ? 'badge-warning' : 'badge-neutral'}`}
-                style={{ fontWeight: 600, fontSize: 11 }}
-              >
+              <span className="form-hint" style={{ marginTop: 0 }}>{vi ? 'Quyền hiện tại:' : 'Current Role:'}</span>
+              <span className={`badge ${user.role === 'ADMIN' ? 'badge-warning' : 'badge-neutral'}`}>
                 {user.role}
               </span>
             </div>
           </div>
 
           {/* Role Selection Cards */}
-          <div style={{ marginBottom: 18 }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: 12,
-                fontWeight: 600,
-                color: '#fff',
-                marginBottom: 8,
-              }}
-            >
+          <div className="form-group">
+            <label className="form-label">
               {vi ? 'Chọn quyền quản trị muốn thay đổi:' : 'Select target role:'}
             </label>
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div className="role-choice-grid">
               {/* USER Card */}
               <label
                 onClick={() => setSelectedRole('USER')}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '12px 14px',
-                  background: selectedRole === 'USER' ? 'rgba(79, 70, 229, 0.12)' : 'var(--bg-base, #0b0f19)',
-                  border:
-                    selectedRole === 'USER'
-                      ? '1px solid #4f46e5'
-                      : '1px solid var(--border-medium, #334155)',
-                  borderRadius: 8,
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
+                className={`role-choice-card ${selectedRole === 'USER' ? 'role-choice-card--user-selected' : ''}`}
               >
                 <input
                   type="radio"
@@ -233,11 +180,11 @@ export const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
                   checked={selectedRole === 'USER'}
                   onChange={() => setSelectedRole('USER')}
                   disabled={loading}
-                  style={{ accentColor: '#4f46e5' }}
+                  style={{ accentColor: 'var(--primary)' }}
                 />
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>USER</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-dim, #64748b)' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)' }}>USER</div>
+                  <div className="form-hint" style={{ marginTop: 0 }}>
                     {vi ? 'Người dùng thường' : 'Standard User'}
                   </div>
                 </div>
@@ -246,21 +193,7 @@ export const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
               {/* ADMIN Card */}
               <label
                 onClick={() => setSelectedRole('ADMIN')}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '12px 14px',
-                  background: selectedRole === 'ADMIN' ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-base, #0b0f19)',
-                  border:
-                    selectedRole === 'ADMIN'
-                      ? '1px solid #f59e0b'
-                      : '1px solid var(--border-medium, #334155)',
-                  borderRadius: 8,
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
+                className={`role-choice-card ${selectedRole === 'ADMIN' ? 'role-choice-card--admin-selected' : ''}`}
               >
                 <input
                   type="radio"
@@ -269,11 +202,11 @@ export const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
                   checked={selectedRole === 'ADMIN'}
                   onChange={() => setSelectedRole('ADMIN')}
                   disabled={loading}
-                  style={{ accentColor: '#f59e0b' }}
+                  style={{ accentColor: 'var(--warning)' }}
                 />
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f59e0b' }}>ADMIN</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-dim, #64748b)' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--warning)' }}>ADMIN</div>
+                  <div className="form-hint" style={{ marginTop: 0 }}>
                     {vi ? 'Super Admin hệ thống' : 'System Super Admin'}
                   </div>
                 </div>
@@ -284,108 +217,82 @@ export const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
           {/* Dynamic Warning Banner */}
           <div
             id="roleWarningBanner"
-            style={{
-              borderRadius: 8,
-              padding: '12px 14px',
-              fontSize: 12,
-              lineHeight: 1.5,
-              marginBottom: 14,
-              border: '1px solid',
-              ...(isSelfDemoteBlocked
-                ? {
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    borderColor: 'rgba(239, 68, 68, 0.3)',
-                    color: '#f87171',
-                  }
-                : isLastAdminDemoteBlocked
-                ? {
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    borderColor: 'rgba(239, 68, 68, 0.3)',
-                    color: '#f87171',
-                  }
+            className={`info-banner ${
+              isSelfDemoteBlocked || isLastAdminDemoteBlocked
+                ? 'info-banner--danger'
                 : isUnchanged
-                ? {
-                    background: 'rgba(148, 163, 184, 0.08)',
-                    borderColor: 'rgba(148, 163, 184, 0.25)',
-                    color: '#94a3b8',
-                  }
+                ? 'info-banner--neutral'
                 : selectedRole === 'ADMIN'
-                ? {
-                    background: 'rgba(245, 158, 11, 0.1)',
-                    borderColor: 'rgba(245, 158, 11, 0.3)',
-                    color: '#fbbf24',
-                  }
-                : {
-                    background: 'rgba(239, 68, 68, 0.08)',
-                    borderColor: 'rgba(239, 68, 68, 0.25)',
-                    color: '#fca5a5',
-                  }),
-            }}
+                ? 'info-banner--warning'
+                : 'info-banner--danger'
+            }`}
           >
             {isSelfDemoteBlocked ? (
-              <div>
-                <strong>⚠️ {vi ? 'Không thể tự hạ quyền:' : 'Self-demotion blocked:'}</strong>{' '}
-                {vi
-                  ? 'Bạn không thể tự hạ quyền Quản trị viên (ADMIN) của chính mình.'
-                  : 'You cannot demote your own administrator privileges.'}
+              <div className="inline-code-row" style={{ alignItems: 'flex-start' }}>
+                <IconAlertTriangle size={15} style={{ flexShrink: 0, marginTop: 2 }} />
+                <span>
+                  <strong>{vi ? 'Không thể tự hạ quyền:' : 'Self-demotion blocked:'}</strong>{' '}
+                  {vi
+                    ? 'Bạn không thể tự hạ quyền Quản trị viên (ADMIN) của chính mình.'
+                    : 'You cannot demote your own administrator privileges.'}
+                </span>
               </div>
             ) : isLastAdminDemoteBlocked ? (
-              <div>
-                <strong>⚠️ {vi ? 'Không thể hạ quyền:' : 'Demotion blocked:'}</strong>{' '}
-                {vi
-                  ? 'Đây là Quản trị viên (ADMIN) duy nhất còn lại của hệ thống.'
-                  : 'This is the last remaining administrator in the system.'}
+              <div className="inline-code-row" style={{ alignItems: 'flex-start' }}>
+                <IconAlertTriangle size={15} style={{ flexShrink: 0, marginTop: 2 }} />
+                <span>
+                  <strong>{vi ? 'Không thể hạ quyền:' : 'Demotion blocked:'}</strong>{' '}
+                  {vi
+                    ? 'Đây là Quản trị viên (ADMIN) duy nhất còn lại của hệ thống.'
+                    : 'This is the last remaining administrator in the system.'}
+                </span>
               </div>
             ) : isUnchanged ? (
-              <div>
-                ℹ️ <strong>{vi ? 'Chưa có thay đổi:' : 'No change:'}</strong>{' '}
-                {vi
-                  ? `Người dùng đang giữ vai trò ${user.role}. Chọn vai trò khác để kích hoạt nút áp dụng.`
-                  : `User currently holds the ${user.role} role. Select another role to enable the confirm button.`}
+              <div className="inline-code-row" style={{ alignItems: 'flex-start' }}>
+                <IconInfo size={15} style={{ flexShrink: 0, marginTop: 2 }} />
+                <span>
+                  <strong>{vi ? 'Chưa có thay đổi:' : 'No change:'}</strong>{' '}
+                  {vi
+                    ? `Người dùng đang giữ vai trò ${user.role}. Chọn vai trò khác để kích hoạt nút áp dụng.`
+                    : `User currently holds the ${user.role} role. Select another role to enable the confirm button.`}
+                </span>
               </div>
             ) : selectedRole === 'ADMIN' ? (
-              <div>
-                ⚡ <strong>{vi ? 'Cấp quyền Quản trị viên:' : 'Promoting to Administrator:'}</strong>{' '}
-                {vi
-                  ? 'Tài khoản này sẽ có toàn quyền quản trị hệ thống, quản lý người dùng và doanh nghiệp.'
-                  : 'This account will gain full administrative control over the platform, users, and tenants.'}
+              <div className="inline-code-row" style={{ alignItems: 'flex-start' }}>
+                <IconZap size={15} style={{ flexShrink: 0, marginTop: 2 }} />
+                <span>
+                  <strong>{vi ? 'Cấp quyền Quản trị viên:' : 'Promoting to Administrator:'}</strong>{' '}
+                  {vi
+                    ? 'Tài khoản này sẽ có toàn quyền quản trị hệ thống, quản lý người dùng và doanh nghiệp.'
+                    : 'This account will gain full administrative control over the platform, users, and tenants.'}
+                </span>
               </div>
             ) : (
-              <div>
-                ⚠️ <strong>{vi ? 'Hạ quyền Người dùng thường:' : 'Demoting to Standard User:'}</strong>{' '}
-                {vi
-                  ? 'Tài khoản này sẽ bị thu hồi toàn bộ quyền quản trị hệ thống.'
-                  : 'This account will lose all system administrative privileges.'}
+              <div className="inline-code-row" style={{ alignItems: 'flex-start' }}>
+                <IconAlertTriangle size={15} style={{ flexShrink: 0, marginTop: 2 }} />
+                <span>
+                  <strong>{vi ? 'Hạ quyền Người dùng thường:' : 'Demoting to Standard User:'}</strong>{' '}
+                  {vi
+                    ? 'Tài khoản này sẽ bị thu hồi toàn bộ quyền quản trị hệ thống.'
+                    : 'This account will lose all system administrative privileges.'}
+                </span>
               </div>
             )}
           </div>
 
           {/* Safety Constraints Footnote */}
-          <div
-            style={{
-              fontSize: 11,
-              color: 'var(--text-dim, #64748b)',
-              lineHeight: 1.4,
-              borderTop: '1px solid var(--border-subtle, #1e293b)',
-              paddingTop: 10,
-              marginBottom: 20,
-            }}
-          >
-            🛡️ <strong>{vi ? 'Ràng buộc an toàn:' : 'Safety constraints:'}</strong>{' '}
-            {vi
-              ? 'Không cho phép tự hạ quyền tài khoản đang đăng nhập; Không cho phép hạ quyền Super Admin cuối cùng của hệ thống.'
-              : 'Cannot self-demote the current login account; Cannot demote the last Super Admin in the system.'}
+          <div className="form-hint inline-code-row" style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 10, marginBottom: 16, alignItems: 'flex-start' }}>
+            <IconShield size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+            <span>
+              <strong>{vi ? 'Ràng buộc an toàn:' : 'Safety constraints:'}</strong>{' '}
+              {vi
+                ? 'Không cho phép tự hạ quyền tài khoản đang đăng nhập; Không cho phép hạ quyền Super Admin cuối cùng của hệ thống.'
+                : 'Cannot self-demote the current login account; Cannot demote the last Super Admin in the system.'}
+            </span>
           </div>
 
           {/* Actions */}
-          <div
-            className="modal-actions"
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: 10,
-            }}
-          >
+          <div className="modal-actions">
             <button
               type="button"
               className="btn btn-secondary btn-sm"
@@ -400,10 +307,6 @@ export const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
               id="roleModalConfirmBtn"
               onClick={handleOpenConfirm}
               disabled={loading || isUnchanged || isBlocked}
-              style={{
-                opacity: loading || isUnchanged || isBlocked ? 0.5 : 1,
-                cursor: loading || isUnchanged || isBlocked ? 'not-allowed' : 'pointer',
-              }}
             >
               {vi ? 'Xác Nhận Thay Đổi' : 'Confirm Change'}
             </button>
@@ -423,16 +326,22 @@ export const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
                 : `Are you sure you want to change the role for ${user.email} from ${user.role} to ${selectedRole}?`}
             </p>
             {selectedRole === 'ADMIN' ? (
-              <p style={{ margin: 0, fontSize: 12, color: '#fbbf24' }}>
-                {vi
-                  ? '⚡ Tài khoản này sẽ được cấp quyền Quản trị viên (ADMIN) trên toàn hệ thống.'
-                  : '⚡ This account will be granted full system administrator privileges.'}
+              <p className="inline-code-row" style={{ margin: 0, fontSize: 12, color: 'var(--warning)' }}>
+                <IconZap size={13} />
+                <span>
+                  {vi
+                    ? 'Tài khoản này sẽ được cấp quyền Quản trị viên (ADMIN) trên toàn hệ thống.'
+                    : 'This account will be granted full system administrator privileges.'}
+                </span>
               </p>
             ) : (
-              <p style={{ margin: 0, fontSize: 12, color: '#f87171' }}>
-                {vi
-                  ? '⚠️ Tài khoản này sẽ bị thu hồi toàn bộ quyền Quản trị viên và trở thành Người dùng thường.'
-                  : '⚠️ This account will lose all administrator privileges and become a standard user.'}
+              <p className="inline-code-row" style={{ margin: 0, fontSize: 12, color: 'var(--danger)' }}>
+                <IconAlertTriangle size={13} />
+                <span>
+                  {vi
+                    ? 'Tài khoản này sẽ bị thu hồi toàn bộ quyền Quản trị viên và trở thành Người dùng thường.'
+                    : 'This account will lose all administrator privileges and become a standard user.'}
+                </span>
               </p>
             )}
           </div>

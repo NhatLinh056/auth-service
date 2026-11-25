@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useModalA11y } from '../../hooks/useModalA11y';
+import { IconX } from '../common/Icons';
 import { tenantsService, type TenantAuditLog } from '../../services/tenants.service';
 
 interface TenantAuditModalProps {
@@ -21,6 +23,8 @@ export const TenantAuditModal: React.FC<TenantAuditModalProps> = ({
   const [logs, setLogs] = useState<TenantAuditLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { handleBackdropClick } = useModalA11y(isOpen, onClose, false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -91,11 +95,22 @@ export const TenantAuditModal: React.FC<TenantAuditModalProps> = ({
   };
 
   return (
-    <div className="modal-backdrop show" id="tenant-audit-modal">
-      <div className="modal-content" style={{ maxWidth: 840, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+    <div
+      className="modal-backdrop show"
+      id="tenant-audit-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tenant-audit-modal-title"
+      onClick={handleBackdropClick}
+    >
+      <div
+        className="modal-content"
+        style={{ maxWidth: 840, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
           <div>
-            <h3 className="modal-title" style={{ margin: 0 }}>
+            <h3 id="tenant-audit-modal-title" className="modal-title" style={{ margin: 0 }}>
               {vi ? 'Nhật Ký Can Thiệp (Audit Log)' : 'Tenant Audit Log'}
             </h3>
             <p className="modal-desc" style={{ margin: '4px 0 0' }}>
@@ -106,11 +121,11 @@ export const TenantAuditModal: React.FC<TenantAuditModalProps> = ({
           </div>
           <button
             type="button"
-            className="btn btn-secondary btn-sm"
+            className="btn-icon"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={vi ? 'Đóng' : 'Close'}
           >
-            ✕
+            <IconX size={16} />
           </button>
         </div>
 
@@ -159,7 +174,7 @@ export const TenantAuditModal: React.FC<TenantAuditModalProps> = ({
                           {log.actorUserId}
                         </code>
                       </td>
-                      <td style={{ fontSize: 13, color: '#e2e8f0' }}>
+                      <td style={{ fontSize: 13, color: 'var(--text-main)' }}>
                         {log.reason || (
                           <span style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>
                             {vi ? '(Không có ghi chú)' : '(No reason)'}

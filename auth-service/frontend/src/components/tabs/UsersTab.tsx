@@ -3,11 +3,13 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { DataTable, type Column } from '../common/DataTable';
+import { IconAlertTriangle, IconCopy, IconRefresh, IconSearch, IconShield, IconX } from '../common/Icons';
 import type { User, Role } from '../../types/auth.types';
 
 interface UsersTabProps {
   users: User[];
   loading: boolean;
+  error?: string | null;
   onRefresh: () => void;
   onOpenAssignRole: (user: User) => void;
 }
@@ -15,6 +17,7 @@ interface UsersTabProps {
 export const UsersTab: React.FC<UsersTabProps> = ({
   users,
   loading,
+  error,
   onRefresh,
   onOpenAssignRole,
 }) => {
@@ -102,47 +105,25 @@ export const UsersTab: React.FC<UsersTabProps> = ({
         const isAdmin = u.role === 'ADMIN';
 
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: '50%',
-                background: isAdmin
-                  ? 'rgba(245, 158, 11, 0.15)'
-                  : 'rgba(79, 70, 229, 0.15)',
-                border: isAdmin
-                  ? '1px solid rgba(245, 158, 11, 0.4)'
-                  : '1px solid rgba(79, 70, 229, 0.3)',
-                color: isAdmin ? '#f59e0b' : '#818cf8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 700,
-                fontSize: 13,
-                flexShrink: 0,
-              }}
-            >
+          <div className="card-header-left">
+            <div className={`avatar-circle ${isAdmin ? 'avatar-circle--admin' : 'avatar-circle--subtle'}`}>
               {initial}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <strong style={{ color: '#fff', fontSize: 13 }}>
+              <div className="inline-code-row" style={{ flexWrap: 'wrap' }}>
+                <strong style={{ color: 'var(--text-main)', fontSize: 13 }}>
                   {u.name || (vi ? 'Chưa đặt tên' : 'Unnamed')}
                 </strong>
                 {isSelf && (
-                  <span
-                    className="badge badge-warning"
-                    style={{ fontSize: 10, padding: '1px 6px', lineHeight: '14px' }}
-                  >
+                  <span className="badge badge-warning">
                     {vi ? '(Bạn)' : '(You)'}
                   </span>
                 )}
               </div>
               <div
+                className="form-hint"
                 style={{
-                  fontSize: 12,
-                  color: 'var(--text-dim, #64748b)',
+                  marginTop: 0,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -161,38 +142,18 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       header: 'User ID',
       width: '16%',
       render: (u) => (
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <code
-            className="mono-tag"
-            style={{
-              fontSize: 11,
-              padding: '2px 6px',
-              background: 'var(--bg-surface-elevated, #1a2234)',
-              borderRadius: 4,
-              border: '1px solid var(--border-subtle, #1e293b)',
-            }}
-            title={u.id}
-          >
+        <div className="inline-code-row">
+          <code className="mono-tag" title={u.id}>
             {u.id.slice(0, 8)}…
           </code>
           <button
             type="button"
+            className="btn-icon"
             onClick={() => copyToClipboard(u.id, 'User ID')}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: 2,
-              cursor: 'pointer',
-              color: 'var(--text-dim, #64748b)',
-              display: 'inline-flex',
-              alignItems: 'center',
-            }}
             title={vi ? 'Sao chép đầy đủ User ID' : 'Copy full User ID'}
+            aria-label={vi ? 'Sao chép đầy đủ User ID' : 'Copy full User ID'}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-            </svg>
+            <IconCopy size={13} />
           </button>
         </div>
       ),
@@ -202,11 +163,8 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       header: vi ? 'Vai Trò Hệ Thống' : 'System Role',
       width: '14%',
       render: (u) => (
-        <span
-          className={`badge ${u.role === 'ADMIN' ? 'badge-warning' : 'badge-neutral'}`}
-          style={{ fontWeight: 600, fontSize: 11 }}
-        >
-          {u.role === 'ADMIN' ? (vi ? 'ADMIN' : 'ADMIN') : (vi ? 'USER' : 'USER')}
+        <span className={`badge ${u.role === 'ADMIN' ? 'badge-warning' : 'badge-neutral'}`}>
+          {u.role === 'ADMIN' ? 'ADMIN' : 'USER'}
         </span>
       ),
     },
@@ -216,42 +174,22 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       width: '18%',
       render: (u) =>
         u.tenantId ? (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <code
-              className="mono-tag"
-              style={{
-                fontSize: 11,
-                padding: '2px 6px',
-                background: 'var(--bg-surface-elevated, #1a2234)',
-                borderRadius: 4,
-                border: '1px solid var(--border-subtle, #1e293b)',
-              }}
-              title={u.tenantId}
-            >
+          <div className="inline-code-row">
+            <code className="mono-tag" title={u.tenantId}>
               {u.tenantId.slice(0, 8)}…
             </code>
             <button
               type="button"
+              className="btn-icon"
               onClick={() => copyToClipboard(u.tenantId!, 'Tenant ID')}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: 2,
-                cursor: 'pointer',
-                color: 'var(--text-dim, #64748b)',
-                display: 'inline-flex',
-                alignItems: 'center',
-              }}
               title={vi ? 'Sao chép Tenant ID' : 'Copy Tenant ID'}
+              aria-label={vi ? 'Sao chép Tenant ID' : 'Copy Tenant ID'}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
+              <IconCopy size={13} />
             </button>
           </div>
         ) : (
-          <span style={{ fontSize: 12, color: 'var(--text-dim, #64748b)' }}>
+          <span className="form-hint" style={{ marginTop: 0 }}>
             {vi ? 'Chưa tham gia' : 'None'}
           </span>
         ),
@@ -261,7 +199,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       header: vi ? 'Ngày Đăng Ký' : 'Registration Date',
       width: '12%',
       render: (u) => (
-        <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 12, whiteSpace: 'nowrap' }}>
+        <span style={{ color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
           {u.createdAt
             ? new Date(u.createdAt).toLocaleDateString(vi ? 'vi-VN' : 'en-US', {
                 day: '2-digit',
@@ -287,7 +225,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({
               type="button"
               className="btn btn-secondary btn-sm"
               disabled
-              style={{ opacity: 0.5, cursor: 'not-allowed' }}
               title={
                 vi
                   ? 'Không thể tự phân quyền hoặc tự hạ quyền chính mình'
@@ -305,7 +242,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({
               type="button"
               className="btn btn-secondary btn-sm"
               disabled
-              style={{ opacity: 0.5, cursor: 'not-allowed' }}
               title={
                 vi
                   ? 'Không thể hạ quyền Quản trị viên cuối cùng của hệ thống'
@@ -320,7 +256,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
         return (
           <button
             type="button"
-            className="btn btn-primary btn-sm"
+            className="btn btn-secondary btn-sm"
             onClick={() => onOpenAssignRole(u)}
           >
             {vi ? 'Phân Quyền' : 'Assign Role'}
@@ -331,24 +267,14 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   ];
 
   return (
-    <div className="tab-content active" id="tab-users" style={{ width: '100%', maxWidth: 1400, margin: '0 auto' }}>
+    <div className="tab-content active page-container" id="tab-users">
       {/* Page Header */}
-      <div
-        className="page-header"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-          flexWrap: 'wrap',
-          gap: 12,
-        }}
-      >
+      <div className="page-header">
         <div>
-          <h1 className="page-title" style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#fff' }}>
+          <h1 className="page-title">
             {vi ? 'Tài Khoản Người Dùng Nền Tảng' : 'Platform User Directory'}
           </h1>
-          <p className="page-subtitle" style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--text-muted, #94a3b8)' }}>
+          <p className="page-subtitle">
             {vi
               ? 'Danh sách người dùng Canonical toàn hệ thống và phân quyền Quản trị viên (ADMIN).'
               : 'Canonical system users directory and System Admin (ADMIN) role assignment.'}
@@ -356,43 +282,38 @@ export const UsersTab: React.FC<UsersTabProps> = ({
         </div>
         <button
           type="button"
-          className="btn btn-secondary"
+          className="btn btn-secondary btn-sm"
           onClick={onRefresh}
           disabled={loading}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }}
-          >
-            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-          </svg>
-          {vi ? 'Làm mới' : 'Refresh'}
+          <IconRefresh size={14} style={{ animation: loading ? 'spin 1s linear infinite' : undefined }} />
+          <span>{vi ? 'Làm mới' : 'Refresh'}</span>
         </button>
       </div>
 
-      {/* Security Guidance Alert Box (Matching Scene 8) */}
-      <div
-        style={{
-          background: 'rgba(79, 70, 229, 0.08)',
-          border: '1px solid rgba(79, 70, 229, 0.3)',
-          borderRadius: 8,
-          padding: '12px 16px',
-          marginBottom: 20,
-          fontSize: 12,
-          color: '#818cf8',
-          lineHeight: 1.5,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-        }}
-      >
-        <span style={{ fontSize: 16 }}>🛡️</span>
+      {error && (
+        <div className="error-alert" role="alert" id="users-load-error">
+          <div className="error-alert-content">
+            <IconAlertTriangle size={16} />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={onRefresh}
+            disabled={loading}
+          >
+            <IconRefresh size={13} />
+            <span>{vi ? 'Thử lại' : 'Retry'}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Security Guidance Alert Box */}
+      <div className="info-banner info-banner--primary">
+        <span className="info-banner-icon" aria-hidden="true">
+          <IconShield size={16} />
+        </span>
         <div>
           <strong>{vi ? 'Chính sách thiết kế V2:' : 'V2 Security Policy:'}</strong>{' '}
           {vi
@@ -402,42 +323,10 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       </div>
 
       {/* Search & Filter Toolbar */}
-      <div
-        className="table-toolbar"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 12,
-          marginBottom: 16,
-          background: 'var(--bg-surface, #111827)',
-          padding: '12px 16px',
-          borderRadius: 8,
-          border: '1px solid var(--border-subtle, #1e293b)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flex: 1 }}>
-          {/* Search Box */}
-          <div
-            className="search-box"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              background: 'var(--bg-input, #0e1422)',
-              border: '1px solid var(--border-medium, #334155)',
-              borderRadius: 6,
-              padding: '6px 12px',
-              minWidth: 260,
-              maxWidth: 360,
-              flex: 1,
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--text-dim, #64748b)' }}>
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
+      <div className="table-toolbar">
+        <div className="table-toolbar-left">
+          <div className="search-box">
+            <IconSearch size={14} />
             <input
               type="text"
               id="users-search-input"
@@ -445,53 +334,30 @@ export const UsersTab: React.FC<UsersTabProps> = ({
               placeholder={vi ? 'Tìm theo email, tên, User ID...' : 'Search by email, name, User ID...'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#fff',
-                fontSize: 13,
-                outline: 'none',
-                width: '100%',
-              }}
             />
             {search && (
               <button
                 type="button"
+                className="btn-icon"
                 onClick={() => setSearch('')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-dim, #64748b)',
-                  cursor: 'pointer',
-                  padding: 0,
-                  fontSize: 14,
-                  lineHeight: 1,
-                }}
+                aria-label={vi ? 'Xóa từ khóa tìm kiếm' : 'Clear search'}
+                style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)' }}
               >
-                ✕
+                <IconX size={13} />
               </button>
             )}
           </div>
 
           {/* Role Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 12, color: 'var(--text-dim, #64748b)' }}>
-              {vi ? 'Lọc vai trò:' : 'Role:'}
-            </span>
+          <div className="inline-code-row">
+            <label htmlFor="users-role-filter" className="form-hint" style={{ marginTop: 0 }}>
+              {vi ? 'Vai trò:' : 'Role:'}
+            </label>
             <select
               id="users-role-filter"
               className="filter-select"
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value as any)}
-              style={{
-                background: 'var(--bg-input, #0e1422)',
-                border: '1px solid var(--border-medium, #334155)',
-                color: '#fff',
-                padding: '6px 10px',
-                borderRadius: 6,
-                fontSize: 12,
-                cursor: 'pointer',
-              }}
             >
               <option value="ALL">{vi ? 'Tất cả vai trò' : 'All Roles'}</option>
               <option value="ADMIN">{vi ? 'Chỉ Super Admin (ADMIN)' : 'Super Admin (ADMIN)'}</option>
@@ -500,24 +366,15 @@ export const UsersTab: React.FC<UsersTabProps> = ({
           </div>
 
           {/* Sort Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 12, color: 'var(--text-dim, #64748b)' }}>
+          <div className="inline-code-row">
+            <label htmlFor="users-sort-by" className="form-hint" style={{ marginTop: 0 }}>
               {vi ? 'Sắp xếp:' : 'Sort:'}
-            </span>
+            </label>
             <select
               id="users-sort-by"
               className="filter-select"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              style={{
-                background: 'var(--bg-input, #0e1422)',
-                border: '1px solid var(--border-medium, #334155)',
-                color: '#fff',
-                padding: '6px 10px',
-                borderRadius: 6,
-                fontSize: 12,
-                cursor: 'pointer',
-              }}
             >
               <option value="email_asc">{vi ? 'Email (A-Z)' : 'Email (A-Z)'}</option>
               <option value="email_desc">{vi ? 'Email (Z-A)' : 'Email (Z-A)'}</option>
@@ -527,25 +384,11 @@ export const UsersTab: React.FC<UsersTabProps> = ({
           </div>
         </div>
 
-        {/* Counter Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span
-            id="users-count-badge"
-            className="results-count-badge"
-            style={{
-              fontSize: 12,
-              color: 'var(--text-dim, #64748b)',
-              background: 'var(--bg-surface-elevated, #1a2234)',
-              padding: '4px 10px',
-              borderRadius: 4,
-              border: '1px solid var(--border-subtle, #1e293b)',
-            }}
-          >
-            {vi
-              ? `Hiển thị ${filteredUsers.length} / ${users.length} người dùng`
-              : `Showing ${filteredUsers.length} of ${users.length} users`}
-          </span>
-        </div>
+        <span id="users-count-badge" className="results-count-badge">
+          {vi
+            ? `Hiển thị ${filteredUsers.length} / ${users.length} người dùng`
+            : `Showing ${filteredUsers.length} of ${users.length} users`}
+        </span>
       </div>
 
       {/* Main Users Table via P2 DataTable Component */}

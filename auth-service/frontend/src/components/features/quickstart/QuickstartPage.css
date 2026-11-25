@@ -1,40 +1,37 @@
 /* ==========================================================================
-   QUICKSTART PAGE STYLES — AUTH SERVICE DEVELOPER CONSOLE
+   QUICKSTART PAGE STYLES — SWISS SECURITY VAULT (STREAMLINED 4-STEP FLOW)
    Scoped styles for /console/quickstart
-   Uses IAM console design system tokens from style.css
    ========================================================================== */
 
-/* Page Container */
 .quickstart-page {
-  max-width: 1020px;
+  max-width: 980px;
   margin: 0 auto;
-  padding: 0 16px 48px;
+  padding: 0 4px 40px;
   font-family: var(--font-sans);
   color: var(--text-main);
 }
 
-/* ==========================================================================
-   1. Header Card & Application Bar
-   ========================================================================== */
+/* 1. Compact Header Card */
 .quickstart-header-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md, 8px);
-  padding: 24px;
-  margin-bottom: 24px;
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-sm);
 }
 
 .quickstart-header-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 24px;
+  gap: 20px;
   flex-wrap: wrap;
 }
 
 .quickstart-header-main {
   flex: 1;
-  min-width: 320px;
+  min-width: 280px;
 }
 
 .quickstart-eyebrow-row {
@@ -45,49 +42,48 @@
 }
 
 .quickstart-eyebrow {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 3px 8px;
-  border-radius: var(--radius-xs, 4px);
-  background: rgba(99, 102, 241, 0.15);
-  color: var(--primary);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  background: var(--primary-subtle);
+  color: var(--primary-ink);
+  border: 1px solid var(--primary-border);
 }
 
 .quickstart-eyebrow-sub {
-  font-size: 13px;
-  color: var(--text-dim);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
 }
 
 .quickstart-title {
   font-size: 22px;
-  font-weight: 700;
-  margin: 0 0 8px;
-  color: #fff;
+  font-weight: 600;
+  margin: 0 0 6px;
+  color: var(--text-main);
   line-height: 1.3;
 }
 
 .quickstart-desc {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-muted);
-  line-height: 1.6;
-  margin: 0 0 16px;
-  max-width: 620px;
+  line-height: 1.5;
+  margin: 0 0 14px;
+  max-width: 60ch;
 }
 
 /* Provider Status Chips */
 .quickstart-provider-chips {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .quickstart-provider-label {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--text-muted);
 }
 
@@ -96,50 +92,48 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 12px;
-  transition: var(--transition-fast);
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 999px;
 }
 
 .quickstart-provider-badge--active {
-  background: rgba(16, 185, 129, 0.12);
+  background: var(--success-subtle);
   color: var(--success);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid var(--success-border);
 }
 
 .quickstart-provider-badge--disabled {
-  background: rgba(148, 163, 184, 0.12);
-  color: var(--text-dim);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--bg-surface-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
 }
 
 .quickstart-provider-badge--error {
-  background: rgba(245, 158, 11, 0.12);
+  background: var(--warning-subtle);
   color: var(--warning);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid var(--warning-border);
 }
 
 .quickstart-provider-badge--loading {
-  background: rgba(99, 102, 241, 0.1);
-  color: var(--text-muted);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: var(--primary-subtle);
+  color: var(--primary-ink);
+  border: 1px solid var(--primary-border);
 }
 
 .quickstart-provider-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .quickstart-provider-dot--active {
   background: var(--success);
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
 }
 
 .quickstart-provider-dot--disabled {
-  background: #64748b;
+  background: var(--text-dim);
 }
 
 .quickstart-provider-dot--error {
@@ -159,15 +153,15 @@
 /* Application Selector Box */
 .quickstart-selector-box {
   background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-medium);
-  padding: 16px;
-  border-radius: var(--radius-md, 8px);
-  min-width: 290px;
-  max-width: 360px;
+  border: 1px solid var(--border-subtle);
+  padding: 14px;
+  border-radius: var(--radius-md);
+  min-width: 270px;
+  max-width: 340px;
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .quickstart-selector-header {
@@ -178,98 +172,95 @@
 
 .quickstart-selector-label {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .quickstart-status-tag {
   font-size: 11px;
   font-weight: 600;
   padding: 2px 7px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .quickstart-status-tag--active {
-  background: rgba(16, 185, 129, 0.15);
+  background: var(--success-subtle);
   color: var(--success);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid var(--success-border);
 }
 
 .quickstart-status-tag--inactive {
-  background: rgba(239, 68, 68, 0.15);
+  background: var(--danger-subtle);
   color: var(--danger);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid var(--danger-border);
 }
 
 .quickstart-app-select {
   background: var(--bg-input);
   border: 1px solid var(--border-medium);
-  color: #fff;
-  padding: 9px 12px;
-  border-radius: var(--radius-sm, 6px);
-  font-size: 14px;
-  font-weight: 600;
+  color: var(--text-main);
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  outline: none;
   width: 100%;
-  min-height: 42px;
-  transition: border-color var(--transition-fast);
+  min-height: 36px;
+  font-family: var(--font-sans);
 }
 
 .quickstart-app-select:focus-visible {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--primary-subtle);
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
 }
 
-/* AppID Pill & Copy */
 .quickstart-appid-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 12px;
-  background: var(--bg-input);
+  gap: 8px;
+  padding: 5px 10px;
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm, 6px);
-  min-height: 40px;
+  border-radius: var(--radius-sm);
+  min-height: 36px;
 }
 
 .quickstart-appid-text {
   font-family: var(--font-mono);
-  font-size: 13px;
-  color: #38bdf8;
+  font-size: 12px;
+  color: var(--text-main);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .quickstart-copy-btn {
-  height: 32px;
+  height: 28px;
   min-width: 72px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   padding: 0 10px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-sm, 6px);
+  gap: 5px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all var(--transition-fast);
-  background: rgba(255, 255, 255, 0.08);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  background: var(--bg-surface);
   border: 1px solid var(--border-medium);
   color: var(--text-main);
+  font-family: var(--font-sans);
 }
 
 .quickstart-copy-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: var(--text-muted);
+  background: var(--bg-surface-subtle);
 }
 
 .quickstart-copy-btn:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--border-focus);
   outline-offset: 2px;
 }
 
@@ -279,116 +270,71 @@
 }
 
 .quickstart-copy-btn--copied {
-  background: rgba(16, 185, 129, 0.2) !important;
-  border-color: rgba(16, 185, 129, 0.4) !important;
+  background: var(--success-subtle) !important;
+  border-color: var(--success-border) !important;
   color: var(--success) !important;
 }
 
-/* Empty State Card when applications.length === 0 */
+/* Empty State Card */
 .quickstart-empty-card {
   background: var(--bg-surface-elevated);
   border: 1px dashed var(--border-medium);
-  border-radius: var(--radius-md, 8px);
-  padding: 20px;
+  border-radius: var(--radius-md);
+  padding: 18px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  min-width: 290px;
+  gap: 8px;
+  min-width: 260px;
   width: 100%;
+  max-width: 340px;
 }
 
 .quickstart-empty-icon {
-  font-size: 28px;
+  color: var(--text-muted);
+  display: inline-flex;
 }
 
 .quickstart-empty-title {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text-main);
   margin: 0;
 }
 
 .quickstart-empty-desc {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
-  line-height: 1.5;
+  line-height: 1.45;
   margin: 0;
-  max-width: 280px;
+  max-width: 260px;
 }
 
 .quickstart-create-btn {
-  min-height: 40px;
-  padding: 8px 18px;
+  min-height: 36px;
+  padding: 7px 14px;
   font-size: 13px;
   font-weight: 600;
 }
 
-/* ==========================================================================
-   2. Compact Notices Grid (Security & Allowlist)
-   ========================================================================== */
-.quickstart-notices-grid {
-  margin-top: 20px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
-}
-
-.quickstart-notice {
-  padding: 14px 16px;
-  border-radius: var(--radius-sm, 6px);
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.quickstart-notice--security {
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
-}
-
-.quickstart-notice--security strong {
-  color: #f87171;
-}
-
-.quickstart-notice--allowlist {
-  background: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  color: #bae6fd;
-}
-
-.quickstart-notice--allowlist strong {
-  color: #38bdf8;
-}
-
-.quickstart-notice-icon {
-  font-size: 18px;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-/* ==========================================================================
-   2. Step Cards (Primary Flow)
-   ========================================================================== */
+/* 2. Step Cards */
 .quickstart-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
 }
 
 .quickstart-card-header {
-  padding: 16px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
@@ -399,107 +345,104 @@
 }
 
 .quickstart-step-num {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm, 6px);
-  background: rgba(99, 102, 241, 0.15);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-subtle);
   color: var(--primary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-mono);
   flex-shrink: 0;
-  border: 1px solid rgba(99, 102, 241, 0.3);
-}
-
-.quickstart-step-num--green {
-  background: rgba(16, 185, 129, 0.15);
-  color: var(--success);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.quickstart-step-num--sky {
-  background: rgba(14, 165, 233, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(14, 165, 233, 0.3);
+  border: 1px solid var(--primary-border);
 }
 
 .quickstart-step-heading {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   margin: 0 0 2px;
-  color: #fff;
+  color: var(--text-main);
 }
 
 .quickstart-step-sub {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-muted);
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .quickstart-actions-group {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .quickstart-action-btn {
-  min-height: 38px;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 8px 14px;
+  min-height: 32px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all var(--transition-fast);
   text-decoration: none;
 }
 
 .quickstart-action-btn:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--border-focus);
   outline-offset: 2px;
 }
 
-/* Callout Banner */
-.quickstart-callout-banner {
-  padding: 14px 20px;
-  background: rgba(99, 102, 241, 0.08);
-  border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+/* Step 1 Compact Checklist */
+.quickstart-checklist {
+  margin: 0;
+  padding: 14px 20px 14px 38px;
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  font-size: 14px;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
   line-height: 1.5;
-  color: #c7d2fe;
+  color: var(--text-main);
+  background: var(--bg-surface);
 }
 
-.quickstart-callout-icon {
-  font-size: 18px;
-  color: var(--primary);
-  flex-shrink: 0;
-  margin-top: 1px;
+.quickstart-inline-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  word-break: break-all;
 }
 
 /* Code Snippet Area */
 .quickstart-code-section {
-  padding: 16px 20px;
+  padding: 14px 20px;
+  background: var(--bg-surface);
 }
 
 .quickstart-code-section--dark {
-  background: #0b1120;
+  background: var(--bg-surface-elevated);
+}
+
+.quickstart-code-divider {
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .quickstart-code-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -508,71 +451,121 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .quickstart-code-filename {
   font-family: var(--font-mono);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.quickstart-code-filename--primary {
+  color: var(--primary-ink);
 }
 
 .quickstart-code-comment {
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--text-muted);
+}
+
+.quickstart-secret-pill {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  background: var(--warning-subtle);
+  border: 1px solid var(--warning-border);
+  color: var(--warning);
 }
 
 .quickstart-code-pre {
-  background: #060911;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm, 6px);
-  padding: 16px;
+  background: var(--bg-code);
+  border: 1px solid #23332E;
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
   font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.6;
-  color: #38bdf8;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-code);
   overflow-x: auto;
   margin: 0;
 }
 
 .quickstart-code-pre--light {
-  color: #cbd5e1;
+  color: var(--text-code);
 }
 
-.quickstart-code-pre--green {
-  color: var(--success);
+.quickstart-fallback-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
-.quickstart-code-pre--warning {
-  color: var(--warning);
-}
-
-/* ==========================================================================
-   5. Backend Endpoints Table
-   ========================================================================== */
-.quickstart-endpoints-container {
-  padding: 18px 20px;
+.quickstart-sdk-highlights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
   border-top: 1px solid var(--border-subtle);
-  background: #080d1a;
+}
+
+.quickstart-sdk-highlight {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.quickstart-sdk-highlight-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.quickstart-sdk-highlight-head svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.quickstart-sdk-highlight-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/* 3. Backend Endpoints Table */
+.quickstart-endpoints-container {
+  padding: 14px 20px 18px;
+  background: var(--bg-surface);
 }
 
 .quickstart-endpoints-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+  color: var(--text-main);
 }
 
 .quickstart-endpoints-title {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   margin: 0;
-  color: #93c5fd;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: var(--text-main);
 }
 
 .quickstart-table-wrapper {
   overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
 }
 
 .quickstart-table {
@@ -583,15 +576,25 @@
 }
 
 .quickstart-table th {
-  padding: 10px 14px;
+  padding: 9px 14px;
+  background: var(--bg-surface-subtle);
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-muted);
   font-weight: 600;
+  font-size: 12px;
+}
+
+.quickstart-table-method-col {
+  width: 84px;
+}
+
+.quickstart-table-path-col {
+  width: 210px;
 }
 
 .quickstart-table td {
-  padding: 10px 14px;
-  border-bottom: 1px solid rgba(30, 41, 59, 0.6);
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border-subtle);
   color: var(--text-main);
   vertical-align: middle;
 }
@@ -601,12 +604,13 @@
 }
 
 .quickstart-method-tag {
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-weight: 600;
   font-size: 12px;
 }
 
 .quickstart-method-tag--get {
-  color: #38bdf8;
+  color: var(--primary);
 }
 
 .quickstart-method-tag--post {
@@ -615,51 +619,48 @@
 
 .quickstart-endpoint-path {
   font-family: var(--font-mono);
-  color: #f1f5f9;
+  color: var(--text-main);
 }
 
-/* ==========================================================================
-   5. Mobile Responsive (< 768px and < 480px)
-   ========================================================================== */
 @media (max-width: 768px) {
   .quickstart-page {
-    padding: 0 12px 36px;
+    padding: 0 0 32px;
   }
-
   .quickstart-header-card {
-    padding: 18px 16px;
+    padding: 16px;
   }
-
   .quickstart-header-top {
     flex-direction: column;
-    gap: 18px;
+    gap: 16px;
   }
-
-  .quickstart-header-main {
-    min-width: 100%;
-  }
-
-  .quickstart-selector-box {
+  .quickstart-header-main,
+  .quickstart-selector-box,
+  .quickstart-empty-card {
     max-width: 100%;
     min-width: 100%;
   }
-
   .quickstart-card-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 10px;
+    padding: 14px 16px;
   }
-
+  .quickstart-checklist {
+    padding: 12px 16px 12px 32px;
+  }
+  .quickstart-code-section,
+  .quickstart-endpoints-container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
   .quickstart-actions-group {
     width: 100%;
   }
-
   .quickstart-action-btn {
     flex: 1;
-    min-height: 44px;
+    min-height: 40px;
   }
-
-  .quickstart-notices-grid {
+  .quickstart-sdk-highlights {
     grid-template-columns: 1fr;
   }
 }
@@ -668,12 +669,16 @@
   .quickstart-title {
     font-size: 19px;
   }
-
   .quickstart-actions-group {
     flex-direction: column;
   }
-
   .quickstart-action-btn {
     width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quickstart-provider-dot--loading {
+    animation: none;
   }
 }

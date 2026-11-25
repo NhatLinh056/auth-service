@@ -86,7 +86,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       onClick={() => {
         if (!isLoading) onClose();
       }}
-      style={{ zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      style={{ zIndex: 9999 }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
@@ -141,7 +141,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             <h3
               id="confirm-dialog-title"
               className="modal-title"
-              style={{ fontSize: 18, margin: '0 0 8px 0', color: '#fff' }}
+              style={{ fontSize: 18, margin: '0 0 8px 0', color: 'var(--text-main)' }}
             >
               {title}
             </h3>

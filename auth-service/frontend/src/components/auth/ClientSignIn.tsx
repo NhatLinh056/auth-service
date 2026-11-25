@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { apiClient } from '../../services/api.client';
 import { authService } from '../../services/auth.service';
 import { useAuth } from '../../contexts/AuthContext';
+import { IconBrandMark } from '../common/Icons';
 import type { AuthResponse } from '../../types/auth.types';
 
 type Details = { appName: string; destination: string; providers: { provider: string; name: string; enabled: boolean }[] };
@@ -10,6 +11,7 @@ type Result = AuthResponse & { redirectUrl: string };
 export const ClientSignIn: React.FC<{ flowId: string }> = ({ flowId }) => {
   const { user, token } = useAuth();
   const [details, setDetails] = useState<Details | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState('');
@@ -38,8 +40,17 @@ export const ClientSignIn: React.FC<{ flowId: string }> = ({ flowId }) => {
     } finally { setBusy(false); setPassword(''); }
   };
 
+  const loadDetails = useCallback(() => {
+    setLoadingDetails(true);
+    setError('');
+    apiClient<Details>(path)
+      .then(setDetails)
+      .catch(err => setError(err.message || 'Không thể tải thông tin phiên đăng nhập.'))
+      .finally(() => setLoadingDetails(false));
+  }, [path]);
+
   useEffect(() => {
-    apiClient<Details>(path).then(setDetails).catch(err => setError(err.message));
+    loadDetails();
     const query = new URLSearchParams(window.location.search);
     const code = query.get('oauth_login_code');
     if (callbackStarted.current) return;
@@ -51,7 +62,7 @@ export const ClientSignIn: React.FC<{ flowId: string }> = ({ flowId }) => {
     if (!verifier) { setError('Phiên đăng nhập không hợp lệ. Hãy quay về ứng dụng và đăng nhập lại.'); return; }
     pending.current = { code, verifier };
     void completeOAuth();
-  }, [flowId]);
+  }, [flowId, loadDetails]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -80,30 +91,91 @@ export const ClientSignIn: React.FC<{ flowId: string }> = ({ flowId }) => {
     catch (err: any) { setError(err.message); setBusy(false); }
   };
 
-  return <div className="auth-screen"><main className="auth-card">
-    <div className="auth-header"><h1 className="auth-title">Auth Service</h1>
-      <p className="auth-subtitle">Đăng nhập vào {details?.appName || 'ứng dụng'}</p>
-      {details && <p className="auth-subtitle">Sau khi xác nhận, bạn sẽ trở về {details.destination}.</p>}
+  return (
+    <div className="auth-screen">
+      <main className="auth-card page-enter">
+        {busy && <div className="card-loading-bar" aria-hidden="true" />}
+        <div className="auth-header">
+          <div className="auth-brand-icon" aria-hidden="true">
+            <IconBrandMark size={22} strokeWidth={2} />
+          </div>
+          <h1 className="auth-title">Auth Service</h1>
+          <p className="auth-subtitle">Đăng nhập vào {details?.appName || 'ứng dụng'}</p>
+          {details && <p className="auth-subtitle">Sau khi xác nhận, bạn sẽ trở về {details.destination}.</p>}
+        </div>
+
+        {error && <p className="account-feedback is-error" role="alert">{error}</p>}
+
+        {loadingDetails && !details && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '8px 0' }} aria-busy="true">
+            <span className="skeleton-bar" style={{ height: 38, width: '100%' }} />
+            <span className="skeleton-bar" style={{ height: 38, width: '100%' }} />
+            <span className="skeleton-bar" style={{ height: 40, width: '100%' }} />
+          </div>
+        )}
+
+        {details && (
+          <>
+            {needsProof && (
+              <p className="modal-desc" style={{ marginBottom: 14 }}>
+                Email này đã có tài khoản. Nhập mật khẩu hiện tại để xác nhận liên kết, hoặc xác nhận bằng phiên Auth Service của chính bạn. Nếu tài khoản chưa có mật khẩu, đăng nhập bằng phương thức cũ tại Auth Service trước.
+              </p>
+            )}
+
+            <form onSubmit={submit}>
+              {!needsProof && (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="client-email">Email</label>
+                  <input className="form-control" id="client-email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} disabled={busy} />
+                </div>
+              )}
+              <div className="form-group">
+                <label className="form-label" htmlFor="client-password">Mật khẩu{register && !needsProof ? ' mới' : ''}</label>
+                <input className="form-control" id="client-password" type="password" autoComplete={register && !needsProof ? 'new-password' : 'current-password'} required maxLength={128} minLength={register && !needsProof ? 6 : 1} value={password} onChange={e => setPassword(e.target.value)} disabled={busy} />
+              </div>
+              <button type="submit" className="btn btn-primary btn-block" disabled={busy} aria-busy={busy}>
+                {busy && <span className="btn-spinner" aria-hidden="true" />}
+                <span>{busy ? 'Đang xử lý…' : needsProof ? 'Xác nhận liên kết' : register ? 'Tạo tài khoản và tiếp tục' : 'Đăng nhập'}</span>
+              </button>
+            </form>
+
+            <div className="client-signin-actions">
+              {user && token && (
+                <button type="button" className="btn btn-secondary btn-block" disabled={busy} onClick={continueSession}>
+                  {needsProof ? 'Xác nhận liên kết với' : 'Tiếp tục với'} {user.email}
+                </button>
+              )}
+              {!needsProof && (
+                <>
+                  <button className="btn btn-secondary btn-block" type="button" disabled={busy} onClick={() => { setRegister(!register); setPassword(''); }}>
+                    {register ? 'Đã có tài khoản? Đăng nhập' : 'Tạo tài khoản mới'}
+                  </button>
+                  {details.providers.filter(p => p.enabled).map(p => (
+                    <button key={p.provider} type="button" className="btn btn-secondary btn-block" disabled={busy} onClick={() => beginOAuth(p.provider.toLowerCase())}>
+                      Tiếp tục với {p.name}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+
+            <p className="client-signin-footer">
+              <a href={details.destination}>Quay về ứng dụng</a> · <a href="/#account" target="_blank" rel="noopener noreferrer">Quản lý tài khoản Auth Service</a>
+            </p>
+          </>
+        )}
+
+        {!details && !loadingDetails && (
+          <div className="client-signin-actions">
+            <button type="button" className="btn btn-primary btn-block" onClick={loadDetails}>
+              Thử lại
+            </button>
+            <p className="client-signin-footer">
+              <a href="/">Về Auth Service</a>
+            </p>
+          </div>
+        )}
+      </main>
     </div>
-    {error && <p className="account-feedback" role="alert">{error}</p>}
-    {details && <>
-      {needsProof && <p>Email này đã có tài khoản. Nhập mật khẩu hiện tại để xác nhận liên kết, hoặc xác nhận bằng phiên Auth Service của chính bạn. Nếu tài khoản chưa có mật khẩu, đăng nhập bằng phương thức cũ tại Auth Service trước.</p>}
-      {user && token && <button type="button" className="btn btn-secondary btn-block" disabled={busy} onClick={continueSession}>
-        {needsProof ? 'Xác nhận liên kết với' : 'Tiếp tục với'} {user.email}
-      </button>}
-      <form onSubmit={submit}>
-        {!needsProof && <div className="form-group"><label className="form-label" htmlFor="client-email">Email</label>
-          <input className="form-control" id="client-email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} disabled={busy} /></div>}
-        <div className="form-group"><label className="form-label" htmlFor="client-password">Mật khẩu{register && !needsProof ? ' mới' : ''}</label>
-          <input className="form-control" id="client-password" type="password" autoComplete={register && !needsProof ? 'new-password' : 'current-password'} required maxLength={128} minLength={register && !needsProof ? 6 : 1} value={password} onChange={e => setPassword(e.target.value)} disabled={busy} /></div>
-        <button className="btn btn-primary btn-block" disabled={busy}>{busy ? 'Đang xử lý…' : needsProof ? 'Xác nhận liên kết' : register ? 'Tạo tài khoản và tiếp tục' : 'Đăng nhập'}</button>
-      </form>
-      {!needsProof && <>
-        <button className="btn btn-secondary btn-block" type="button" disabled={busy} onClick={() => { setRegister(!register); setPassword(''); }}>{register ? 'Đã có tài khoản? Đăng nhập' : 'Tạo tài khoản mới'}</button>
-        {details.providers.filter(p => p.enabled).map(p => <button key={p.provider} type="button" className="btn btn-secondary btn-block" disabled={busy} onClick={() => beginOAuth(p.provider.toLowerCase())}>Tiếp tục với {p.name}</button>)}
-      </>}
-      <p><a href={details.destination}>Quay về ứng dụng</a> · <a href="/#account" target="_blank" rel="noopener noreferrer">Quản lý tài khoản Auth Service</a></p>
-    </>}
-    {!details && <a href="/">Về Auth Service</a>}
-  </main></div>;
+  );
 };

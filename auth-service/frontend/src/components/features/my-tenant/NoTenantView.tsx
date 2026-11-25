@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { CreateTenantModal } from '../../modals/CreateTenantModal';
+import { IconBuilding, IconCheck, IconKey, IconPlus } from '../../common/Icons';
 import {
   tenantsService,
   type TenantLookupResult,
@@ -85,14 +86,14 @@ export const NoTenantView: React.FC<NoTenantViewProps> = ({
   };
 
   return (
-    <div style={{ maxWidth: 840, margin: '20px auto' }}>
+    <div className="page-container page-container--narrow">
       <div className="card-panel" id="scene6ActionPanelClean">
-        <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="panel-header">
           <div>
-            <h2 className="panel-title" style={{ fontSize: 16 }}>
+            <h2 className="panel-title">
               {vi ? 'Tùy Chọn Khi Chưa Thuộc Doanh Nghiệp' : 'Options When Not In Organization'}
             </h2>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+            <p className="card-subtitle">
               {vi
                 ? 'Bạn có thể tự tạo doanh nghiệp mới hoặc nhập Tenant ID để gửi yêu cầu gia nhập.'
                 : 'You can create your own organization or enter a Tenant ID to request access.'}
@@ -103,27 +104,18 @@ export const NoTenantView: React.FC<NoTenantViewProps> = ({
           </span>
         </div>
 
-        <div className="panel-body" style={{ padding: 24 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+        <div className="panel-body">
+          <div className="grid-2-col">
             {/* Option 1: Create Tenant */}
-            <div
-              style={{
-                background: 'var(--bg-surface-elevated)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 8,
-                padding: 24,
-                textAlign: 'center',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-              }}
-            >
+            <div className="option-tile option-tile-center">
               <div>
-                <div style={{ fontSize: 36, marginBottom: 12 }}>🏢</div>
-                <strong style={{ fontSize: 16, color: '#fff', display: 'block', marginBottom: 8 }}>
+                <div className="icon-well icon-well--lg">
+                  <IconBuilding size={22} />
+                </div>
+                <strong style={{ fontSize: 16, color: 'var(--text-main)', display: 'block', marginBottom: 8 }}>
                   {vi ? 'Tạo Doanh Nghiệp Mới' : 'Create New Tenant'}
                 </strong>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: '0 0 20px' }}>
+                <p className="card-subtitle" style={{ marginBottom: 16 }}>
                   {vi
                     ? 'Tạo doanh nghiệp của riêng bạn và tự động trở thành Chủ sở hữu (Tenant Owner) với toàn quyền quản trị thành viên.'
                     : 'Establish your own organization and automatically become Tenant Owner with complete member management rights.'}
@@ -132,44 +124,38 @@ export const NoTenantView: React.FC<NoTenantViewProps> = ({
 
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary btn-block"
                 onClick={() => setIsCreateOpen(true)}
-                style={{ width: '100%', padding: '10px 16px' }}
                 id="btn-open-create-tenant-modal"
               >
-                {vi ? '+ Tạo Doanh Nghiệp' : '+ Create Tenant'}
+                <IconPlus size={14} />
+                <span>{vi ? 'Tạo Doanh Nghiệp' : 'Create Tenant'}</span>
               </button>
             </div>
 
             {/* Option 2: Join by Tenant ID */}
-            <div
-              style={{
-                background: 'var(--bg-surface-elevated)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 8,
-                padding: 24,
-                textAlign: 'left',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-              }}
-            >
+            <div className="option-tile">
               <div>
-                <div style={{ fontSize: 36, marginBottom: 12, textAlign: 'center' }}>🔑</div>
-                <strong style={{ fontSize: 16, color: '#fff', display: 'block', textAlign: 'center', marginBottom: 8 }}>
-                  {vi ? 'Gia Nhập Theo Tenant ID' : 'Join by Tenant ID'}
-                </strong>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: '0 0 16px', textAlign: 'center' }}>
-                  {vi
-                    ? 'Nhập mã Tenant ID UUID do quản trị viên doanh nghiệp cung cấp để tra cứu thông tin và gửi yêu cầu gia nhập.'
-                    : 'Enter the UUID Tenant ID provided by your organization admin to verify and send a join request.'}
-                </p>
+                <div className="option-tile-center">
+                  <div className="icon-well icon-well--lg icon-well--teal">
+                    <IconKey size={22} />
+                  </div>
+                  <strong style={{ fontSize: 16, color: 'var(--text-main)', display: 'block', marginBottom: 8 }}>
+                    {vi ? 'Gia Nhập Theo Tenant ID' : 'Join by Tenant ID'}
+                  </strong>
+                  <p className="card-subtitle" style={{ marginBottom: 16 }}>
+                    {vi
+                      ? 'Nhập mã Tenant ID UUID do quản trị viên doanh nghiệp cung cấp để tra cứu thông tin và gửi yêu cầu gia nhập.'
+                      : 'Enter the UUID Tenant ID provided by your organization admin to verify and send a join request.'}
+                  </p>
+                </div>
 
                 {/* Input + Verify Button */}
-                <form onSubmit={handleVerifyId} style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <form onSubmit={handleVerifyId} className="inline-code-row" style={{ width: '100%', marginBottom: 12 }}>
                   <input
                     type="text"
                     id="input-lookup-tenant-id"
+                    className="form-control form-control-mono"
                     placeholder={vi ? 'Nhập Tenant ID UUID...' : 'Enter UUID Tenant ID...'}
                     value={tenantIdInput}
                     onChange={(e) => {
@@ -177,70 +163,42 @@ export const NoTenantView: React.FC<NoTenantViewProps> = ({
                       if (lookupError) setLookupError(null);
                     }}
                     disabled={lookupLoading || applying}
-                    style={{
-                      background: 'var(--bg-input)',
-                      border: '1px solid var(--border-medium)',
-                      color: '#fff',
-                      padding: '8px 12px',
-                      borderRadius: 6,
-                      fontSize: 12,
-                      fontFamily: 'monospace',
-                      flex: 1,
-                    }}
                   />
                   <button
                     type="submit"
                     className="btn btn-secondary btn-sm"
                     disabled={lookupLoading || applying || !tenantIdInput.trim()}
                     id="btn-verify-tenant-id"
-                    style={{ whiteSpace: 'nowrap' }}
                   >
-                    {lookupLoading ? (vi ? 'Đang tra...' : 'Checking...') : (vi ? 'Kiểm Tra' : 'Verify')}
+                    {lookupLoading ? (vi ? 'Đang tra…' : 'Checking…') : (vi ? 'Kiểm Tra' : 'Verify')}
                   </button>
                 </form>
 
                 {/* Error Banner */}
                 {lookupError && (
-                  <div
-                    style={{
-                      background: 'rgba(239, 68, 68, 0.1)',
-                      border: '1px solid rgba(239, 68, 68, 0.3)',
-                      borderRadius: 6,
-                      padding: '8px 12px',
-                      fontSize: 12,
-                      color: 'var(--danger)',
-                      marginBottom: 12,
-                    }}
-                  >
+                  <div className="info-banner info-banner--danger" role="alert" style={{ marginBottom: 12 }}>
                     {lookupError}
                   </div>
                 )}
 
-                {/* Verified Result Card (Scene 6 Wireframe) */}
+                {/* Verified Result Card */}
                 {verifiedTenant && (
-                  <div
-                    style={{
-                      background: 'rgba(16, 185, 129, 0.08)',
-                      border: '1px solid rgba(16, 185, 129, 0.3)',
-                      borderRadius: 6,
-                      padding: '12px 14px',
-                      marginBottom: 14,
-                    }}
-                  >
-                    <div style={{ fontSize: 11, color: 'var(--success)', fontWeight: 600 }}>
-                      ✓ {vi ? 'TÌM THẤY DOANH NGHIỆP' : 'TENANT VERIFIED'}
+                  <div className="info-banner info-banner--success" style={{ flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+                    <div className="inline-code-row" style={{ fontWeight: 600, fontSize: 12 }}>
+                      <IconCheck size={13} />
+                      <span>{vi ? 'TÌM THẤY DOANH NGHIỆP' : 'TENANT VERIFIED'}</span>
                     </div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginTop: 2 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-main)' }}>
                       {verifiedTenant.name}
                     </div>
                     {verifiedTenant.description && (
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                      <div className="card-subtitle" style={{ margin: 0 }}>
                         {verifiedTenant.description}
                       </div>
                     )}
-                    <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+                    <div className="form-hint" style={{ marginTop: 2 }}>
                       {vi ? 'Chủ sở hữu:' : 'Owner:'}{' '}
-                      <strong style={{ color: '#e2e8f0' }}>{verifiedTenant.ownerName || verifiedTenant.ownerEmail}</strong>
+                      <strong style={{ color: 'var(--text-main)' }}>{verifiedTenant.ownerName || verifiedTenant.ownerEmail}</strong>
                       {verifiedTenant.ownerName && verifiedTenant.ownerEmail && (
                         <code style={{ marginLeft: 4 }}>({verifiedTenant.ownerEmail})</code>
                       )}{' '}
@@ -253,19 +211,13 @@ export const NoTenantView: React.FC<NoTenantViewProps> = ({
               {/* Confirm Apply Button */}
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary btn-block"
                 onClick={handleConfirmApply}
                 disabled={!verifiedTenant || applying}
                 id="btn-confirm-apply-tenant"
-                style={{
-                  width: '100%',
-                  padding: '10px 16px',
-                  opacity: verifiedTenant ? 1 : 0.45,
-                  cursor: verifiedTenant ? 'pointer' : 'not-allowed',
-                }}
               >
                 {applying
-                  ? (vi ? 'Đang gửi yêu cầu...' : 'Submitting...')
+                  ? (vi ? 'Đang gửi yêu cầu…' : 'Submitting…')
                   : (vi ? 'Xác Nhận Gửi Yêu Cầu Gia Nhập' : 'Confirm & Submit Join Request')}
               </button>
             </div>

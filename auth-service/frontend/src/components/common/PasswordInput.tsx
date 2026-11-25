@@ -9,6 +9,7 @@ interface PasswordInputProps {
   required?: boolean;
   minLength?: number;
   autoComplete?: string;
+  disabled?: boolean;
 }
 
 export const PasswordInput: React.FC<PasswordInputProps> = ({
@@ -20,6 +21,7 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({
   required = true,
   minLength,
   autoComplete,
+  disabled = false,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -36,6 +38,7 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({
         minLength={minLength}
         placeholder={placeholder}
         autoComplete={autoComplete}
+        disabled={disabled}
       />
       <button
         type="button"
@@ -43,6 +46,7 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({
         onClick={() => setShowPassword(prev => !prev)}
         title="Show/Hide Password"
         aria-label="Toggle password visibility"
+        disabled={disabled}
       >
         <svg
           className="eye-open"

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useModalA11y } from '../../hooks/useModalA11y';
+import { IconAlertTriangle } from '../common/Icons';
 import { tenantsService, type TenantSummary } from '../../services/tenants.service';
 
 interface DeleteTenantModalProps {
@@ -25,6 +27,8 @@ export const DeleteTenantModal: React.FC<DeleteTenantModalProps> = ({
   const [reason, setReason] = useState('');
   const [confirmName, setConfirmName] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const { handleBackdropClick } = useModalA11y(isOpen, onClose, loading);
 
   if (!isOpen) return null;
 
@@ -62,9 +66,16 @@ export const DeleteTenantModal: React.FC<DeleteTenantModalProps> = ({
   };
 
   return (
-    <div className="modal-backdrop show" id="delete-tenant-modal">
-      <div className="modal-content" style={{ maxWidth: 540 }}>
-        <h3 className="modal-title" style={{ color: 'var(--danger)' }}>
+    <div
+      className="modal-backdrop show"
+      id="delete-tenant-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-tenant-modal-title"
+      onClick={handleBackdropClick}
+    >
+      <div className="modal-content" style={{ maxWidth: 540 }} onClick={(e) => e.stopPropagation()}>
+        <h3 id="delete-tenant-modal-title" className="modal-title" style={{ color: 'var(--danger)' }}>
           {vi ? 'Xác Nhận Giải Tán & Xóa Doanh Nghiệp' : 'Confirm Delete Tenant'}
         </h3>
 
@@ -75,20 +86,12 @@ export const DeleteTenantModal: React.FC<DeleteTenantModalProps> = ({
         </p>
 
         {/* Safety & Invariant Banner (R-04) */}
-        <div
-          style={{
-            background: 'rgba(239, 68, 68, 0.08)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: 8,
-            padding: '12px 16px',
-            marginBottom: 20,
-            fontSize: 13,
-            color: '#f87171',
-            lineHeight: 1.5,
-          }}
-        >
-          <strong>⚠️ {vi ? 'Bảo toàn dữ liệu theo Hiến pháp v2.0 (R-04):' : 'Data Integrity Policy (R-04):'}</strong>
-          <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
+        <div className="info-banner info-banner--danger" style={{ flexDirection: 'column', gap: 6 }}>
+          <strong className="inline-code-row">
+            <IconAlertTriangle size={15} />
+            <span>{vi ? 'Bảo toàn dữ liệu theo Hiến pháp v2.0 (R-04):' : 'Data Integrity Policy (R-04):'}</span>
+          </strong>
+          <ul style={{ margin: '2px 0 0', paddingLeft: 20 }}>
             <li>
               {vi
                 ? 'Toàn bộ thành viên sẽ được tách khỏi doanh nghiệp (User.tenantId = null).'
@@ -139,7 +142,7 @@ export const DeleteTenantModal: React.FC<DeleteTenantModalProps> = ({
           <div className="form-group" style={{ marginBottom: 20 }}>
             <label className="form-label" htmlFor="confirm-tenant-name">
               {vi ? 'Nhập tên doanh nghiệp để xác nhận:' : 'Type tenant name to confirm:'}{' '}
-              <strong style={{ color: '#fff' }}>{tenant.name}</strong>
+              <strong style={{ color: 'var(--text-main)' }}>{tenant.name}</strong>
             </label>
             <input
               type="text"
