@@ -157,7 +157,7 @@
             <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 10px;">UserAuthGuard</span>
           </div>
           <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 12px; line-height: 1.4;" data-i18n="api_test.desc">
-            Gọi endpoint <code>GET /auth/protected</code> kèm Bearer token để xác thực quyền truy cập qua Auth Service.
+            Gọi endpoint <code>GET /auth/protected</code> bằng cookie phiên (hoặc Bearer token) để xác thực quyền truy cập qua Auth Service.
           </p>
           <div style="display: flex; gap: 8px; align-items: center;">
             <button type="button" class="btn btn-primary btn-sm" id="btn-test-protected-api" onclick="testProtectedApi()" data-i18n="api_test.btn_call" style="padding: 6px 14px;">

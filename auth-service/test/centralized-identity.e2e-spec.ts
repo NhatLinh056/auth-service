@@ -77,6 +77,18 @@ describe('Centralized identity and external app user isolation on isolated Postg
         status: 'ACTIVE',
       },
     });
+    for (const provider of ['GOOGLE', 'FACEBOOK'] as const) {
+      await db.oAuthProvider.create({
+        data: {
+          applicationId: application.id,
+          provider,
+          name: provider,
+          isEnabled: true,
+          clientId: `${provider.toLowerCase()}-client`,
+          clientSecret: `${provider.toLowerCase()}-secret`,
+        },
+      });
+    }
     return application;
   };
 

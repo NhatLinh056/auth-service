@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import { AuthScreen } from './components/auth/AuthScreen';
@@ -15,14 +15,12 @@ import { MyTenantPage } from './components/features/my-tenant/MyTenantPage';
 import { AdminTenantsPage } from './components/features/admin/AdminTenantsPage';
 import { CreateAppModal } from './components/modals/CreateAppModal';
 import { AssignRoleModal } from './components/modals/AssignRoleModal';
-import { ProviderModal } from './components/modals/ProviderModal';
 
 import { applicationsService } from './services/applications.service';
 import { usersService } from './services/users.service';
 
 import type { Application } from './types/application.types';
 import type { User } from './types/auth.types';
-import type { SanitizedOAuthProvider } from './types/provider.types';
 
 // Backward compatibility: detect legacy #account hash and redirect to /console/account
 const HashRedirect: React.FC = () => {
@@ -67,19 +65,24 @@ const AppContent: React.FC = () => {
   // Modals state
   const [isCreateAppOpen, setIsCreateAppOpen] = useState(false);
   const [assignRoleUser, setAssignRoleUser] = useState<User | null>(null);
-  const [editProvider, setEditProvider] = useState<SanitizedOAuthProvider | null>(null);
+  const appsReqIdRef = useRef(0);
 
-  // Load applications
+  // Load applications (guarded against out-of-order stale responses)
   const loadApplications = useCallback(async () => {
     if (!token) return;
+    const reqId = ++appsReqIdRef.current;
     setAppsLoading(true);
     try {
       const data = await applicationsService.findAll();
-      setApplications(data);
+      if (reqId === appsReqIdRef.current) {
+        setApplications(data);
+      }
     } catch {
       // Handled in service or empty
     } finally {
-      setAppsLoading(false);
+      if (reqId === appsReqIdRef.current) {
+        setAppsLoading(false);
+      }
     }
   }, [token]);
 
@@ -97,23 +100,22 @@ const AppContent: React.FC = () => {
     }
   }, [token, isAdmin]);
 
-  // Fetch initial data when authenticated
+  // Fetch data once per route/auth transition without duplicate requests
   useEffect(() => {
-    if (isAuthenticated) {
-      loadApplications();
-    } else {
+    if (!isAuthenticated) {
+      appsReqIdRef.current += 1;
       setApplications([]);
       setUsers([]);
+      return;
     }
-  }, [isAuthenticated, loadApplications]);
-
-  // Auto-fetch data on route changes
-  useEffect(() => {
-    if (!isAuthenticated) return;
     const path = location.pathname;
     if (path.startsWith('/console/admin/users') && isAdmin) {
       loadUsers();
-    } else if (path.startsWith('/console/applications') || path.startsWith('/console/dashboard') || path.startsWith('/console/quickstart')) {
+    } else if (
+      path.startsWith('/console/applications') ||
+      path.startsWith('/console/dashboard') ||
+      path.startsWith('/console/quickstart')
+    ) {
       loadApplications();
     }
   }, [location.pathname, isAuthenticated, isAdmin, loadUsers, loadApplications]);
@@ -133,10 +135,6 @@ const AppContent: React.FC = () => {
     setUsers(prev => prev.map(u => (u.id === updatedUser.id ? updatedUser : u)));
   };
 
-  const handleProviderSaved = (_updated: SanitizedOAuthProvider) => {
-    setEditProvider(null);
-  };
-
   // Check centralized signin query
   const flowId = new URLSearchParams(window.location.search).get('signin');
   if (flowId) return <ClientSignIn flowId={flowId} />;
@@ -152,10 +150,7 @@ const AppContent: React.FC = () => {
             isAuthenticated ? (
               <Navigate to="/console/dashboard" replace />
             ) : (
-              <>
-                <AuthScreen />
-                <ToastContainer />
-              </>
+              <AuthScreen />
             )
           }
         />
@@ -198,26 +193,13 @@ const AppContent: React.FC = () => {
                 onRefresh={loadApplications}
                 onOpenCreateModal={() => setIsCreateAppOpen(true)}
                 onOpenDetailModal={(app) => navigate(`/console/applications/${app.id}`)}
-                onUpdateApp={handleUpdateApp}
-                onOpenConfigureProvider={setEditProvider}
               />
             }
           />
 
           {/* Applications detail route & sub-tab routes */}
           <Route
-            path="applications/:appId"
-            element={
-              <AppDetailPage
-                onUpdateAppList={handleUpdateApp}
-                onRemoveFromAppList={(deletedId) => {
-                  setApplications((prev) => prev.filter((a) => a.id !== deletedId));
-                }}
-              />
-            }
-          />
-          <Route
-            path="applications/:appId/:tab"
+            path="applications/:appId/:tab?"
             element={
               <AppDetailPage
                 onUpdateAppList={handleUpdateApp}
@@ -295,14 +277,6 @@ const AppContent: React.FC = () => {
         onClose={() => setAssignRoleUser(null)}
         onSuccess={handleAssignRoleSuccess}
         adminCount={users.filter(u => u.role === 'ADMIN').length}
-      />
-
-      <ProviderModal
-        applicationId={editProvider?.applicationId || ''}
-        provider={editProvider}
-        isOpen={Boolean(editProvider)}
-        onClose={() => setEditProvider(null)}
-        onSuccess={handleProviderSaved}
       />
 
       <ToastContainer />

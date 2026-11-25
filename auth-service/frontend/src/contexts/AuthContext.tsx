@@ -30,19 +30,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return null;
     }
   });
+  // Never grant privileged UI (isAdmin) from unverified localStorage before getMe() confirms DB role
+  const [profileVerified, setProfileVerified] = useState(false);
 
   // Restore profile only from the authenticated backend, never from URL token/profile fields.
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      setProfileVerified(false);
+      return;
+    }
     let active = true;
     authService.getMe().then(profile => {
       if (!active) return;
       setUser(profile);
+      setProfileVerified(true);
       localStorage.setItem('auth_user', JSON.stringify(profile));
     }).catch(error => {
-      if (active && [401, 403].includes(error.status)) {
-        setToken(null); setUser(null);
-        localStorage.removeItem('auth_token'); localStorage.removeItem('auth_user');
+      if (!active) return;
+      if ([401, 403].includes(error.status)) {
+        setToken(null);
+        setUser(null);
+        setProfileVerified(false);
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
       }
     });
     return () => { active = false; };
@@ -53,6 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await authService.login({ email, password });
       setToken(res.accessToken);
       setUser(res.user);
+      setProfileVerified(true);
       localStorage.setItem('auth_token', res.accessToken);
       localStorage.setItem('auth_user', JSON.stringify(res.user));
       showToast(`${t('toasts.signed_in')} ${res.user.email}`);
@@ -76,6 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setToken(null);
     setUser(null);
+    setProfileVerified(false);
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
     showToast(t('toasts.signed_out'));
@@ -86,6 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const profile = await authService.getMe();
       setUser(profile);
+      setProfileVerified(true);
       localStorage.setItem('auth_user', JSON.stringify(profile));
     } catch {
       // Token might be expired or invalid
@@ -93,7 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAuthenticated = Boolean(token && user);
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = Boolean(profileVerified && user?.role === 'ADMIN');
 
   return (
     <AuthContext.Provider

@@ -51,9 +51,17 @@ describe('Real database tenant authorization regression', () => {
   });
   it('rejects cross-tenant JWTs', async () => { await verify(customerToken, tenantB).expect(403); });
   it('requires valid service credentials', async () => { await verify(customerToken, tenantA, 'wrong').expect(401); });
-  it('does not inherit platform ADMIN', async () => { expect((await verify(adminToken).expect(200)).body.appRole).toBe('USER'); });
-  it('recognizes owner by platform ID without granting ADMIN role', async () => {
-    const res = (await verify(ownerToken).expect(200)).body;
+  it('rejects platform tokens at verify-app-user and does not inherit platform ADMIN on app_user tokens', async () => {
+    await verify(adminToken).expect(403);
+    const adminMember = await db.appUser.create({ data: { applicationId: tenantA.id, userId: platformAdmin.id, email: platformAdmin.email, role: 'USER' } });
+    const adminAppToken = await jwt.signAsync({ sub: adminMember.id, type: 'app_user', appId: tenantA.appId, role: 'USER', email: platformAdmin.email });
+    expect((await verify(adminAppToken).expect(200)).body.appRole).toBe('USER');
+  });
+  it('recognizes owner by platform ID on app_user token without granting ADMIN role', async () => {
+    await verify(ownerToken).expect(403);
+    const ownerMember = await db.appUser.create({ data: { applicationId: tenantA.id, userId: owner.id, email: owner.email, role: 'USER' } });
+    const ownerAppToken = await jwt.signAsync({ sub: ownerMember.id, type: 'app_user', appId: tenantA.appId, role: 'USER', email: owner.email });
+    const res = (await verify(ownerAppToken).expect(200)).body;
     expect(res.appRole).toBe('USER');
     expect(res.role).toBe('USER');
     expect(res.isAppOwner).toBe(true);
@@ -65,7 +73,16 @@ describe('Real database tenant authorization regression', () => {
     expect(initial.isAppOwner).toBe(false);
     await request(app.getHttpServer()).patch('/applications/' + tenantA.id).set('Authorization', 'Bearer ' + ownerToken).send({ adminEmails: [] }).expect(200);
     expect((await db.application.findUniqueOrThrow({ where: { id: tenantA.id } })).adminEmails).toEqual([]);
-    const updated = (await verify(customerToken).expect(200)).body;
+    // Re-sign after app update (which advances updatedAt under R-02 revocation policy) while preserving legacy ADMIN claim
+    const postUpdateCustomerToken = await jwt.signAsync({
+      sub: customer.id,
+      type: 'app_user',
+      appId: tenantA.appId,
+      role: 'ADMIN',
+      email: customer.email,
+      iatMs: Date.now(),
+    });
+    const updated = (await verify(postUpdateCustomerToken).expect(200)).body;
     expect(updated.appRole).toBe('USER');
     expect(updated.role).toBe('USER');
   });
@@ -76,7 +93,9 @@ describe('Real database tenant authorization regression', () => {
   });
   it('does not let an unverified platform email claim app admin', async () => {
     await db.application.update({ where: { id: tenantA.id }, data: { adminEmails: [platformAdmin.email] } });
-    expect((await verify(adminToken).expect(200)).body.appRole).toBe('USER');
+    const existing = await db.appUser.findUniqueOrThrow({ where: { applicationId_userId: { applicationId: tenantA.id, userId: platformAdmin.id } } });
+    const adminAppToken = await jwt.signAsync({ sub: existing.id, type: 'app_user', appId: tenantA.appId, role: 'USER', email: platformAdmin.email });
+    expect((await verify(adminAppToken).expect(200)).body.appRole).toBe('USER');
   });
   it('shares one identity across apps but keeps memberships independent', async () => {
     const profile = { providerUserId: 'same-provider-subject', email: 'same@example.com', name: 'Same user', isEmailVerified: true };

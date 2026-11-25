@@ -83,12 +83,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     // --- R-02 Session Revocation Verification ---
     // 1. Application-scope revocation (AppToken regeneration or status change to INACTIVE and back)
-    if (user.application.updatedAt) {
-      const appUpdatedAt = user.application.updatedAt.getTime();
-      const tokenIssuedAt = payload.iatMs ?? (payload.iat ? payload.iat * 1000 : null);
-      if (tokenIssuedAt !== null && tokenIssuedAt < appUpdatedAt) {
-        throw new UnauthorizedException('Session has been revoked due to application credential or status change');
-      }
+    if (user.application.updatedAt && this.isIssuedBefore(payload, user.application.updatedAt)) {
+      throw new UnauthorizedException('Session has been revoked due to application credential or status change');
     }
 
     // 2. Provider-scope revocation (when Google or Facebook is disabled or re-enabled)
@@ -102,14 +98,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
           `Session has been revoked because ${tokenProvider} login is disabled for this application`,
         );
       }
-      if (providerConfig.updatedAt) {
-        const providerUpdatedAt = providerConfig.updatedAt.getTime();
-        const tokenIssuedAt = payload.iatMs ?? (payload.iat ? payload.iat * 1000 : null);
-        if (tokenIssuedAt !== null && tokenIssuedAt < providerUpdatedAt) {
-          throw new UnauthorizedException(
-            `Session has been revoked due to recent ${tokenProvider} configuration update`,
-          );
-        }
+      if (providerConfig.updatedAt && this.isIssuedBefore(payload, providerConfig.updatedAt)) {
+        throw new UnauthorizedException(
+          `Session has been revoked due to recent ${tokenProvider} configuration update`,
+        );
       }
     }
 
@@ -122,5 +114,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       userId: user.user.id,
       ...(payload.provider ? { provider: payload.provider } : {}),
     };
+  }
+
+  private isIssuedBefore(payload: JwtPayload, updatedAt: Date): boolean {
+    const updatedAtMs = updatedAt.getTime();
+    if (typeof payload.iatMs === 'number') {
+      return payload.iatMs < updatedAtMs;
+    }
+    if (typeof payload.iat === 'number') {
+      // Standard JWT iat is whole seconds; only treat as older if the entire second precedes updatedAt
+      return (payload.iat + 1) * 1000 <= updatedAtMs;
+    }
+    return false;
   }
 }

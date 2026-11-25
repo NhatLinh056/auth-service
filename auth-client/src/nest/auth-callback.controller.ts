@@ -5,13 +5,13 @@ import {
   Req,
   Res,
   Inject,
-  ForbiddenException,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import type { AuthClient } from '../client.js';
 import { AUTH_CLIENT, AUTH_MODULE_OPTIONS } from './constants.js';
 import type { NestAuthModuleOptions } from './auth.module.js';
+import { extractCookie, validateCsrfOrigin } from './http-security.js';
 
 @Controller('auth')
 export class AuthCallbackController {
@@ -59,7 +59,7 @@ export class AuthCallbackController {
       return fail('Missing authorization code in callback');
     }
 
-    const rawTxCookie = this.extractCookie(req, transactionCookieName);
+    const rawTxCookie = extractCookie(req, transactionCookieName);
     if (!rawTxCookie) {
       return fail('No login transaction found in browser session');
     }
@@ -83,7 +83,6 @@ export class AuthCallbackController {
         transaction,
       });
 
-      // Set session cookie
       this.setCookie(res, sessionCookieName, result.accessToken, {
         httpOnly: true,
         sameSite: this.options.cookieOptions?.sameSite || 'lax',
@@ -109,26 +108,8 @@ export class AuthCallbackController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async handleLogout(@Req() req: any, @Res() res: any) {
-    // 1. Validate Fetch Metadata
-    const secFetchSite = req.headers?.['sec-fetch-site'];
-    if (secFetchSite === 'cross-site') {
-      throw new ForbiddenException('CSRF validation failed: Cross-site request rejected');
-    }
+    validateCsrfOrigin(req, this.options);
 
-    // 2. Validate Origin / Referer
-    const origin =
-      req.headers?.['origin'] || this.extractOriginFromReferer(req.headers?.['referer']);
-    if (!origin) {
-      throw new ForbiddenException('CSRF validation failed: Missing Origin and Referer header');
-    }
-
-    const trustedOrigins = this.getTrustedOrigins(req);
-    const isTrusted = trustedOrigins.some((t) => origin.toLowerCase() === t.toLowerCase());
-    if (!isTrusted) {
-      throw new ForbiddenException(`CSRF validation failed: Untrusted request origin "${origin}"`);
-    }
-
-    const isProduction = process.env.NODE_ENV === 'production';
     const sessionCookieName = this.options.sessionCookieName || 'app_session';
     const transactionCookieName = this.options.transactionCookieName || 'auth_tx';
 
@@ -142,7 +123,7 @@ export class AuthCallbackController {
     res.end(JSON.stringify({ success: true, message: 'Logged out successfully' }));
   }
 
-  async handleLogin(provider: 'google' | 'facebook', req: any, res: any) {
+  async handleLogin(provider: 'google' | 'facebook', _req: any, res: any) {
     const redirectUri =
       this.options.redirectUri ||
       `${this.options.publicAppUrl || 'http://localhost:3001'}/auth/callback`;
@@ -169,59 +150,6 @@ export class AuthCallbackController {
     } else {
       res.writeHead(302, { Location: url }).end();
     }
-  }
-
-  private extractCookie(request: any, name: string): string | undefined {
-    if (request.cookies?.[name]) return request.cookies[name];
-    const cookieHeader = request.headers?.cookie;
-    if (cookieHeader && typeof cookieHeader === 'string') {
-      const parts = cookieHeader.split(';');
-      for (const part of parts) {
-        const idx = part.indexOf('=');
-        if (idx > 0) {
-          const key = part.slice(0, idx).trim();
-          const val = part.slice(idx + 1).trim();
-          if (key === name) {
-            try {
-              return decodeURIComponent(val);
-            } catch {
-              return val;
-            }
-          }
-        }
-      }
-    }
-    return undefined;
-  }
-
-  private extractOriginFromReferer(referer?: string): string | undefined {
-    if (!referer || typeof referer !== 'string') return undefined;
-    try {
-      const parsed = new URL(referer);
-      return parsed.origin;
-    } catch {
-      return undefined;
-    }
-  }
-
-  private getTrustedOrigins(request: any): string[] {
-    const trusted: string[] = [];
-    if (this.options.trustedOrigins && Array.isArray(this.options.trustedOrigins)) {
-      trusted.push(...this.options.trustedOrigins);
-    }
-    if (this.options.publicAppUrl) {
-      try {
-        trusted.push(new URL(this.options.publicAppUrl).origin);
-      } catch {
-        trusted.push(this.options.publicAppUrl);
-      }
-    }
-    const host = request.headers?.['host'];
-    if (host) {
-      const proto = request.headers?.['x-forwarded-proto'] || (request.secure ? 'https' : 'http');
-      trusted.push(`${proto}://${host}`);
-    }
-    return trusted;
   }
 
   private setCookie(res: any, name: string, value: string, opts: any) {

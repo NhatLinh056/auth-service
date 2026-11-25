@@ -30,8 +30,6 @@ Dịch vụ tuân thủ nghiêm ngặt Hiến pháp kiến trúc v2.0: **hoàn t
 | `GET` | `/auth/login/facebook` | Public | SDK `AuthCallbackController` | Direct OAuth Broker: chuyển hướng thẳng tới Facebook |
 | `GET` | `/auth/callback` | Public | SDK `AuthCallbackController` | Callback trao đổi mã authorization code và cấp cookie `app_session` |
 | `POST` | `/auth/logout` | Public (Chống CSRF) | SDK `AuthCallbackController` | Đăng xuất an toàn: kiểm tra Origin, xóa cookie phiên `app_session` và `auth_tx` |
-| `POST` | `/auth/start` | Public | `DemoController` | Khởi tạo phiên đăng nhập OAuth cho giao diện web portal |
-| `POST` | `/auth/exchange` | Public | `DemoController` | Đổi mã code lấy token cho giao diện web portal |
 | `GET` | `/auth/protected` | `AuthGuard` | `DemoController` | API bảo vệ minh họa xác thực token trực tuyến qua Auth Service (Fail-closed) |
 | `GET` | `/auth/me` | `AuthGuard` | `DemoController` | Lấy thông tin tài khoản người dùng hiện hành qua decorator `@CurrentUser()` |
 

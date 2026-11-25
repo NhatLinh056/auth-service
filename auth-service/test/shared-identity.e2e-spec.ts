@@ -61,6 +61,15 @@ describe('Shared identity migration and verified linking on isolated PostgreSQL'
       create: { id: 'legacy-app', name: 'Legacy App', appId: 'legacy-app', appToken: 'token-legacy', userId: owner.id, status: 'ACTIVE' },
       update: {},
     });
+    for (const application of [appA, appB]) {
+      for (const provider of ['GOOGLE', 'FACEBOOK'] as const) {
+        await db.oAuthProvider.upsert({
+          where: { applicationId_provider: { applicationId: application.id, provider } },
+          create: { applicationId: application.id, provider, name: provider, isEnabled: true, clientId: `${provider.toLowerCase()}-client`, clientSecret: `${provider.toLowerCase()}-secret` },
+          update: { isEnabled: true },
+        });
+      }
+    }
     const legacyUser = await db.user.create({ data: { email: 'legacy-member@test.invalid' } });
     await db.oAuthIdentity.create({
       data: { provider: 'GOOGLE', providerScope: 'google', providerUserId: 'legacy-subject', email: 'legacy-member@test.invalid', userId: legacyUser.id },
@@ -125,6 +134,11 @@ describe('Shared identity migration and verified linking on isolated PostgreSQL'
 
   it('links a second provider only after proof of the existing session', async () => {
     const mail = email();
+    await db.oAuthProvider.upsert({
+      where: { applicationId_provider: { applicationId: appA.id, provider: 'FACEBOOK' } },
+      create: { applicationId: appA.id, provider: 'FACEBOOK', name: 'Facebook', isEnabled: true, clientId: 'facebook-client-a' },
+      update: { clientId: 'facebook-client-a', isEnabled: true },
+    });
     const first = await login(context(mail, 'first-provider'));
     const input = context(mail, 'second-provider', appA, 'FACEBOOK', 'facebook-client-a');
     const code = grants.issue(input, input.appId, challenge);
@@ -133,11 +147,6 @@ describe('Shared identity migration and verified linking on isolated PostgreSQL'
     expect(confirmed.body.user.userId).toBe(first.user.userId);
     expect(confirmed.body.user.id).toBe(first.user.id);
     expect(await db.oAuthIdentity.count({ where: { userId: first.user.userId } })).toBe(2);
-    await db.oAuthProvider.upsert({
-      where: { applicationId_provider: { applicationId: appA.id, provider: 'FACEBOOK' } },
-      create: { applicationId: appA.id, provider: 'FACEBOOK', name: 'Facebook', clientId: 'facebook-client-a' },
-      update: { clientId: 'facebook-client-a' },
-    });
     const profile = await request(app.getHttpServer()).get('/users/verify-app-user')
       .auth(confirmed.body.accessToken, { type: 'bearer' })
       .set('x-app-id', appA.appId).set('x-app-token', appA.appToken).expect(200);

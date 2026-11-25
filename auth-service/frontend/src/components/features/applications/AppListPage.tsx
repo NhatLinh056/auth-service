@@ -14,7 +14,6 @@ export interface AppListPageProps {
   onRefresh: () => void;
   onOpenCreateModal: () => void;
   onOpenDetailModal?: (app: Application) => void;
-  onNavigateToDetail?: (appId: string) => void;
 }
 
 export const AppListPage: React.FC<AppListPageProps> = ({
@@ -23,7 +22,6 @@ export const AppListPage: React.FC<AppListPageProps> = ({
   onRefresh: _onRefresh,
   onOpenCreateModal,
   onOpenDetailModal,
-  onNavigateToDetail,
 }) => {
   const { user, isAdmin } = useAuth();
   const { lang, t } = useLanguage();
@@ -115,13 +113,10 @@ export const AppListPage: React.FC<AppListPageProps> = ({
   };
 
   const handleOpenDetail = (app: Application) => {
-    if (onNavigateToDetail) {
-      onNavigateToDetail(app.id);
-    } else {
-      navigate(`/console/applications/${app.id}`);
-    }
     if (onOpenDetailModal) {
       onOpenDetailModal(app);
+    } else {
+      navigate(`/console/applications/${app.id}`);
     }
   };
 

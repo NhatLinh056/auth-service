@@ -114,6 +114,7 @@ describe('Tenant ownership and authorization on isolated PostgreSQL', () => {
     const admin = await user('ADMIN');
     const next = await user();
     const tenant = await create(owner);
+    await db.user.update({ where: { id: next.id }, data: { tenantId: tenant.id } });
     await request(app.getHttpServer()).post(`/tenants/${tenant.id}/transfer`).auth(admin.token, { type: 'bearer' }).send({ userId: next.id }).expect(400);
     await request(app.getHttpServer()).post(`/tenants/${tenant.id}/transfer`).auth(admin.token, { type: 'bearer' }).send({ userId: next.id, reason: 'Verified ownership dispute' }).expect(201);
     expect((await db.user.findUniqueOrThrow({ where: { id: next.id } })).tenantId).toBe(tenant.id);
