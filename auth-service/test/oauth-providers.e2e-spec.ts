@@ -28,7 +28,24 @@ describe('Project-Scoped Sign-in Methods Management (e2e)', () => {
   let appAAppId: string;
   let appBAppId: string;
 
+  const savedOAuthEnv: Record<string, string | undefined> = {};
+  const oauthEnvKeys = [
+    'GOOGLE_CLIENT_ID',
+    'GOOGLE_CLIENT_SECRET',
+    'FACEBOOK_CLIENT_ID',
+    'FACEBOOK_CLIENT_SECRET',
+    'ACCOUNT_GOOGLE_CLIENT_ID',
+    'ACCOUNT_GOOGLE_CLIENT_SECRET',
+    'ACCOUNT_FACEBOOK_CLIENT_ID',
+    'ACCOUNT_FACEBOOK_CLIENT_SECRET',
+  ];
+
   beforeAll(async () => {
+    for (const key of oauthEnvKeys) {
+      savedOAuthEnv[key] = process.env[key];
+      process.env[key] = '';
+    }
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -91,6 +108,10 @@ describe('Project-Scoped Sign-in Methods Management (e2e)', () => {
     if (userBId) await prisma.user.delete({ where: { id: userBId } }).catch(() => {});
     if (adminId) await prisma.user.delete({ where: { id: adminId } }).catch(() => {});
     await app.close();
+    for (const key of oauthEnvKeys) {
+      if (savedOAuthEnv[key] === undefined) delete process.env[key];
+      else process.env[key] = savedOAuthEnv[key];
+    }
   });
 
   // ═════════════════════════════════════════════════════════════════════════

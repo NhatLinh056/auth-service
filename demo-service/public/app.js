@@ -58,7 +58,7 @@ const translations = {
     },
     api_test: {
       title: 'Token Verification (Protected API)',
-      desc: 'Call endpoint GET /auth/protected with Bearer token to verify access via Auth Service.',
+      desc: 'Call endpoint GET /auth/protected with your session cookie (or Bearer token) to verify access via Auth Service.',
       btn_call: 'Test Protected API',
     }
   },
@@ -110,17 +110,11 @@ const translations = {
     },
     api_test: {
       title: 'Kiểm Chứng Token (Protected API)',
-      desc: 'Gọi endpoint GET /auth/protected kèm Bearer token để xác thực quyền truy cập qua Auth Service.',
+      desc: 'Gọi endpoint GET /auth/protected bằng cookie phiên (hoặc Bearer token) để xác thực quyền truy cập qua Auth Service.',
       btn_call: 'Thử Gọi API Bảo Vệ',
     }
   }
 };
-
-// Evict any legacy token or cached user profile so it never interferes with session cookie authentication
-try {
-  localStorage.removeItem('demo_token');
-  localStorage.removeItem('demo_user');
-} catch {}
 
 const state = {
   lang: localStorage.getItem('demo_lang') || 'vi',
@@ -275,9 +269,6 @@ async function syncUserProfile() {
 
     // Fail-closed: 401 (unauthenticated guest), 403, or 5xx server failure
     state.user = null;
-    try {
-      localStorage.removeItem('demo_user');
-    } catch {}
     updateAuthUI();
 
     if (res.status >= 500) {
@@ -287,9 +278,6 @@ async function syncUserProfile() {
   } catch (err) {
     console.warn('Failed to sync profile with Project 2:', err.message);
     state.user = null;
-    try {
-      localStorage.removeItem('demo_user');
-    } catch {}
     updateAuthUI();
     showToast(t('toasts.sync_error'), 'error');
     return null;
@@ -338,8 +326,6 @@ async function logout() {
     }
 
     state.user = null;
-    localStorage.removeItem('demo_user');
-    localStorage.removeItem('demo_token');
 
     const resultEl = document.getElementById('api-test-result');
     const statusEl = document.getElementById('api-test-status');
@@ -398,18 +384,27 @@ async function testProtectedApi() {
       }, null, 2);
     }
 
+    const setStatusBadge = (color, text) => {
+      if (!statusEl) return;
+      statusEl.style.color = color;
+      statusEl.textContent = text;
+    };
+
     if (res.ok) {
-      if (statusEl) statusEl.innerHTML = `<span style="color: #10b981;">HTTP ${res.status} OK (Đã xác thực)</span>`;
+      setStatusBadge('#10b981', `HTTP ${res.status} OK (Đã xác thực)`);
       showToast(state.lang === 'vi' ? 'Xác thực API bảo vệ thành công!' : 'Protected API verified successfully!');
     } else if (res.status === 403) {
-      if (statusEl) statusEl.innerHTML = `<span style="color: #ef4444;">HTTP 403 (${data.message || 'Truy cập bị từ chối'})</span>`;
+      setStatusBadge('#ef4444', `HTTP 403 (${data.message || 'Truy cập bị từ chối'})`);
       showToast(data.message || (state.lang === 'vi' ? 'Truy cập bị từ chối' : 'Access denied'), 'error');
     } else {
-      if (statusEl) statusEl.innerHTML = `<span style="color: #ef4444;">HTTP ${res.status} (${data.message || 'Lỗi'})</span>`;
+      setStatusBadge('#ef4444', `HTTP ${res.status} (${data.message || 'Lỗi'})`);
       showToast(data.message || 'API error', 'error');
     }
   } catch (err) {
-    if (statusEl) statusEl.innerHTML = `<span style="color: #ef4444;">Network Error</span>`;
+    if (statusEl) {
+      statusEl.style.color = '#ef4444';
+      statusEl.textContent = 'Network Error';
+    }
     showToast(err.message, 'error');
   } finally {
     if (btn) btn.disabled = false;
@@ -444,10 +439,6 @@ async function loginWithProvider(provider = 'google') {
     renderProvidersList(state.providers);
     showToast(error.message || 'Không thể mở trang đăng nhập.', 'error');
   }
-}
-
-async function loginWithAuth(provider = 'google') {
-  return loginWithProvider(provider);
 }
 
 async function refreshProviders() {
