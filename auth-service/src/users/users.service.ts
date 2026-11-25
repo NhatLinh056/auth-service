@@ -91,6 +91,8 @@ export class UsersService implements OnModuleInit {
         ).map((identity: any) => ({ provider: identity.provider.toLowerCase(), email: identity.email })),
         role: appUser.role,
         avatarUrl: appUser.avatarUrl,
+        avatar: appUser.avatarUrl || null,
+        lastLoginMethod: appUser.lastLoginMethod || null,
         appId: appUser.application?.appId,
         appName: appUser.application?.name,
         isAppUser: true,

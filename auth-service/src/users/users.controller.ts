@@ -81,6 +81,8 @@ export class UsersController {
       appRole,
       appId: app.appId,
       isAppOwner: isOwner,
+      provider: identity.provider || profile.lastLoginMethod || null,
+      avatar: profile.avatarUrl || null,
       tenantId: profile.tenantId || null,
       tenantName: profile.tenantName || null,
       isTenantOwner: Boolean(profile.isTenantOwner),

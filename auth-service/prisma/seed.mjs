@@ -22,9 +22,9 @@ async function seed() {
 
     const adminRes = await client.query(
       `INSERT INTO users (id, email, "passwordHash", name, role, "createdAt", "updatedAt")
-       VALUES (gen_random_uuid(), $1, $2, $3, 'ADMIN', NOW(), NOW())
+       VALUES (gen_random_uuid(), $1, $2, $3, 'ADMIN', (NOW() AT TIME ZONE 'UTC'), (NOW() AT TIME ZONE 'UTC'))
        ON CONFLICT (email) DO UPDATE 
-       SET "passwordHash" = $2, name = $3, role = 'ADMIN', "updatedAt" = NOW()
+       SET "passwordHash" = $2, name = $3, role = 'ADMIN', "updatedAt" = (NOW() AT TIME ZONE 'UTC')
        RETURNING id, email, role;`,
       [adminEmail, adminPasswordHash, 'Administrator']
     );
@@ -37,9 +37,9 @@ async function seed() {
 
     const devRes = await client.query(
       `INSERT INTO users (id, email, "passwordHash", name, role, "createdAt", "updatedAt")
-       VALUES (gen_random_uuid(), $1, $2, $3, 'USER', NOW(), NOW())
+       VALUES (gen_random_uuid(), $1, $2, $3, 'USER', (NOW() AT TIME ZONE 'UTC'), (NOW() AT TIME ZONE 'UTC'))
        ON CONFLICT (email) DO UPDATE 
-       SET "passwordHash" = $2, name = $3, role = 'USER', "updatedAt" = NOW()
+       SET "passwordHash" = $2, name = $3, role = 'USER', "updatedAt" = (NOW() AT TIME ZONE 'UTC')
        RETURNING id, email, role;`,
       [devEmail, devPasswordHash, 'App Developer']
     );
@@ -58,14 +58,14 @@ async function seed() {
 
     const appRes = await client.query(
       `INSERT INTO applications (id, name, "appId", "appToken", status, "adminEmails", "userId", "createdAt", "updatedAt")
-       VALUES (gen_random_uuid(), 'Demo Order Service', $1, $2, 'ACTIVE', $3, $4, NOW(), NOW())
+       VALUES (gen_random_uuid(), 'Demo Order Service', $1, $2, 'ACTIVE', $3, $4, (NOW() AT TIME ZONE 'UTC'), (NOW() AT TIME ZONE 'UTC'))
        ON CONFLICT ("appId") DO UPDATE 
        SET name = 'Demo Order Service', 
            "appToken" = $2, 
            status = 'ACTIVE', 
            "adminEmails" = CASE WHEN array_length($3::text[], 1) > 0 THEN $3 ELSE applications."adminEmails" END, 
            "userId" = $4, 
-           "updatedAt" = NOW()
+           "updatedAt" = (NOW() AT TIME ZONE 'UTC')
        RETURNING id, name, "appId", "adminEmails";`,
       [sampleAppId, sampleAppToken, sampleAdminEmails, devUserId]
     );
@@ -84,8 +84,8 @@ async function seed() {
     await client.query(
       `INSERT INTO oauth_providers (id, "applicationId", provider, name, "isEnabled", "clientId", "clientSecret", "callbackUrl", "createdAt", "updatedAt")
        VALUES 
-       (gen_random_uuid(), $1, 'GOOGLE', 'Google', false, $2, $3, 'http://localhost:3000/auth/oauth/google/callback', NOW(), NOW()),
-       (gen_random_uuid(), $1, 'FACEBOOK', 'Facebook', false, $4, $5, 'http://localhost:3000/auth/oauth/facebook/callback', NOW(), NOW())
+       (gen_random_uuid(), $1, 'GOOGLE', 'Google', false, $2, $3, 'http://localhost:3000/auth/oauth/google/callback', (NOW() AT TIME ZONE 'UTC'), (NOW() AT TIME ZONE 'UTC')),
+       (gen_random_uuid(), $1, 'FACEBOOK', 'Facebook', false, $4, $5, 'http://localhost:3000/auth/oauth/facebook/callback', (NOW() AT TIME ZONE 'UTC'), (NOW() AT TIME ZONE 'UTC'))
        ON CONFLICT ("applicationId", provider) DO NOTHING;`,
       [appIdInternal, googleClientId, googleClientSecret, fbClientId, fbClientSecret]
     );

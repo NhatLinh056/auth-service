@@ -196,7 +196,14 @@ function updateAuthUI() {
     if (idEl) idEl.textContent = state.user.id || state.user.sub || 'N/A';
 
     if (providerEl) {
-      const p = (state.user.provider || 'OAuth').toUpperCase();
+      const p = (
+        state.user.provider ||
+        state.user.lastLoginMethod ||
+        (Array.isArray(state.user.linkedAccounts) && state.user.linkedAccounts.length === 1
+          ? state.user.linkedAccounts[0].provider
+          : null) ||
+        'OAuth'
+      ).toUpperCase();
       providerEl.textContent = p;
       if (p === 'GOOGLE') {
         providerEl.className = 'badge badge-google';
@@ -222,10 +229,11 @@ function updateAuthUI() {
     }
 
     if (avatarEl) {
-      if (state.user.avatar) {
+      const avatarUrl = state.user.avatar || state.user.avatarUrl;
+      if (avatarUrl) {
         avatarEl.replaceChildren();
         try {
-          const url = new URL(state.user.avatar);
+          const url = new URL(avatarUrl);
           if (url.protocol === 'https:') {
             const img = document.createElement('img');
             img.src = url.href;
